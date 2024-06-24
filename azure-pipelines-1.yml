@@ -1,12 +1,9 @@
-trigger:
-- master
-
-pr:
-- master
-
 pool:
   vmImage: 'ubuntu-latest'
 
+variables:
+  group: linphone-keystore
+  
 steps:
 - checkout: self
 
@@ -15,12 +12,6 @@ steps:
   inputs:
     secureFile: 'linphone-keystore.jks'
 
-- task: CopyFiles@2
-  inputs:
-    SourceFolder: '$(Agent.TempDirectory)'
-    Contents: 'linphone-keystore.jks'
-    TargetFolder: '$(Agent.BuildDirectory)/app/'
-    OverWrite: true
 - task: JavaToolInstaller@0
   inputs:
     versionSpec: '17'
