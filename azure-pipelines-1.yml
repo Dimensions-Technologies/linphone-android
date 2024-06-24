@@ -1,8 +1,5 @@
 pool:
   vmImage: 'ubuntu-latest'
-
-variables:
-  group: linphone-keystore
   
 steps:
 - checkout: self
