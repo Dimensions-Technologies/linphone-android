@@ -16,9 +16,6 @@ steps:
     versionSpec: '17'
     jdkArchitectureOption: 'x64'
     jdkSourceOption: 'PreInstalled'
-
-- script: chmod +x gradlew
-  displayName: 'Grant execute permission for gradlew'
 - task: Bash@3
   displayName: "Generate keystore.properties"
   inputs:
