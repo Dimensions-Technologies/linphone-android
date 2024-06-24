@@ -10,6 +10,17 @@ pool:
 steps:
 - checkout: self
 
+- task: DownloadSecureFile@1
+  name: "keystore"
+  inputs:
+    secureFile: 'linphone-keystore'
+
+- task: CopyFiles@2
+  inputs:
+    SourceFolder: '$(caCertificate.secureFilePath)'
+    Contents: '**'
+    TargetFolder: '$(Agent.BuildDirectory)/app'
+    OverWrite: true
 - task: JavaToolInstaller@0
   inputs:
     versionSpec: '17'
