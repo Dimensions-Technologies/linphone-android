@@ -126,7 +126,7 @@ android {
             storeFile file("/home/vsts/work/_temp/linphone-keystore.jks")
             storePassword System.getenv("KEYSTORE_PASSWORD")
             keyAlias System.getenv("KEYSTORE_ALIAS")
-            keyPassword System.getenv("KEYSTORE-PASSWORD")
+            keyPassword System.getenv("KEYSTORE_PASSWORD")
         }
     }
 
