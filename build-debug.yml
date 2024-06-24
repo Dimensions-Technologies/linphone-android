@@ -5,18 +5,24 @@ steps:
 - checkout: self
 
 - task: JavaToolInstaller@0
+  displayName: "Install Java"
   inputs:
     versionSpec: '17'
     jdkArchitectureOption: 'x64'
     jdkSourceOption: 'PreInstalled'
 
-- script: chmod +x gradlew
-  displayName: 'Grant execute permission for gradlew'
-
-- script: ./gradlew assembleDebug
-  displayName: 'Build with Gradle'
+- task: Gradle@3
+  displayName: "Build SDK"
+  inputs:
+    gradleWrapperFile: 'gradlew'
+    tasks: 'assembleRelease'
+    publishJUnitResults: false
+    javaHomeOption: 'JDKVersion'
+    sonarQubeRunAnalysis: false
+    spotBugsAnalysis: false
 
 - task: PublishBuildArtifacts@1
+  displayName: "Publish SDK"
   inputs:
     PathtoPublish: 'app/build/outputs'
     ArtifactName: 'apk-debug'
