@@ -123,10 +123,10 @@ android {
 
     signingConfigs {
         release {
-            storeFile file("/home/vsts/work/_temp/linphone-keystore.jks")
-            storePassword System.getenv("KEYSTORE_PASSWORD")
-            keyAlias System.getenv("KEYSTORE_ALIAS")
-            keyPassword System.getenv("KEYSTORE_PASSWORD")
+            storeFile file(keystoreProperties['storeFile'])
+            storePassword keystoreProperties['storePassword']
+            keyAlias keystoreProperties['keyAlias']
+            keyPassword keystoreProperties['keyPassword']
         }
     }
 
