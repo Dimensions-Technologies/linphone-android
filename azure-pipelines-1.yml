@@ -19,8 +19,18 @@ steps:
   displayName: 'Grant execute permission for gradlew'
 
 
-- script: ./gradlew assembleRelease
-  displayName: 'Build with Gradle'
+#- script: ./gradlew assembleRelease
+#  displayName: 'Build with Gradle'
+
+- task: Gradle@3
+  inputs:
+    gradleWrapperFile: 'gradlew'
+    options: '-DKEYSTORE_ALIAS=$(KEYSTORE_ALIAS) -DKEYSTORE_PASSWORD=$(KEYSTORE_PASSWORD)'
+    tasks: 'assembleRelease'
+    publishJUnitResults: false
+    javaHomeOption: 'JDKVersion'
+    sonarQubeRunAnalysis: false
+    spotBugsAnalysis: false
 
 - task: PublishBuildArtifacts@1
   inputs:
