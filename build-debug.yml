@@ -12,15 +12,15 @@ steps:
     jdkSourceOption: 'PreInstalled'
 
 # Need keystore.properties present even if build isn't using it
-#- task: Bash@3
-#  displayName: "Generate keystore.properties"
-#  inputs:
-#    targetType: 'inline'
-#    script: |
-#      echo storePassword= >> keystore.properties
-#      echo keyPassword= >> keystore.properties
-#      echo keyAlias= >> keystore.properties
-#      echo storeFile= >> keystore.properties
+- task: Bash@3
+  displayName: "Generate keystore.properties"
+  inputs:
+    targetType: 'inline'
+    script: |
+      echo storePassword= >> keystore.properties
+      echo keyPassword= >> keystore.properties
+      echo keyAlias= >> keystore.properties
+      echo storeFile= >> keystore.properties
 
 - task: Gradle@3
   displayName: "Build SDK"
