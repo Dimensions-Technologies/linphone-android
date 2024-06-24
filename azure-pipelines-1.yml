@@ -13,7 +13,7 @@ steps:
 - task: DownloadSecureFile@1
   name: "keystore"
   inputs:
-    secureFile: 'linphone-keystore'
+    secureFile: 'linphone-keystore.jks'
 
 - task: CopyFiles@2
   inputs:
