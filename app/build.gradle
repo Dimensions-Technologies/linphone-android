@@ -124,8 +124,8 @@ android {
     signingConfigs {
         release {
             storeFile file("/home/vsts/work/_temp/linphone-keystore.jks")
-            storePassword(System.getenv("KEYSTORE-PASSWORD"))
-            keyAlias(System.getenv("KEYSTORE-ALIAS"))
+            storePassword(System.getenv("KEYSTORE_PASSWORD"))
+            keyAlias(System.getenv("KEYSTORE_ALIAS"))
             keyPassword(System.getenv("KEYSTORE-PASSWORD"))
         }
     }
