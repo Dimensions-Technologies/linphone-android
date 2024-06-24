@@ -17,7 +17,14 @@ steps:
 
 - script: chmod +x gradlew
   displayName: 'Grant execute permission for gradlew'
-
+- task: Bash@3
+  inputs:
+    targetType: 'inline'
+    script: |
+      echo storePassword=$(KEYSTORE_PASSWORD) >> keystore.properties
+      echo keyPassword=$(KEYSTORE_PASSWORD) >> keystore.properties
+      echo keyAlias=linphone >> keystore.properties
+      echo storeFile=$(KEYSTORE.SECUREFILEPATH) >> keystore.properties
 
 #- script: ./gradlew assembleRelease
 #  displayName: 'Build with Gradle'
