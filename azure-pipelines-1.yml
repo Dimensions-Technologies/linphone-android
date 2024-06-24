@@ -32,7 +32,7 @@ steps:
 - task: Gradle@3
   inputs:
     gradleWrapperFile: 'gradlew'
-    options: '-DKEYSTORE_ALIAS=$(KEYSTORE_ALIAS) -DKEYSTORE_PASSWORD=$(KEYSTORE_PASSWORD)'
+    #options: '-DKEYSTORE_ALIAS=$(KEYSTORE_ALIAS) -DKEYSTORE_PASSWORD=$(KEYSTORE_PASSWORD)'
     tasks: 'assembleRelease'
     publishJUnitResults: false
     javaHomeOption: 'JDKVersion'
@@ -42,5 +42,5 @@ steps:
 - task: PublishBuildArtifacts@1
   inputs:
     PathtoPublish: 'app/build/outputs'
-    ArtifactName: 'apk-debug'
+    ArtifactName: 'apk-release'
     publishLocation: 'container'
