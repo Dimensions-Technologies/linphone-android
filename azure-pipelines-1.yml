@@ -17,9 +17,9 @@ steps:
 
 - task: CopyFiles@2
   inputs:
-    SourceFolder: '$(keystore.secureFilePath)'
-    Contents: '**'
-    TargetFolder: '$(Agent.BuildDirectory)/app'
+    SourceFolder: '$(Agent.TempDirectory)'
+    Contents: 'linphone-keystore.jks'
+    TargetFolder: '$(Agent.BuildDirectory)/app/'
     OverWrite: true
 - task: JavaToolInstaller@0
   inputs:
@@ -29,6 +29,7 @@ steps:
 
 - script: chmod +x gradlew
   displayName: 'Grant execute permission for gradlew'
+
 
 - script: ./gradlew assembleRelease
   displayName: 'Build with Gradle'
