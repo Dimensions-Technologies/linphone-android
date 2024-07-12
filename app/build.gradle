@@ -90,6 +90,9 @@ android {
         versionCode appVersionCode
         versionName "${project.version}"
         applicationId packageName
+        manifestPlaceholders = [
+            appAuthRedirectScheme: 'org.linphone'
+        ]
     }
 
     applicationVariants.all { variant ->
@@ -255,6 +258,9 @@ dependencies {
 
     // Only enable leak canary prior to release
     // debugImplementation 'com.squareup.leakcanary:leakcanary-android:2.10'
+
+    implementation 'com.auth0.android:jwtdecode:2.0.0'
+    implementation 'net.openid:appauth:0.9.1'
 }
 
 task generateContactsXml(type: Copy) {
