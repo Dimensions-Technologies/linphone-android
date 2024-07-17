@@ -21,7 +21,7 @@ class Constants {
 
         val URL_AUTHORIZATION = "https://login.xarios.dev"
         val URL_TOKEN_EXCHANGE = "https://www.googleapis.com/oauth2/v4/token"
-        val URL_AUTH_REDIRECT = "com.ptruiz.authtest:/oauth2redirect"
+        val URL_AUTH_REDIRECT = "org.linphone:/oauth2redirect"
         val URL_API_CALL = "https://www.googleapis.com/drive/v2/files"
         val URL_LOGOUT = "https://accounts.google.com/o/oauth2/revoke?token="
 

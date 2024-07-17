@@ -110,11 +110,13 @@ android {
             variant.getMergedFlavor().manifestPlaceholders = [linphone_address_mime_type: "vnd.android.cursor.item/vnd." + packageName + ".provider.sip_address",
                                                               linphone_file_provider: packageName + ".fileprovider",
                                                               appLabel: "@string/app_name",
+                                                              appAuthRedirectScheme: "org.linphone",
                                                               firebaseServiceEnabled: enableFirebaseService]
         } else {
             variant.getMergedFlavor().manifestPlaceholders = [linphone_address_mime_type: "vnd.android.cursor.item/vnd." + packageName + ".provider.sip_address",
                                                               linphone_file_provider: packageName + ".debug.fileprovider",
                                                               appLabel: "@string/app_name_debug",
+                                                              appAuthRedirectScheme: "org.linphone",
                                                               firebaseServiceEnabled: enableFirebaseService]
             extractNativeLibs = true
         }

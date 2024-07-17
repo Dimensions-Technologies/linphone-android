@@ -1,13 +1,15 @@
 package org.linphone.authentication
 
 import android.app.Activity
-import android.app.Application
 import android.content.Context
+import android.content.Intent
 import android.net.Uri
 import android.text.TextUtils
 import android.util.Base64
 import androidx.activity.result.contract.ActivityResultContracts
 import com.auth0.android.jwt.JWT
+import java.security.MessageDigest
+import java.security.SecureRandom
 import net.openid.appauth.AppAuthConfiguration
 import net.openid.appauth.AuthState
 import net.openid.appauth.AuthorizationRequest
@@ -19,8 +21,6 @@ import net.openid.appauth.browser.VersionedBrowserMatcher
 import org.json.JSONException
 import org.linphone.activities.GenericActivity
 import org.linphone.utils.Constants
-import java.security.MessageDigest
-import java.security.SecureRandom
 
 class AuthManager : GenericActivity() {
 
@@ -34,7 +34,7 @@ class AuthManager : GenericActivity() {
             .getSharedPreferences(Constants.SHARED_PREFERENCES_NAME, Context.MODE_PRIVATE)
             .getString(Constants.AUTH_STATE, null)
 
-        if (jsonString!= null && !TextUtils.isEmpty(jsonString)) {
+        if (jsonString != null && !TextUtils.isEmpty(jsonString)) {
             try {
                 authState = AuthState.jsonDeserialize(jsonString)
 
@@ -96,15 +96,20 @@ class AuthManager : GenericActivity() {
             authServiceConfig,
             Constants.CLIENT_ID,
             ResponseTypeValues.CODE,
-            Uri.parse(Constants.URL_AUTH_REDIRECT))
-            .setCodeVerifier(codeVerifier,
+            Uri.parse(Constants.URL_AUTH_REDIRECT)
+        )
+            .setCodeVerifier(
+                codeVerifier,
                 codeChallenge,
-                Constants.CODE_VERIFIER_CHALLENGE_METHOD)
+                Constants.CODE_VERIFIER_CHALLENGE_METHOD
+            )
 
-        builder.setScopes(Constants.SCOPE_PROFILE,
+        builder.setScopes(
+            Constants.SCOPE_PROFILE,
             Constants.SCOPE_EMAIL,
             Constants.SCOPE_OPENID,
-            Constants.SCOPE_DRIVE)
+            Constants.SCOPE_DRIVE
+        )
 
         val request = builder.build()
 
@@ -112,13 +117,17 @@ class AuthManager : GenericActivity() {
         launchForResult(authIntent)
     }
 
-    val authorizationLauncher = registerForActivityResult(
-        ActivityResultContracts.StartActivityForResult()){
-            result ->
-        run {
-            if (result.resultCode == Activity.RESULT_OK) {
-                handleAuthorizationResponse(result.data!!)
+    private fun launchForResult(intent: Intent) {
+        val launcher = registerForActivityResult(
+            ActivityResultContracts.StartActivityForResult()
+        ) { result ->
+            run {
+                if (result.resultCode == Activity.RESULT_OK) {
+                    // handleAuthorizationResponse(result.data!!)
+                }
             }
         }
+
+        launcher.launch((intent))
     }
 }
