@@ -20,6 +20,7 @@ import android.content.SharedPreferences;
 import android.content.res.Resources;
 import android.net.Uri;
 import android.text.TextUtils;
+import android.util.Log;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -192,6 +193,7 @@ public final class AuthConfiguration {
     }
 
     private void readConfigurationFile() throws InvalidConfigurationException {
+        Log.d("AuthConfiguration", "Reading auth_config...");
         BufferedSource configSource =
                 Okio.buffer(Okio.source(mResources.openRawResource(R.raw.auth_config)));
         Buffer configData = new Buffer();
@@ -209,8 +211,9 @@ public final class AuthConfiguration {
     }
 
     private void readEnvironmentSettingsFile() throws InvalidConfigurationException {
-        BufferedSource configSource =
-                Okio.buffer(Okio.source(mResources.openRawResource(R.raw.environments)));
+        Log.d("AuthConfiguration", "Reading environments...");
+        BufferedSource configSource = Okio.buffer(Okio.source(mResources.openRawResource(R.raw.environments)));
+        Log.d("AuthConfiguration", "Got environments");
         Buffer configData = new Buffer();
         try {
             configSource.readAll(configData);
@@ -227,7 +230,6 @@ public final class AuthConfiguration {
     private void readConfiguration() throws InvalidConfigurationException {
         readConfigurationFile();
         readEnvironmentSettingsFile();
-
         mClientId = getConfigString("client_id");
         mScope = getRequiredConfigString("authorization_scope");
         mRedirectUri = getRequiredConfigUri("redirect_uri");

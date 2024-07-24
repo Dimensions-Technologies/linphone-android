@@ -31,7 +31,9 @@ import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
 import android.view.inputmethod.InputMethodManager
+import androidx.annotation.MainThread
 import androidx.annotation.StringRes
+import androidx.annotation.WorkerThread
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.core.view.doOnAttach
 import androidx.databinding.DataBindingUtil
@@ -48,18 +50,36 @@ import com.google.android.material.snackbar.Snackbar
 import java.io.UnsupportedEncodingException
 import java.net.URLDecoder
 import kotlin.math.abs
-import kotlinx.coroutines.*
+import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.launch
+import net.openid.appauth.AuthorizationException
+import net.openid.appauth.AuthorizationResponse
+import net.openid.appauth.AuthorizationService
+import net.openid.appauth.AuthorizationService.TokenResponseCallback
+import net.openid.appauth.ClientAuthentication
+import net.openid.appauth.ClientAuthentication.UnsupportedAuthenticationMethod
+import net.openid.appauth.TokenRequest
+import net.openid.appauth.TokenResponse
 import org.linphone.APIClient
 import org.linphone.LinphoneApplication.Companion.coreContext
 import org.linphone.LinphoneApplication.Companion.corePreferences
 import org.linphone.R
 import org.linphone.SessionManager
-import org.linphone.activities.*
+import org.linphone.activities.GenericActivity
+import org.linphone.activities.SnackBarActivity
 import org.linphone.activities.assistant.AssistantActivity
 import org.linphone.activities.main.viewmodels.CallOverlayViewModel
 import org.linphone.activities.main.viewmodels.DialogViewModel
 import org.linphone.activities.main.viewmodels.SharedMainViewModel
+import org.linphone.activities.navigateToChatRoom
+import org.linphone.activities.navigateToChatRooms
+import org.linphone.activities.navigateToContact
+import org.linphone.activities.navigateToContacts
 import org.linphone.activities.navigateToDialer
+import org.linphone.authentication.AuthStateManager
 import org.linphone.compatibility.Compatibility
 import org.linphone.contact.ContactsUpdatedListenerStub
 import org.linphone.core.AuthInfo
@@ -69,11 +89,15 @@ import org.linphone.core.CoreListenerStub
 import org.linphone.core.CorePreferences
 import org.linphone.core.tools.Log
 import org.linphone.databinding.MainActivityBinding
-import org.linphone.models.UserDevice
-import org.linphone.utils.*
-import retrofit2.Call
-import retrofit2.Callback
-import retrofit2.Response
+import org.linphone.utils.AppUtils
+import org.linphone.utils.DialogUtils
+import org.linphone.utils.Event
+import org.linphone.utils.FileUtils
+import org.linphone.utils.LinphoneUtils
+import org.linphone.utils.PermissionHelper
+import org.linphone.utils.ShortcutsHelper
+import org.linphone.utils.hideKeyboard
+import org.linphone.utils.setKeyboardInsetListener
 
 class MainActivity : GenericActivity(), SnackBarActivity, NavController.OnDestinationChangedListener {
     private lateinit var binding: MainActivityBinding
@@ -251,6 +275,40 @@ class MainActivity : GenericActivity(), SnackBarActivity, NavController.OnDestin
         if (intent != null) {
             Log.d("[Main Activity] Found new intent")
             handleIntentParams(intent)
+        }
+    }
+
+    override fun onStart() {
+        super.onStart()
+
+        // the stored AuthState is incomplete, so check if we are currently receiving the result of
+        // the authorization flow from the browser.
+        val response = AuthorizationResponse.fromIntent(intent)
+        val ex = AuthorizationException.fromIntent(intent)
+        val asm = AuthStateManager.getInstance(applicationContext)
+
+        if (asm.current.isAuthorized) {
+            // displayAuthorized();
+            Log.d(
+                "MainActivity",
+                "isAuthorised: " + asm.current.idToken + " | " + asm.current.accessToken
+            )
+            return
+        }
+
+        if (response != null || ex != null) {
+            asm.updateAfterAuthorization(response, ex)
+        }
+
+        if (response?.authorizationCode != null) {
+            Log.d("MainActivity", "isAuthorised")
+            // authorization code exchange is required
+            asm.updateAfterAuthorization(response, ex)
+            exchangeAuthorizationCode(response)
+        } else if (ex != null) {
+            // displayNotAuthorized("Authorization flow failed: " + ex.message)
+        } else {
+            // displayNotAuthorized("No authorization state retained - reauthorization required")
         }
     }
 
@@ -785,5 +843,63 @@ class MainActivity : GenericActivity(), SnackBarActivity, NavController.OnDestin
 
         dialog.show()
         authenticationRequiredDialog = dialog
+    }
+
+    @MainThread
+    private fun exchangeAuthorizationCode(authorizationResponse: AuthorizationResponse) {
+        // displayLoading("Exchanging authorization code")
+        performTokenRequest(
+            authorizationResponse.createTokenExchangeRequest(),
+            this::handleCodeExchangeResponse
+        )
+    }
+
+    @MainThread
+    private fun performTokenRequest(
+        request: TokenRequest,
+        callback: TokenResponseCallback
+    ) {
+        val asm = AuthStateManager.getInstance(applicationContext)
+        val clientAuthentication: ClientAuthentication
+
+        try {
+            clientAuthentication = asm.getCurrent().getClientAuthentication()
+        } catch (ex: UnsupportedAuthenticationMethod) {
+            Log.d(
+                "MainActivity",
+                "Token request cannot be made - endpoint could not be constructed (%s)",
+                ex
+            )
+            // TODO displayNotAuthorized("Client authentication method is unsupported")
+            return
+        }
+
+        val authService = AuthorizationService(applicationContext)
+        authService.performTokenRequest(
+            request,
+            clientAuthentication,
+            callback
+        )
+    }
+
+    @WorkerThread
+    private fun handleCodeExchangeResponse(
+        tokenResponse: TokenResponse?,
+        authException: AuthorizationException?
+    ) {
+        val asm = AuthStateManager.getInstance(applicationContext)
+        asm.updateAfterTokenResponse(tokenResponse, authException)
+        if (!asm.getCurrent().isAuthorized) {
+            val message = (
+                "Authorization Code exchange failed" +
+                    (if ((authException != null)) authException.error else "")
+                )
+
+            Log.d("MainActivity", message)
+            // WrongThread inference is incorrect for lambdas
+            // TODO: runOnUiThread { displayNotAuthorized(message) }
+        } else {
+            // TODO: runOnUiThread(this::displayAuthorized)
+        }
     }
 }

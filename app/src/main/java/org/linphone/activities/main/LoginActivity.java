@@ -32,6 +32,7 @@ import net.openid.appauth.AppAuthConfiguration;
 import net.openid.appauth.AuthState;
 import net.openid.appauth.AuthorizationException;
 import net.openid.appauth.AuthorizationRequest;
+import net.openid.appauth.AuthorizationResponse;
 import net.openid.appauth.AuthorizationService;
 import net.openid.appauth.AuthorizationServiceConfiguration;
 import net.openid.appauth.ClientSecretBasic;
@@ -70,6 +71,7 @@ import java.util.concurrent.atomic.AtomicReference;
  * README.md in the app/ directory for configuration instructions, and the adjacent IDP-specific
  * instructions.
  */
+//FIXME: Convert to Kotlin
 public final class LoginActivity extends AppCompatActivity {
 
     private static final String TAG = "LoginActivity";
@@ -105,6 +107,7 @@ public final class LoginActivity extends AppCompatActivity {
                 && !mConfiguration.hasConfigurationChanged()) {
             Log.i(TAG, "User is already authenticated, proceeding to token activity");
             //FIXME: startActivity(new Intent(this, TokenActivity.class));
+            startActivity(new Intent(this, MainActivity.class));
             finish();
             return;
         }
@@ -142,8 +145,17 @@ public final class LoginActivity extends AppCompatActivity {
     @Override
     protected void onStart() {
         super.onStart();
+
         if (mExecutor.isShutdown()) {
             mExecutor = Executors.newSingleThreadExecutor();
+        }
+
+        var response = AuthorizationResponse.fromIntent(getIntent());
+        var ex = AuthorizationException.fromIntent(getIntent());
+        var asm = AuthStateManager.getInstance(getApplicationContext());
+
+        if (response != null || ex != null) {
+            asm.updateAfterAuthorization(response, ex);
         }
     }
 
