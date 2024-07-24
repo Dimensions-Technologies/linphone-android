@@ -99,6 +99,8 @@ public final class LoginActivity extends AppCompatActivity {
         mAuthStateManager = AuthStateManager.getInstance(this);
         mConfiguration = AuthConfiguration.getInstance(this);
 
+
+
         if (mAuthStateManager.getCurrent().isAuthorized()
                 && !mConfiguration.hasConfigurationChanged()) {
             Log.i(TAG, "User is already authenticated, proceeding to token activity");

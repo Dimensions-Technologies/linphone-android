@@ -49,9 +49,11 @@ import java.io.UnsupportedEncodingException
 import java.net.URLDecoder
 import kotlin.math.abs
 import kotlinx.coroutines.*
+import org.linphone.APIClient
 import org.linphone.LinphoneApplication.Companion.coreContext
 import org.linphone.LinphoneApplication.Companion.corePreferences
 import org.linphone.R
+import org.linphone.SessionManager
 import org.linphone.activities.*
 import org.linphone.activities.assistant.AssistantActivity
 import org.linphone.activities.main.viewmodels.CallOverlayViewModel
@@ -67,7 +69,11 @@ import org.linphone.core.CoreListenerStub
 import org.linphone.core.CorePreferences
 import org.linphone.core.tools.Log
 import org.linphone.databinding.MainActivityBinding
+import org.linphone.models.UserDevice
 import org.linphone.utils.*
+import retrofit2.Call
+import retrofit2.Callback
+import retrofit2.Response
 
 class MainActivity : GenericActivity(), SnackBarActivity, NavController.OnDestinationChangedListener {
     private lateinit var binding: MainActivityBinding
@@ -134,11 +140,54 @@ class MainActivity : GenericActivity(), SnackBarActivity, NavController.OnDestin
 
     private val keyboardVisibilityListeners = arrayListOf<AppUtils.KeyboardVisibilityListener>()
 
+    private lateinit var sessionManager: SessionManager
+    private lateinit var apiClient: APIClient
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         // Must be done before the setContentView
         installSplashScreen()
+
+        apiClient = APIClient()
+        sessionManager = SessionManager(this)
+
+//        sessionManager.saveAuthToken(
+//            "eyJhbGciOiJSUzI1NiIsImtpZCI6IjRFMTEwQzYxQjRBN0E5RTQ4QjQ1NjI5NDIyNEUxNTY5OURFRTFEQjJSUzI1NiIsInR5cCI6ImF0K2p3dCIsIng1dCI6IlRoRU1ZYlNucWVTTFJXS1VJazRWYVozdUhiSSJ9.eyJuYmYiOjE3MjE3NTExNTgsImV4cCI6MTcyMTc1NDc1OCwiaXNzIjoiaHR0cHM6Ly9sb2dpbi5zdGFnZS1lbnYuZGV2IiwiYXVkIjpbInVjZ2F0ZXdheWFwaSIsInJlYWx0aW1lYXBpIl0sImNsaWVudF9pZCI6InBsdW0iLCJzdWIiOiJjNzUyYzlkNC02Yzk4LTQ0MTUtYmFhOC05MGU1NmU1YjBjMjEiLCJhdXRoX3RpbWUiOjE3MjE3NTExNTcsImlkcCI6ImxvY2FsIiwidGVuYW50X2lkIjoiZTBhMzE4NzYtNjA5ZS00MzJlLTNkZjktMDhkOGI2NGE0ODNlIiwidGVuYW50X3RpZXIiOiJDdXN0b21lciIsIm5hbWUiOiJTdGV3YXJ0IERyYXBlciIsImVtYWlsIjoic3Rld2FydC5kcmFwZXJAZGltZW5zaW9uc3RlY2hub2xvZ2llcy5jb20iLCJ0ZW5hbnRfbmFtZSI6IkRpbWVuc2lvbnMgVGVjaG5vbG9naWVzIEhvdXNlIFN5c3RlbSAoQ3VzdG9tZXIpIiwidGVuYW50X2xvY2FsZSI6ImVuLUdCIiwic2lkIjoiNjM3QjNBMjU3REI1QUU3NzNGRkU5MkUxOTUzQTUwRjEiLCJpYXQiOjE3MjE3NTExNTgsInNjb3BlIjpbIm9wZW5pZCIsInByb2ZpbGUiLCJyZWFsdGltZSIsInVjZ2F0ZXdheSIsIm9mZmxpbmVfYWNjZXNzIl0sImFtciI6WyJwd2QiXX0.pFN6AkTvQM6r_l5pFR7LC1ku1hvmU7HLtH3jtYRVVEXPYsZPL5SgFrSjswFGlwflnsMdPc0J9uvNwaYCn2xMTeBD-5lmRFXl2_Nwmut3WgZIiRwZ0zBcqcU2NyM6HAXuAzzjHTpd7EvA0Dhky44Pqn-8ENPdZeLcc52E2L35Z3DvCvEOB560Ph8DCaXItjvjiZtgj9B_bdcyGhjuvcIutiTAFALnmhBi8YpYlhQ52Ij7DeitaITcJP65P28TwdrBGICVvMq1_pwWqBw43ES56-DP5vNlKuJNAyniYGd7qRL2yQbefhzjV_ztSdCF22Gn2rEv6QwcwoNv839m2MC3JQ"
+//        )
+//
+//        sessionManager.saveUserId(
+//            "c752c9d4-6c98-4415-baa8-90e56e5b0c21"
+//        )
+//
+//        apiClient.getUCGatewayService(this.applicationContext, "https://ucgateway.stage-env.dev").doGetUserDevices(
+//            userID = sessionManager.fetchUserId()
+//        )
+//            .enqueue(object : Callback<List<UserDevice>> {
+//                override fun onFailure(call: Call<List<UserDevice>>, t: Throwable) {
+//                }
+//
+//                override fun onResponse(
+//                    call: Call<List<UserDevice>>,
+//                    response: Response<List<UserDevice>>
+//                ) {
+//                    val userDevices = response.body()
+//                    if (userDevices != null && userDevices.isNotEmpty())
+//                    {
+//                        var userDevice = userDevices[0];
+//
+//                        coreContext.core.clearAllAuthInfo()
+//                        coreContext.core.clearProxyConfig()
+//                        coreContext.core.clearAccounts();
+//
+//                        //TODO SipAccount.HasCredentials()
+//
+//                        var accountParams = coreContext.core.createAccountParams();
+//                        var identityUri = "${userDevice.sipUserName} <sip:${userDevice.sipUserName}@${userDevice.sipRealm}>";
+//
+//                    }
+//                }
+//            })
 
         binding = DataBindingUtil.setContentView(this, R.layout.main_activity)
         binding.lifecycleOwner = this
