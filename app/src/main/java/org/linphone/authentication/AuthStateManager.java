@@ -228,4 +228,18 @@ public class AuthStateManager {
 
         userNameSubject.onNext(token);
     }
+
+    @Nullable
+    @AnyThread
+    public String fetchUserId() {
+        if (mCurrentAuthState != null && mCurrentAuthState.get().isAuthorized()) {
+            var idToken = mCurrentAuthState.get().getParsedIdToken();
+            if (idToken != null)
+            {
+                return idToken.subject;
+            }
+        }
+
+        return "";
+    }
 }

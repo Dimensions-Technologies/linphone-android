@@ -9,10 +9,10 @@ data class UserDevice(
     @SerializedName("pbxId")
     var pbxId: String,
 
-    @SerializedName("sipUserName")
-    var sipUserName: String,
+    @SerializedName("sipUsername")
+    var sipUsername: String,
 
-    @SerializedName("sipUserPassword")
+    @SerializedName("sipPassword")
     var sipUserPassword: String,
 
     @SerializedName("sipRealm")

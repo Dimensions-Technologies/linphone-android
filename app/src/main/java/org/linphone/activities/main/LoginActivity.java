@@ -101,7 +101,10 @@ public final class LoginActivity extends AppCompatActivity {
         mAuthStateManager = AuthStateManager.getInstance(this);
         mConfiguration = AuthConfiguration.getInstance(this);
 
-
+// For debug purposes till the selector is ready
+//        var environment = EnvironmentService.Companion.getInstance(this).getEnvironmentById("Stg");
+//        EnvironmentService.Companion.getInstance(this).setCurrentEnvironment(environment);
+//        var storedEnvironment = EnvironmentService.Companion.getInstance(this).getCurrentEnvironment();
 
         if (mAuthStateManager.getCurrent().isAuthorized()
                 && !mConfiguration.hasConfigurationChanged()) {

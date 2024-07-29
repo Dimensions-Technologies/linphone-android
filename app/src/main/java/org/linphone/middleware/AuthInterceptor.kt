@@ -1,19 +1,17 @@
-package org.linphone
+package org.linphone.middleware
 
 import android.content.Context
 import okhttp3.Interceptor
 import okhttp3.Response
+import org.linphone.authentication.AuthStateManager
 
 class AuthInterceptor(context: Context) : Interceptor {
-    private val sessionManager = SessionManager(context)
+    private val asm = AuthStateManager.getInstance(context)
 
     override fun intercept(chain: Interceptor.Chain): Response {
         val requestBuilder = chain.request().newBuilder()
 
-        // If token has been saved, add it to the request
-        sessionManager.fetchAuthToken()?.let {
-            requestBuilder.addHeader("Authorization", "Bearer $it")
-        }
+        requestBuilder.addHeader("Authorization", "Bearer ${asm.current.accessToken}")
 
         return chain.proceed(requestBuilder.build())
     }

@@ -1,12 +1,13 @@
-package org.linphone
+package org.linphone.services
 
 import android.content.Context
 import okhttp3.OkHttpClient
 import org.linphone.interfaces.CTGatewayService
+import org.linphone.middleware.AuthInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 
-class APIClient {
+class APIClientService {
     private lateinit var ctGatewayService: CTGatewayService
 
     fun getUCGatewayService(context: Context, baseUrl: String): CTGatewayService {

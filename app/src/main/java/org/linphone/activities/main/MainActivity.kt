@@ -63,11 +63,9 @@ import net.openid.appauth.ClientAuthentication
 import net.openid.appauth.ClientAuthentication.UnsupportedAuthenticationMethod
 import net.openid.appauth.TokenRequest
 import net.openid.appauth.TokenResponse
-import org.linphone.APIClient
 import org.linphone.LinphoneApplication.Companion.coreContext
 import org.linphone.LinphoneApplication.Companion.corePreferences
 import org.linphone.R
-import org.linphone.SessionManager
 import org.linphone.activities.GenericActivity
 import org.linphone.activities.SnackBarActivity
 import org.linphone.activities.assistant.AssistantActivity
@@ -82,13 +80,19 @@ import org.linphone.activities.navigateToDialer
 import org.linphone.authentication.AuthStateManager
 import org.linphone.compatibility.Compatibility
 import org.linphone.contact.ContactsUpdatedListenerStub
+import org.linphone.core.AVPFMode
 import org.linphone.core.AuthInfo
 import org.linphone.core.AuthMethod
 import org.linphone.core.Core
 import org.linphone.core.CoreListenerStub
 import org.linphone.core.CorePreferences
+import org.linphone.core.Factory
+import org.linphone.core.TransportType
 import org.linphone.core.tools.Log
 import org.linphone.databinding.MainActivityBinding
+import org.linphone.environment.DimensionsEnvironmentService
+import org.linphone.models.UserDevice
+import org.linphone.services.APIClientService
 import org.linphone.utils.AppUtils
 import org.linphone.utils.DialogUtils
 import org.linphone.utils.Event
@@ -98,6 +102,9 @@ import org.linphone.utils.PermissionHelper
 import org.linphone.utils.ShortcutsHelper
 import org.linphone.utils.hideKeyboard
 import org.linphone.utils.setKeyboardInsetListener
+import retrofit2.Call
+import retrofit2.Callback
+import retrofit2.Response
 
 class MainActivity : GenericActivity(), SnackBarActivity, NavController.OnDestinationChangedListener {
     private lateinit var binding: MainActivityBinding
@@ -164,8 +171,7 @@ class MainActivity : GenericActivity(), SnackBarActivity, NavController.OnDestin
 
     private val keyboardVisibilityListeners = arrayListOf<AppUtils.KeyboardVisibilityListener>()
 
-    private lateinit var sessionManager: SessionManager
-    private lateinit var apiClient: APIClient
+    private lateinit var apiClientService: APIClientService
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -173,45 +179,30 @@ class MainActivity : GenericActivity(), SnackBarActivity, NavController.OnDestin
         // Must be done before the setContentView
         installSplashScreen()
 
-        apiClient = APIClient()
-        sessionManager = SessionManager(this)
+        val dimensionsEnvironment = DimensionsEnvironmentService.getInstance(applicationContext).getCurrentEnvironment()
+        val asm = AuthStateManager.getInstance(applicationContext)
 
-//        sessionManager.saveAuthToken(
-//            "eyJhbGciOiJSUzI1NiIsImtpZCI6IjRFMTEwQzYxQjRBN0E5RTQ4QjQ1NjI5NDIyNEUxNTY5OURFRTFEQjJSUzI1NiIsInR5cCI6ImF0K2p3dCIsIng1dCI6IlRoRU1ZYlNucWVTTFJXS1VJazRWYVozdUhiSSJ9.eyJuYmYiOjE3MjE3NTExNTgsImV4cCI6MTcyMTc1NDc1OCwiaXNzIjoiaHR0cHM6Ly9sb2dpbi5zdGFnZS1lbnYuZGV2IiwiYXVkIjpbInVjZ2F0ZXdheWFwaSIsInJlYWx0aW1lYXBpIl0sImNsaWVudF9pZCI6InBsdW0iLCJzdWIiOiJjNzUyYzlkNC02Yzk4LTQ0MTUtYmFhOC05MGU1NmU1YjBjMjEiLCJhdXRoX3RpbWUiOjE3MjE3NTExNTcsImlkcCI6ImxvY2FsIiwidGVuYW50X2lkIjoiZTBhMzE4NzYtNjA5ZS00MzJlLTNkZjktMDhkOGI2NGE0ODNlIiwidGVuYW50X3RpZXIiOiJDdXN0b21lciIsIm5hbWUiOiJTdGV3YXJ0IERyYXBlciIsImVtYWlsIjoic3Rld2FydC5kcmFwZXJAZGltZW5zaW9uc3RlY2hub2xvZ2llcy5jb20iLCJ0ZW5hbnRfbmFtZSI6IkRpbWVuc2lvbnMgVGVjaG5vbG9naWVzIEhvdXNlIFN5c3RlbSAoQ3VzdG9tZXIpIiwidGVuYW50X2xvY2FsZSI6ImVuLUdCIiwic2lkIjoiNjM3QjNBMjU3REI1QUU3NzNGRkU5MkUxOTUzQTUwRjEiLCJpYXQiOjE3MjE3NTExNTgsInNjb3BlIjpbIm9wZW5pZCIsInByb2ZpbGUiLCJyZWFsdGltZSIsInVjZ2F0ZXdheSIsIm9mZmxpbmVfYWNjZXNzIl0sImFtciI6WyJwd2QiXX0.pFN6AkTvQM6r_l5pFR7LC1ku1hvmU7HLtH3jtYRVVEXPYsZPL5SgFrSjswFGlwflnsMdPc0J9uvNwaYCn2xMTeBD-5lmRFXl2_Nwmut3WgZIiRwZ0zBcqcU2NyM6HAXuAzzjHTpd7EvA0Dhky44Pqn-8ENPdZeLcc52E2L35Z3DvCvEOB560Ph8DCaXItjvjiZtgj9B_bdcyGhjuvcIutiTAFALnmhBi8YpYlhQ52Ij7DeitaITcJP65P28TwdrBGICVvMq1_pwWqBw43ES56-DP5vNlKuJNAyniYGd7qRL2yQbefhzjV_ztSdCF22Gn2rEv6QwcwoNv839m2MC3JQ"
-//        )
-//
-//        sessionManager.saveUserId(
-//            "c752c9d4-6c98-4415-baa8-90e56e5b0c21"
-//        )
-//
-//        apiClient.getUCGatewayService(this.applicationContext, "https://ucgateway.stage-env.dev").doGetUserDevices(
-//            userID = sessionManager.fetchUserId()
-//        )
-//            .enqueue(object : Callback<List<UserDevice>> {
-//                override fun onFailure(call: Call<List<UserDevice>>, t: Throwable) {
-//                }
-//
-//                override fun onResponse(
-//                    call: Call<List<UserDevice>>,
-//                    response: Response<List<UserDevice>>
-//                ) {
-//                    val userDevices = response.body()
-//                    if (userDevices != null && userDevices.isNotEmpty())
-//                    {
-//                        var userDevice = userDevices[0];
-//
-//                        coreContext.core.clearAllAuthInfo()
-//                        coreContext.core.clearProxyConfig()
-//                        coreContext.core.clearAccounts();
-//
-//                        //TODO SipAccount.HasCredentials()
-//
-//                        var accountParams = coreContext.core.createAccountParams();
-//                        var identityUri = "${userDevice.sipUserName} <sip:${userDevice.sipUserName}@${userDevice.sipRealm}>";
-//
-//                    }
-//                }
-//            })
+        apiClientService = APIClientService()
+        apiClientService.getUCGatewayService(
+            this.applicationContext,
+            dimensionsEnvironment!!.gatewayApiUri
+        ).doGetUserDevices(
+            userID = asm.fetchUserId()
+        )
+            .enqueue(object : Callback<List<UserDevice>> {
+                override fun onFailure(call: Call<List<UserDevice>>, t: Throwable) {
+                }
+
+                override fun onResponse(
+                    call: Call<List<UserDevice>>,
+                    response: Response<List<UserDevice>>
+                ) {
+                    val userDevices = response.body()
+                    if (!userDevices.isNullOrEmpty()) {
+                        registerSipEndpoint(userDevices.first())
+                    }
+                }
+            })
 
         binding = DataBindingUtil.setContentView(this, R.layout.main_activity)
         binding.lifecycleOwner = this
@@ -265,6 +256,95 @@ class MainActivity : GenericActivity(), SnackBarActivity, NavController.OnDestin
                 reportFullyDrawn()
             } catch (se: SecurityException) {
                 Log.e("[Main Activity] Security exception when doing reportFullyDrawn(): $se")
+            }
+        }
+    }
+
+    private fun registerSipEndpoint(userDevice: UserDevice) {
+        setAudioPayloadTypes()
+        setVideoPayloadTypes()
+
+        coreContext.core.clearAllAuthInfo()
+        coreContext.core.clearProxyConfig()
+        coreContext.core.clearAccounts()
+
+        // TODO SipAccount.HasCredentials()
+
+        val accountParams = coreContext.core.createAccountParams()
+        val identityUri = "${userDevice.sipUsername} <sip:${userDevice.sipUsername}@${userDevice.sipRealm}>"
+
+        accountParams.identityAddress = coreContext.core.interpretUrl(identityUri, false)
+
+        var enableOutboundProxy = false
+        if (userDevice.sipOutboundProxy.isNotBlank()) {
+            enableOutboundProxy = true
+        }
+
+        var sipTransport = userDevice.sipTransport
+        if (sipTransport.isBlank()) {
+            sipTransport = "tls"
+        }
+
+        var serverUri = "<sip:${userDevice.sipOutboundProxy};transport=${stringToTransportType(
+            sipTransport
+        )}>"
+        accountParams.serverAddress = coreContext.core.interpretUrl(serverUri, false)
+
+        accountParams.isOutboundProxyEnabled = enableOutboundProxy
+        accountParams.isRegisterEnabled = true
+        accountParams.avpfMode = AVPFMode.Disabled // This is always disabled in PlumMobile
+        accountParams.expires = userDevice.sipRegisterTimeout
+        accountParams.pushNotificationAllowed = false
+        accountParams.remotePushNotificationAllowed = false
+
+        val auth = Factory.instance().createAuthInfo(
+            userDevice.sipUsername,
+            userDevice.sipUsername,
+            userDevice.sipUserPassword,
+            "",
+            "",
+            userDevice.sipRealm
+        )
+        coreContext.core.addAuthInfo(auth)
+
+        if (accountParams.natPolicy == null) {
+            accountParams.natPolicy = coreContext.core.createNatPolicy()
+        }
+
+        accountParams.natPolicy!!.isIceEnabled = false
+        accountParams.natPolicy!!.isStunEnabled = false
+        accountParams.natPolicy!!.stunServerUsername = null
+        accountParams.natPolicy!!.isTurnEnabled = false
+        accountParams.natPolicy!!.isUdpTurnTransportEnabled = false
+        accountParams.natPolicy!!.isTcpTurnTransportEnabled = false
+        accountParams.natPolicy!!.isTlsTurnTransportEnabled = false
+
+        // TODO createPushToken service
+        // val pushToken = pushTokenService.GetVoipToken()
+
+        val account = coreContext.core.createAccount(accountParams)
+        coreContext.core.addAccount(account)
+        coreContext.core.defaultAccount = account
+    }
+
+    private fun stringToTransportType(sipTransport: String): TransportType {
+        if (sipTransport.lowercase() == "udp") return TransportType.Udp
+        if (sipTransport.lowercase() == "tcp") return TransportType.Tcp
+
+        return TransportType.Tls
+    }
+
+    private fun setVideoPayloadTypes() {
+//        for (payloadType in coreContext.core.videoPayloadTypes) {
+//        }
+    }
+
+    private fun setAudioPayloadTypes() {
+        for (payloadType in coreContext.core.audioPayloadTypes) {
+            if (payloadType.mimeType.equals("PCMA", true) ||
+                payloadType.mimeType.equals("PCMU", true)
+            ) {
+                payloadType.enable(true)
             }
         }
     }

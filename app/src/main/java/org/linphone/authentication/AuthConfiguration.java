@@ -35,6 +35,8 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.linphone.R;
+import org.linphone.environment.DimensionsEnvironmentService;
+import org.linphone.models.DimensionsEnvironment;
 
 import java.io.IOException;
 import java.lang.ref.WeakReference;
@@ -244,8 +246,15 @@ public final class AuthConfiguration {
         }
 
         //TODO getEnvironmentString needs some sort of environment selector
-        String loginUri = getEnvironmentString("Stg", "IdentityServerUri");
-        if (loginUri == null) {
+        String loginUri = "";
+
+        DimensionsEnvironment dimensionsEnvironment = DimensionsEnvironmentService.Companion.getInstance(mContext).getCurrentEnvironment();
+        if (dimensionsEnvironment != null)
+        {
+            loginUri = dimensionsEnvironment.getIdentityServerUri();
+        }
+
+        if (loginUri.isBlank()) {
             mAuthEndpointUri = getRequiredConfigWebUri("authorization_endpoint_uri");
             mTokenEndpointUri = getRequiredConfigWebUri("token_endpoint_uri");
             mUserInfoEndpointUri = getRequiredConfigWebUri("user_info_endpoint_uri");
