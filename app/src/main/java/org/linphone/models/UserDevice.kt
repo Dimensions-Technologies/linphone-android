@@ -38,4 +38,10 @@ data class UserDevice(
 
     @SerializedName("callWaitingEnabled")
     var callWaitingEnabled: Boolean? = null
-)
+) {
+    fun hasCredentials(): Boolean {
+        return sipUsername.isNotBlank() &&
+            sipUserPassword.isNotBlank() &&
+            (sipRealm.isNotBlank() || sipOutboundProxy.isNotBlank())
+    }
+}

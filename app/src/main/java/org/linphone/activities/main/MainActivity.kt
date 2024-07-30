@@ -199,7 +199,7 @@ class MainActivity : GenericActivity(), SnackBarActivity, NavController.OnDestin
                 ) {
                     val userDevices = response.body()
                     if (!userDevices.isNullOrEmpty()) {
-                        registerSipEndpoint(userDevices.first())
+                        registerSipEndpoints(userDevices)
                     }
                 }
             })
@@ -260,7 +260,7 @@ class MainActivity : GenericActivity(), SnackBarActivity, NavController.OnDestin
         }
     }
 
-    private fun registerSipEndpoint(userDevice: UserDevice) {
+    private fun registerSipEndpoints(userDeviceList: List<UserDevice>) {
         setAudioPayloadTypes()
         setVideoPayloadTypes()
 
@@ -268,63 +268,72 @@ class MainActivity : GenericActivity(), SnackBarActivity, NavController.OnDestin
         coreContext.core.clearProxyConfig()
         coreContext.core.clearAccounts()
 
-        // TODO SipAccount.HasCredentials()
-
-        val accountParams = coreContext.core.createAccountParams()
-        val identityUri = "${userDevice.sipUsername} <sip:${userDevice.sipUsername}@${userDevice.sipRealm}>"
-
-        accountParams.identityAddress = coreContext.core.interpretUrl(identityUri, false)
-
-        var enableOutboundProxy = false
-        if (userDevice.sipOutboundProxy.isNotBlank()) {
-            enableOutboundProxy = true
+        userDeviceList.forEach {
+            RegisterSipEndpoint(it)
         }
 
-        var sipTransport = userDevice.sipTransport
-        if (sipTransport.isBlank()) {
-            sipTransport = "tls"
+        if (coreContext.core.accountList.any()) {
+            coreContext.core.defaultAccount = coreContext.core.accountList.first()
         }
+    }
 
-        var serverUri = "<sip:${userDevice.sipOutboundProxy};transport=${stringToTransportType(
-            sipTransport
-        )}>"
-        accountParams.serverAddress = coreContext.core.interpretUrl(serverUri, false)
+    private fun RegisterSipEndpoint(userDevice: UserDevice) {
+        if (userDevice.hasCredentials()) {
+            val accountParams = coreContext.core.createAccountParams()
+            val identityUri = "${userDevice.sipUsername} <sip:${userDevice.sipUsername}@${userDevice.sipRealm}>"
 
-        accountParams.isOutboundProxyEnabled = enableOutboundProxy
-        accountParams.isRegisterEnabled = true
-        accountParams.avpfMode = AVPFMode.Disabled // This is always disabled in PlumMobile
-        accountParams.expires = userDevice.sipRegisterTimeout
-        accountParams.pushNotificationAllowed = false
-        accountParams.remotePushNotificationAllowed = false
+            accountParams.identityAddress = coreContext.core.interpretUrl(identityUri, false)
 
-        val auth = Factory.instance().createAuthInfo(
-            userDevice.sipUsername,
-            userDevice.sipUsername,
-            userDevice.sipUserPassword,
-            "",
-            "",
-            userDevice.sipRealm
-        )
-        coreContext.core.addAuthInfo(auth)
+            var enableOutboundProxy = false
+            if (userDevice.sipOutboundProxy.isNotBlank()) {
+                enableOutboundProxy = true
+            }
 
-        if (accountParams.natPolicy == null) {
-            accountParams.natPolicy = coreContext.core.createNatPolicy()
+            var sipTransport = userDevice.sipTransport
+            if (sipTransport.isBlank()) {
+                sipTransport = "tls"
+            }
+
+            var serverUri = "<sip:${userDevice.sipOutboundProxy};transport=${stringToTransportType(
+                sipTransport
+            )}>"
+            accountParams.serverAddress = coreContext.core.interpretUrl(serverUri, false)
+
+            accountParams.isOutboundProxyEnabled = enableOutboundProxy
+            accountParams.isRegisterEnabled = true
+            accountParams.avpfMode = AVPFMode.Disabled // This is always disabled in PlumMobile
+            accountParams.expires = userDevice.sipRegisterTimeout
+            accountParams.pushNotificationAllowed = false
+            accountParams.remotePushNotificationAllowed = false
+
+            val auth = Factory.instance().createAuthInfo(
+                userDevice.sipUsername,
+                userDevice.sipUsername,
+                userDevice.sipUserPassword,
+                "",
+                "",
+                userDevice.sipRealm
+            )
+            coreContext.core.addAuthInfo(auth)
+
+            if (accountParams.natPolicy == null) {
+                accountParams.natPolicy = coreContext.core.createNatPolicy()
+            }
+
+            accountParams.natPolicy!!.isIceEnabled = false
+            accountParams.natPolicy!!.isStunEnabled = false
+            accountParams.natPolicy!!.stunServerUsername = null
+            accountParams.natPolicy!!.isTurnEnabled = false
+            accountParams.natPolicy!!.isUdpTurnTransportEnabled = false
+            accountParams.natPolicy!!.isTcpTurnTransportEnabled = false
+            accountParams.natPolicy!!.isTlsTurnTransportEnabled = false
+
+            // TODO createPushToken service
+            // val pushToken = pushTokenService.GetVoipToken()
+
+            val account = coreContext.core.createAccount(accountParams)
+            coreContext.core.addAccount(account)
         }
-
-        accountParams.natPolicy!!.isIceEnabled = false
-        accountParams.natPolicy!!.isStunEnabled = false
-        accountParams.natPolicy!!.stunServerUsername = null
-        accountParams.natPolicy!!.isTurnEnabled = false
-        accountParams.natPolicy!!.isUdpTurnTransportEnabled = false
-        accountParams.natPolicy!!.isTcpTurnTransportEnabled = false
-        accountParams.natPolicy!!.isTlsTurnTransportEnabled = false
-
-        // TODO createPushToken service
-        // val pushToken = pushTokenService.GetVoipToken()
-
-        val account = coreContext.core.createAccount(accountParams)
-        coreContext.core.addAccount(account)
-        coreContext.core.defaultAccount = account
     }
 
     private fun stringToTransportType(sipTransport: String): TransportType {
