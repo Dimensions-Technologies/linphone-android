@@ -48,6 +48,9 @@ import org.linphone.authentication.AuthConfiguration;
 import org.linphone.authentication.AuthStateManager;
 import org.linphone.authentication.BrowserSelectionAdapter;
 import org.linphone.authentication.BrowserSelectionAdapter.*;
+import org.linphone.environment.DimensionsEnvironmentService;
+import org.linphone.environment.EnvironmentSelectionAdapter;
+import org.linphone.models.DimensionsEnvironment;
 
 import java.util.Collections;
 import java.util.concurrent.CountDownLatch;
@@ -88,10 +91,8 @@ public final class LoginActivity extends AppCompatActivity {
     private CountDownLatch mAuthIntentLatch = new CountDownLatch(1);
     private ExecutorService mExecutor;
 
-    private boolean mUsePendingIntents;
+    private final boolean mUsePendingIntents = true;
 
-    @NonNull
-    private BrowserMatcher mBrowserMatcher = AnyBrowserMatcher.INSTANCE;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -101,12 +102,21 @@ public final class LoginActivity extends AppCompatActivity {
         mAuthStateManager = AuthStateManager.getInstance(this);
         mConfiguration = AuthConfiguration.getInstance(this);
 
-// For debug purposes till the selector is ready
-//        var environment = EnvironmentService.Companion.getInstance(this).getEnvironmentById("Stg");
-//        EnvironmentService.Companion.getInstance(this).setCurrentEnvironment(environment);
-//        var storedEnvironment = EnvironmentService.Companion.getInstance(this).getCurrentEnvironment();
+        setContentView(R.layout.login_activity);
 
-        if (mAuthStateManager.getCurrent().isAuthorized()
+        findViewById(R.id.retry).setOnClickListener((View view) ->
+                mExecutor.submit(this::initializeAppAuth));
+        findViewById(R.id.start_auth).setOnClickListener((View view) -> startAuth());
+
+        configureEnvironmentSelector();
+
+        final var dimensionsEnvironment = DimensionsEnvironmentService.Companion.getInstance(getApplicationContext()).getCurrentEnvironment();
+        if (dimensionsEnvironment == null) {
+            displayAuthOptions();
+            return;
+        }
+
+        else if (mAuthStateManager.getCurrent().isAuthorized()
                 && !mConfiguration.hasConfigurationChanged()) {
             Log.i(TAG, "User is already authenticated, proceeding to token activity");
             //FIXME: startActivity(new Intent(this, TokenActivity.class));
@@ -115,21 +125,11 @@ public final class LoginActivity extends AppCompatActivity {
             return;
         }
 
-        setContentView(R.layout.login_activity);
-
-        findViewById(R.id.retry).setOnClickListener((View view) ->
-                mExecutor.submit(this::initializeAppAuth));
-        findViewById(R.id.start_auth).setOnClickListener((View view) -> startAuth());
-
-        ((EditText)findViewById(R.id.login_hint_value)).addTextChangedListener(
-                new LoginHintChangeHandler());
-
         if (!mConfiguration.isValid()) {
             displayError(mConfiguration.getConfigurationError(), false);
             return;
         }
 
-        configureBrowserSelector();
         if (mConfiguration.hasConfigurationChanged()) {
             // discard any existing authorization state due to the change of configuration
             Log.i(TAG, "Configuration change detected, discarding old state");
@@ -184,6 +184,10 @@ public final class LoginActivity extends AppCompatActivity {
         if (resultCode == RESULT_CANCELED) {
             displayAuthCancelled();
         } else {
+            final var dimensionsEnvironment = DimensionsEnvironmentService.Companion.getInstance(getApplicationContext()).getCurrentEnvironment();
+            if (dimensionsEnvironment == null) {
+                displayAuthOptions();
+            }
             Intent intent = new Intent(this, MainActivity.class);
             intent.putExtras(data.getExtras());
             startActivity(intent);
@@ -194,11 +198,19 @@ public final class LoginActivity extends AppCompatActivity {
     void startAuth() {
         displayLoading("Making authorization request");
 
-        mUsePendingIntents = ((CheckBox) findViewById(R.id.pending_intents_checkbox)).isChecked();
+        final var dimensionsEnvironment = DimensionsEnvironmentService.Companion.getInstance(getApplicationContext()).getCurrentEnvironment();
 
-        // WrongThread inference is incorrect for lambdas
-        // noinspection WrongThread
-        mExecutor.submit(this::doAuth);
+        if (dimensionsEnvironment == null) {
+            Log.i(TAG, "Start auth: no environment");
+            displayAuthOptions();
+        }
+        else {
+            Log.i(TAG, "Start auth: " + dimensionsEnvironment.getName());
+
+            // WrongThread inference is incorrect for lambdas
+            // noinspection WrongThread
+            mExecutor.submit(this::doAuth);
+        }
     }
 
     /**
@@ -214,7 +226,7 @@ public final class LoginActivity extends AppCompatActivity {
             // configuration is already created, skip to client initialization
             Log.i(TAG, "auth config already established");
             initializeClient();
-            return;
+           // return;
         }
 
         // if we are not using discovery, build the authorization service configuration directly
@@ -235,7 +247,7 @@ public final class LoginActivity extends AppCompatActivity {
         // WrongThread inference is incorrect for lambdas
         // noinspection WrongThread
         runOnUiThread(() -> displayLoading("Retrieving discovery document"));
-        Log.i(TAG, "Retrieving OpenID discovery doc");
+        Log.i(TAG, "Retrieving OpenID discovery doc from " + mConfiguration.getDiscoveryUri());
         AuthorizationServiceConfiguration.fetchFromUrl(
                 mConfiguration.getDiscoveryUri(),
                 this::handleConfigurationRetrievalResult,
@@ -248,7 +260,7 @@ public final class LoginActivity extends AppCompatActivity {
             AuthorizationException ex) {
         if (config == null) {
             Log.i(TAG, "Failed to retrieve discovery document", ex);
-            displayError("Failed to retrieve discovery document: " + ex.getMessage(), true);
+            displayError("Failed to retrieve discovery document: " + ex.getMessage() + "\n" + ex.errorDescription, true);
             return;
         }
 
@@ -319,29 +331,32 @@ public final class LoginActivity extends AppCompatActivity {
      * tab configurations.
      */
     @MainThread
-    private void configureBrowserSelector() {
-        Spinner spinner = (Spinner) findViewById(R.id.browser_selector);
-        final BrowserSelectionAdapter adapter = new BrowserSelectionAdapter(this);
+    private void configureEnvironmentSelector() {
+        Spinner spinner = (Spinner) findViewById(R.id.environment_selector);
+        final EnvironmentSelectionAdapter adapter = new EnvironmentSelectionAdapter(this);
         spinner.setAdapter(adapter);
         spinner.setOnItemSelectedListener(new OnItemSelectedListener() {
             @Override
             public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
-                BrowserInfo info = adapter.getItem(position);
-                if (info == null) {
-                    mBrowserMatcher = AnyBrowserMatcher.INSTANCE;
-                    return;
-                } else {
-                    mBrowserMatcher = new ExactBrowserMatcher(info.mDescriptor);
-                }
+                DimensionsEnvironment env = adapter.getItem(position);
 
-                recreateAuthorizationService();
-                createAuthRequest(getLoginHint());
-                warmUpBrowser();
+                if (env != null) {
+                    Log.i(TAG, "Setting environment " + env.getName() + " (" + env.getIdentityServerUri() + ")");
+
+                    var environmentService = DimensionsEnvironmentService.Companion.getInstance(getApplicationContext());
+                    environmentService.setCurrentEnvironment(env);
+                    //recreateAuthorizationService();
+                    //initializeAppAuth();
+                    mAuthStateManager.replace(new AuthState());
+                    initializeAppAuth();
+                    //createAuthRequest(null);
+                    //warmUpBrowser();
+                }
             }
 
             @Override
             public void onNothingSelected(AdapterView<?> parent) {
-                mBrowserMatcher = AnyBrowserMatcher.INSTANCE;
+                //DimensionsEnvironmentService.Companion.getInstance(getApplicationContext()).setCurrentEnvironment(null);
             }
         });
     }
@@ -374,7 +389,8 @@ public final class LoginActivity extends AppCompatActivity {
                     PendingIntent.getActivity(this, 0, completionIntent, flags),
                     PendingIntent.getActivity(this, 0, cancelIntent, flags),
                     mAuthIntent.get());
-        } else {
+        }
+        else {
             Intent intent = mAuthService.getAuthorizationRequestIntent(
                     mAuthRequest.get(),
                     mAuthIntent.get());
@@ -383,6 +399,13 @@ public final class LoginActivity extends AppCompatActivity {
     }
 
     private void recreateAuthorizationService() {
+        try {
+            mConfiguration.readConfiguration();
+        }
+        catch (AuthConfiguration.InvalidConfigurationException e) {
+            displayError("Failed to reload auth configuration.", true);
+        }
+
         if (mAuthService != null) {
             Log.i(TAG, "Discarding existing AuthService instance");
             mAuthService.dispose();
@@ -395,7 +418,7 @@ public final class LoginActivity extends AppCompatActivity {
     private AuthorizationService createAuthorizationService() {
         Log.i(TAG, "Creating authorization service");
         AppAuthConfiguration.Builder builder = new AppAuthConfiguration.Builder();
-        builder.setBrowserMatcher(mBrowserMatcher);
+        builder.setBrowserMatcher(AnyBrowserMatcher.INSTANCE);
         builder.setConnectionBuilder(mConfiguration.getConnectionBuilder());
 
         return new AuthorizationService(this, builder.build());
@@ -429,7 +452,7 @@ public final class LoginActivity extends AppCompatActivity {
 
     @MainThread
     private void initializeAuthRequest() {
-        createAuthRequest(getLoginHint());
+        createAuthRequest(null);
         warmUpBrowser();
         displayAuthOptions();
     }
@@ -442,24 +465,6 @@ public final class LoginActivity extends AppCompatActivity {
 
         AuthState state = mAuthStateManager.getCurrent();
         AuthorizationServiceConfiguration config = state.getAuthorizationServiceConfiguration();
-
-        String authEndpointStr;
-        if (config.discoveryDoc != null) {
-            authEndpointStr = "Discovered auth endpoint: \n";
-        } else {
-            authEndpointStr = "Static auth endpoint: \n";
-        }
-        authEndpointStr += config.authorizationEndpoint;
-        ((TextView)findViewById(R.id.auth_endpoint)).setText(authEndpointStr);
-
-        String clientIdStr;
-        if (state.getLastRegistrationResponse() != null) {
-            clientIdStr = "Dynamic client ID: \n";
-        } else {
-            clientIdStr = "Static client ID: \n";
-        }
-        clientIdStr += mClientId;
-        ((TextView)findViewById(R.id.client_id)).setText(clientIdStr);
     }
 
     private void displayAuthCancelled() {
@@ -495,13 +500,6 @@ public final class LoginActivity extends AppCompatActivity {
         }
 
         mAuthRequest.set(authRequestBuilder.build());
-    }
-
-    private String getLoginHint() {
-        return ((EditText)findViewById(R.id.login_hint_value))
-                .getText()
-                .toString()
-                .trim();
     }
 
     @TargetApi(Build.VERSION_CODES.M)
@@ -555,7 +553,7 @@ public final class LoginActivity extends AppCompatActivity {
                 return;
             }
 
-            createAuthRequest(getLoginHint());
+            createAuthRequest(null);
             warmUpBrowser();
         }
 

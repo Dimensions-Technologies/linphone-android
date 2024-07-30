@@ -229,7 +229,7 @@ public final class AuthConfiguration {
         }
     }
 
-    private void readConfiguration() throws InvalidConfigurationException {
+    public void readConfiguration() throws InvalidConfigurationException {
         readConfigurationFile();
         readEnvironmentSettingsFile();
         mClientId = getConfigString("client_id");

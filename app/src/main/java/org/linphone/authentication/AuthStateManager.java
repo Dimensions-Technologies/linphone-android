@@ -113,6 +113,7 @@ public class AuthStateManager {
             @Nullable AuthorizationResponse response,
             @Nullable AuthorizationException ex) {
         AuthState current = getCurrent();
+
         current.update(response, ex);
         if (response != null) {
             var str = "IDT:" + response.idToken + " ACT:" + response.accessToken + " AC:" + response.authorizationCode;
