@@ -5,18 +5,19 @@
     android:id="@+id/coordinator"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#FFFFFF"
     android:fitsSystemWindows="true"
     tools:context=".activities.main.LoginActivity">
 
     <androidx.core.widget.NestedScrollView
         android:layout_width="match_parent"
         android:layout_height="match_parent"
+        android:background="@color/form_field_gray_background"
         app:layout_behavior="@string/appbar_scrolling_view_behavior">
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:layout_gravity="center_vertical"
             android:orientation="vertical"
             android:paddingLeft="@dimen/activity_horizontal_margin"
             android:paddingTop="@dimen/activity_vertical_margin"
@@ -35,7 +36,8 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_gravity="center"
-                android:text="@string/intro_header" />
+                android:text="@string/intro_header"
+                android:visibility="gone" />
 
             <!--
             displayed while the discovery document is loaded, and dynamic client registration is
@@ -76,7 +78,8 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="8dp"
                     android:labelFor="@+id/environment_selector"
-                    android:text="@string/environment_selector_label" />
+                    android:text="@string/environment_selector_label"
+                    android:textSize="16sp" />
 
                 <Spinner
                     android:id="@+id/environment_selector"
@@ -89,7 +92,8 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_gravity="center"
-                    android:text="@string/start_authorization" />
+                    android:layout_marginTop="24dp"
+                    android:text="@string/log_in" />
 
 
             </LinearLayout>

@@ -200,17 +200,25 @@ public class AuthStateManager {
             return;
         }
 
+        replace(new AuthState());
+
         EndSessionRequest endSessionRequest =
                 new EndSessionRequest.Builder(authConfig)
                         .setIdTokenHint(state.getIdToken())
                         .setPostLogoutRedirectUri(config.getEndSessionRedirectUri())
                         .build();
 
-        var endSessionIntent = new Intent(context, LoginActivity.class);// authService.getEndSessionRequestIntent(endSessionRequest);
+        var endSessionIntent = new Intent(context, LoginActivity.class);
+        //var endSessionIntent = authService.getEndSessionRequestIntent(endSessionRequest);
+        endSessionIntent.putExtra("auth", "logout");
+        endSessionIntent.setAction(Intent.ACTION_MANAGED_PROFILE_REMOVED);
+
+        var logoutIntent = PendingIntent.getActivity(context, 42, endSessionIntent, PendingIntent.FLAG_IMMUTABLE);
+        //logoutIntent.putExtra("auth", "logout");
 
         authService.performEndSessionRequest(
                 endSessionRequest,
-                PendingIntent.getActivity(context, 0, endSessionIntent, PendingIntent.FLAG_IMMUTABLE),
+                logoutIntent,
                 PendingIntent.getActivity(context, 0, new Intent(context, MainActivity.class), PendingIntent.FLAG_IMMUTABLE));
     }
 
