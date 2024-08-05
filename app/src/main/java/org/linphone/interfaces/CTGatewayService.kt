@@ -1,5 +1,6 @@
 package org.linphone.interfaces
 
+import org.linphone.models.TenantBrandingDefinition
 import org.linphone.models.UserDevice
 import retrofit2.Call
 import retrofit2.http.GET
@@ -10,4 +11,7 @@ interface CTGatewayService {
     fun doGetUserDevices(
         @Path("userID") userID: String?
     ): Call<List<UserDevice>>
+
+    @GET("api/v1.0/users/me/branding")
+    fun doGetUserBranding(): Call<TenantBrandingDefinition>
 }

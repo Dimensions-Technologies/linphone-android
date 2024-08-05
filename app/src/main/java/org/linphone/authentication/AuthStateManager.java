@@ -33,12 +33,12 @@ import net.openid.appauth.TokenResponse;
 import org.json.JSONException;
 
 import java.lang.ref.WeakReference;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReentrantLock;
 
 import org.linphone.activities.main.MainActivity;
 import org.linphone.activities.main.LoginActivity;
+import org.linphone.models.AuthenticatedUser;
 
 import io.reactivex.rxjava3.core.Observable;
 import io.reactivex.rxjava3.subjects.BehaviorSubject;
@@ -62,8 +62,8 @@ public class AuthStateManager {
     private final ReentrantLock mPrefsLock;
     private final AtomicReference<AuthState> mCurrentAuthState;
 
-    private final BehaviorSubject<String> userNameSubject = BehaviorSubject.createDefault("...");
-    public final Observable<String> userName = userNameSubject.map(x -> "User: " + x);
+    private final BehaviorSubject<AuthenticatedUser> userSubject = BehaviorSubject.createDefault(new AuthenticatedUser());
+    public final Observable<AuthenticatedUser> user = userSubject.map(x -> x);
 
     @AnyThread
     public static AuthStateManager getInstance(@NonNull Context context) {
@@ -113,13 +113,11 @@ public class AuthStateManager {
             @Nullable AuthorizationResponse response,
             @Nullable AuthorizationException ex) {
         AuthState current = getCurrent();
-
         current.update(response, ex);
         if (response != null) {
-            var str = "IDT:" + response.idToken + " ACT:" + response.accessToken + " AC:" + response.authorizationCode;
-            userNameSubject.onNext(str);
+            Log.d(TAG, "access token: " + response.accessToken);
         }
-        //updateObservable(current);
+
         return replace(current);
     }
 
@@ -130,7 +128,6 @@ public class AuthStateManager {
             @Nullable AuthorizationException ex) {
         AuthState current = getCurrent();
         current.update(response, ex);
-        updateObservable(current);
         return replace(current);
     }
 
@@ -140,11 +137,9 @@ public class AuthStateManager {
             RegistrationResponse response,
             AuthorizationException ex) {
         AuthState current = getCurrent();
-        updateObservable(current);
         if (ex != null) {
             return current;
         }
-
         current.update(response);
         return replace(current);
     }
@@ -209,12 +204,10 @@ public class AuthStateManager {
                         .build();
 
         var endSessionIntent = new Intent(context, LoginActivity.class);
-        //var endSessionIntent = authService.getEndSessionRequestIntent(endSessionRequest);
         endSessionIntent.putExtra("auth", "logout");
         endSessionIntent.setAction(Intent.ACTION_MANAGED_PROFILE_REMOVED);
 
-        var logoutIntent = PendingIntent.getActivity(context, 42, endSessionIntent, PendingIntent.FLAG_IMMUTABLE);
-        //logoutIntent.putExtra("auth", "logout");
+        var logoutIntent = PendingIntent.getActivity(context, 0, endSessionIntent, PendingIntent.FLAG_IMMUTABLE);
 
         authService.performEndSessionRequest(
                 endSessionRequest,
@@ -224,18 +217,13 @@ public class AuthStateManager {
 
 
     private void updateObservable(@Nullable AuthState state) {
-        var token = state == null ? "<null>" : state.getIdToken();
+        var accessToken = state == null ? "<null>" : state.getAccessToken();
+        Log.d(TAG, "Access token: " + accessToken);
 
-        Log.d("AuthStateManager", "Token: " + token);
-        if (token == null) token = "No token";
+        AuthenticatedUser user = AuthenticatedUser.Companion.fromToken(accessToken);
+        Log.d(TAG, "User:"  + user);
 
-        if (state != null) {
-            token += "\nAuthorised:" + state.isAuthorized();
-            token += "\nAccess: " + state.getAccessToken();
-            token += "\nLTR: " + state.getLastTokenResponse();
-        }
-
-        userNameSubject.onNext(token);
+        userSubject.onNext(user);
     }
 
     @Nullable

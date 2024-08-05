@@ -172,6 +172,8 @@ class LoginActivity : AppCompatActivity() {
         val asm = AuthStateManager.getInstance(applicationContext)
 
         if (intent != null && intent.extras != null && intent.extras!!.getString("auth") == "logout") {
+            Log.i(TAG, "AuthState logout")
+            asm.updateAfterAuthorization(null, null)
             displayAuthOptions()
 
             val isAuthorised = mAuthStateManager!!.getCurrent().isAuthorized

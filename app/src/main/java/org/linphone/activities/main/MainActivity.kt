@@ -24,6 +24,7 @@ import android.content.ComponentCallbacks2
 import android.content.Context
 import android.content.Intent
 import android.content.res.Configuration
+import android.graphics.Color
 import android.net.Uri
 import android.os.Bundle
 import android.os.Parcelable
@@ -93,6 +94,7 @@ import org.linphone.databinding.MainActivityBinding
 import org.linphone.environment.DimensionsEnvironmentService
 import org.linphone.models.UserDevice
 import org.linphone.services.APIClientService
+import org.linphone.services.BrandingService
 import org.linphone.utils.AppUtils
 import org.linphone.utils.DialogUtils
 import org.linphone.utils.Event
@@ -176,6 +178,8 @@ class MainActivity : GenericActivity(), SnackBarActivity, NavController.OnDestin
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        Log.d("OnCreate")
+
         // Must be done before the setContentView
         installSplashScreen()
 
@@ -258,6 +262,16 @@ class MainActivity : GenericActivity(), SnackBarActivity, NavController.OnDestin
                 Log.e("[Main Activity] Security exception when doing reportFullyDrawn(): $se")
             }
         }
+
+        BrandingService.getInstance(applicationContext)
+            .brand
+            .subscribe { brand ->
+                Log.i("Got brand: " + brand.value?.brandName)
+
+                // DynamicColors.applyToActivityIfAvailable(this, DynamicColorsOptions.Builder().setThemeOverlay(Color.CYAN))
+                //val primary = resources.getColor(R.color.primary_color)
+                //window.navigationBarColor = Color.CYAN
+            }
     }
 
     private fun registerSipEndpoints(userDeviceList: List<UserDevice>) {
@@ -376,12 +390,10 @@ class MainActivity : GenericActivity(), SnackBarActivity, NavController.OnDestin
         val ex = AuthorizationException.fromIntent(intent)
         val asm = AuthStateManager.getInstance(applicationContext)
 
+        Log.i("isAuthorised: " + asm.current.isAuthorized)
+
         if (asm.current.isAuthorized) {
             // displayAuthorized();
-            Log.d(
-                "MainActivity",
-                "isAuthorised: " + asm.current.idToken + " | " + asm.current.accessToken
-            )
             return
         }
 
@@ -390,7 +402,6 @@ class MainActivity : GenericActivity(), SnackBarActivity, NavController.OnDestin
         }
 
         if (response?.authorizationCode != null) {
-            Log.d("MainActivity", "isAuthorised")
             // authorization code exchange is required
             asm.updateAfterAuthorization(response, ex)
             exchangeAuthorizationCode(response)
@@ -954,11 +965,7 @@ class MainActivity : GenericActivity(), SnackBarActivity, NavController.OnDestin
         try {
             clientAuthentication = asm.getCurrent().getClientAuthentication()
         } catch (ex: UnsupportedAuthenticationMethod) {
-            Log.d(
-                "MainActivity",
-                "Token request cannot be made - endpoint could not be constructed (%s)",
-                ex
-            )
+            Log.i("Token request cannot be made - endpoint could not be constructed (%s)", ex)
             // TODO displayNotAuthorized("Client authentication method is unsupported")
             return
         }
@@ -984,7 +991,7 @@ class MainActivity : GenericActivity(), SnackBarActivity, NavController.OnDestin
                     (if ((authException != null)) authException.error else "")
                 )
 
-            Log.d("MainActivity", message)
+            Log.i(message)
             // WrongThread inference is incorrect for lambdas
             // TODO: runOnUiThread { displayNotAuthorized(message) }
         } else {

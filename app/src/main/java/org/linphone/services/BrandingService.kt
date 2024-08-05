@@ -1,0 +1,94 @@
+package org.linphone.services
+
+import android.content.Context
+import android.util.Log
+import androidx.lifecycle.DefaultLifecycleObserver
+import androidx.lifecycle.LifecycleOwner
+import io.reactivex.rxjava3.subjects.BehaviorSubject
+import io.reactivex.rxjava3.subjects.PublishSubject
+import java.util.concurrent.atomic.AtomicReference
+import org.linphone.authentication.AuthStateManager
+import org.linphone.environment.DimensionsEnvironmentService
+import org.linphone.models.TenantBrandingDefinition
+import retrofit2.Call
+import retrofit2.Callback
+import retrofit2.Response
+
+class BrandingService(val context: Context) : DefaultLifecycleObserver {
+
+    private val apiClient = APIClientService()
+    private val dimensionsEnvironment = DimensionsEnvironmentService.getInstance(context).getCurrentEnvironment()
+    private val authStateManager = AuthStateManager.getInstance(context)
+
+    private val brandSubject = BehaviorSubject.create<Optional<TenantBrandingDefinition>>()
+    private val destroy = PublishSubject.create<Unit>()
+
+    public val brand = brandSubject.map { x -> x }
+
+    init {
+        Log.d(TAG, "Created BrandingService")
+
+        authStateManager.user
+            .distinctUntilChanged { user -> user.id ?: "" }
+            .takeUntil(destroy)
+            .subscribe { user ->
+                Log.d(TAG, "Brand user: " + user.name)
+                if (user.id == null && brandSubject.value != null) {
+                    brandSubject.onNext(
+                        Optional(null)
+                    )
+                } else {
+                    fetchBranding()
+                }
+            }
+    }
+
+    override fun onDestroy(owner: LifecycleOwner) {
+        super.onDestroy(owner)
+
+        destroy.onNext(Unit)
+        destroy.onComplete()
+    }
+
+    companion object {
+        private const val TAG: String = "BrandingService"
+
+        private val instance: AtomicReference<BrandingService> = AtomicReference<BrandingService>()
+
+        fun getInstance(context: Context): BrandingService {
+            var svc = instance.get()
+            if (svc == null) {
+                svc = BrandingService(context.applicationContext)
+                instance.set(svc)
+            }
+            return svc
+        }
+    }
+
+    fun fetchBranding() {
+        Log.d(TAG, "Fetch branding...")
+
+        apiClient.getUCGatewayService(
+            context,
+            dimensionsEnvironment!!.gatewayApiUri
+        ).doGetUserBranding()
+            .enqueue(object : Callback<TenantBrandingDefinition> {
+                override fun onFailure(call: Call<TenantBrandingDefinition>, t: Throwable) {
+                    Log.e(TAG, "Failed to fetch brand", t)
+                }
+
+                override fun onResponse(
+                    call: Call<TenantBrandingDefinition>,
+                    response: Response<TenantBrandingDefinition>
+                ) {
+                    Log.d(TAG, "Got brand from API")
+                    brandSubject.onNext(Optional(response.body()))
+                }
+            })
+    }
+
+    // val brand = asm.user. do({ x -> fetchBranding() })
+}
+
+data class Optional<T>(val value: T?)
+fun <T> T?.asOptional() = Optional(this)
