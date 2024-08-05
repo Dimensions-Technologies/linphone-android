@@ -82,10 +82,9 @@ android {
         sourceCompatibility = 17
         targetCompatibility = 17
     }
-
     compileSdkVersion 34
     defaultConfig {
-        minSdkVersion 23
+        minSdkVersion 26
         targetSdkVersion 34
         versionCode appVersionCode
         versionName "${project.version}"
@@ -202,6 +201,7 @@ android {
         jniLibs {
             useLegacyPackaging extractNativeLibs
         }
+        exclude 'META-INF/*'
     }
 }
 
@@ -273,6 +273,8 @@ dependencies {
     //https://github.com/square/okhttp/blob/master/LICENSE.txt
     implementation 'com.squareup.okhttp3:okhttp:4.12.0'
     implementation "com.squareup.okhttp3:logging-interceptor:4.12.0"
+
+    implementation 'com.azure:azure-storage-blob:12.27.0'
 }
 
 task generateContactsXml(type: Copy) {
