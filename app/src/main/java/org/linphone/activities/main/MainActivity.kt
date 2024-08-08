@@ -24,7 +24,6 @@ import android.content.ComponentCallbacks2
 import android.content.Context
 import android.content.Intent
 import android.content.res.Configuration
-import android.graphics.Color
 import android.net.Uri
 import android.os.Bundle
 import android.os.Parcelable
@@ -92,6 +91,7 @@ import org.linphone.core.TransportType
 import org.linphone.core.tools.Log
 import org.linphone.databinding.MainActivityBinding
 import org.linphone.environment.DimensionsEnvironmentService
+import org.linphone.middleware.FileTree
 import org.linphone.models.UserDevice
 import org.linphone.services.APIClientService
 import org.linphone.services.BrandingService
@@ -107,6 +107,7 @@ import org.linphone.utils.setKeyboardInsetListener
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
+import timber.log.Timber
 
 class MainActivity : GenericActivity(), SnackBarActivity, NavController.OnDestinationChangedListener {
     private lateinit var binding: MainActivityBinding
@@ -178,6 +179,9 @@ class MainActivity : GenericActivity(), SnackBarActivity, NavController.OnDestin
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        Timber.plant(Timber.DebugTree(), FileTree(applicationContext))
+
+        Timber.d("OnCreate")
         Log.d("OnCreate")
 
         // Must be done before the setContentView
@@ -269,8 +273,8 @@ class MainActivity : GenericActivity(), SnackBarActivity, NavController.OnDestin
                 Log.i("Got brand: " + brand.value?.brandName)
 
                 // DynamicColors.applyToActivityIfAvailable(this, DynamicColorsOptions.Builder().setThemeOverlay(Color.CYAN))
-                //val primary = resources.getColor(R.color.primary_color)
-                //window.navigationBarColor = Color.CYAN
+                // val primary = resources.getColor(R.color.primary_color)
+                // window.navigationBarColor = Color.CYAN
             }
     }
 

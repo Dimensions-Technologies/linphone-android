@@ -63,7 +63,7 @@
     "GatewayApiUri": "https://ucgateway.xarios.dev",
     "RealtimeApiUri": "https://realtime.xarios.dev",
     "DocumentationUri": "https://docs.xarios.dev/mobile",
-    "DiagnosticsBlobConnectionString": "BlobEndpoint=https://qaclientlogs.blob.core.windows.net/uconnect?sp=acw&st=2021-03-08T14:55:21Z&se=2031-03-08T22:55:21Z&spr=https&sv=2020-02-10&sr=c&sig=rfiMSOzjWTvmLVOmXqwxDzwEvmVrcrwEKfGZ5MUPA6o%3D",
+    "DiagnosticsBlobConnectionString": "DefaultEndpointsProtocol=https;AccountName=qaclientlogs;AccountKey=WHeO9LQYdqYkByVWvtFhtlJshrAWtskWL7gePTEqdAUxUY+TqWqpf3J/xLSQpYRtiNRdSeTjZLFHYyZN/akiZw==;EndpointSuffix=core.windows.net;BlobEndpoint=https://qaclientlogs.blob.core.windows.net/uconnect?sp=acw&st=2021-03-08T14:55:21Z&se=2031-03-08T22:55:21Z&spr=https&sv=2020-02-10&sr=c&sig=rfiMSOzjWTvmLVOmXqwxDzwEvmVrcrwEKfGZ5MUPA6o%3D",
     "ResourcesBlobUrl": "https://resource.xarios.dev"
   },
   {

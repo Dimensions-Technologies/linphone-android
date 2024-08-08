@@ -9,10 +9,12 @@ import io.reactivex.rxjava3.subjects.PublishSubject
 import java.util.concurrent.atomic.AtomicReference
 import org.linphone.authentication.AuthStateManager
 import org.linphone.environment.DimensionsEnvironmentService
+import org.linphone.middleware.FileTree
 import org.linphone.models.TenantBrandingDefinition
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
+import timber.log.Timber
 
 class BrandingService(val context: Context) : DefaultLifecycleObserver {
 
@@ -81,7 +83,7 @@ class BrandingService(val context: Context) : DefaultLifecycleObserver {
                     call: Call<TenantBrandingDefinition>,
                     response: Response<TenantBrandingDefinition>
                 ) {
-                    Log.d(TAG, "Got brand from API")
+                    Timber.d("Got brand from API")
                     brandSubject.onNext(Optional(response.body()))
                 }
             })

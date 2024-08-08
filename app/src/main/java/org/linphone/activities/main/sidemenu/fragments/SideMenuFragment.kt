@@ -44,6 +44,8 @@ import org.linphone.authentication.AuthStateManager
 import org.linphone.core.Factory
 import org.linphone.core.tools.Log
 import org.linphone.databinding.SideMenuFragmentBinding
+import org.linphone.services.DiagnosticsService
+import org.linphone.services.UserService
 import org.linphone.utils.*
 
 class SideMenuFragment : GenericFragment<SideMenuFragmentBinding>() {
@@ -145,9 +147,16 @@ class SideMenuFragment : GenericFragment<SideMenuFragmentBinding>() {
         if (::viewModel.isInitialized) {
             viewModel.userName.set("Loading auth token...")
 
-            val authManager = AuthStateManager.getInstance(requireContext())
-            var x = authManager.current
-            authManager.userName.subscribe({ user -> viewModel.userName.set("TOKEN:\n" + user) })
+            // val authManager = AuthStateManager.getInstance(requireContext())
+            // var x = authManager.current
+            // authManager.userName.subscribe({ user -> viewModel.userName.set("TOKEN:\n" + user) })
+
+            val userIdentity = UserService.getInstance(requireContext()).user
+            userIdentity.subscribe { user ->
+                viewModel.userName.set(
+                    user.name + " (" + user.id + ")"
+                )
+            }
         }
     }
 
@@ -299,7 +308,14 @@ class SideMenuFragment : GenericFragment<SideMenuFragmentBinding>() {
     }
 
     public fun logout() {
-        val authManager = AuthStateManager.getInstance(requireContext())
-        authManager.logout(context)
+        // val authManager = AuthStateManager.getInstance(requireContext())
+        // authManager.logout(context)
+        pushLogs()
+        sharedViewModel.toggleDrawerEvent.value = Event(true)
+        Log.i("DONE")
+    }
+
+    public fun pushLogs() {
+        DiagnosticsService(requireContext()).uploadDiagnostics()
     }
 }
