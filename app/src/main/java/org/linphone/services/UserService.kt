@@ -1,17 +1,15 @@
 package org.linphone.services
 
 import android.content.Context
-import android.util.Log
 import io.reactivex.rxjava3.core.Observable
 import java.util.concurrent.atomic.AtomicReference
 import org.linphone.authentication.AuthStateManager
 import org.linphone.models.AuthenticatedUser
+import org.linphone.utils.Log
 
 class UserService public constructor(context: Context) {
 
     companion object {
-        private const val TAG: String = "UserService"
-
         private val instance: AtomicReference<UserService> = AtomicReference<UserService>()
 
         fun getInstance(context: Context): UserService {
@@ -27,7 +25,7 @@ class UserService public constructor(context: Context) {
     val user: Observable<AuthenticatedUser>
 
     init {
-        Log.i(TAG, "Created UserService")
+        Log.i("Created UserService")
 
         val asm = AuthStateManager.getInstance(context)
         user = asm.user

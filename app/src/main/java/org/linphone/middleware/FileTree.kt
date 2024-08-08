@@ -6,6 +6,7 @@ import io.reactivex.rxjava3.core.Observable
 import io.reactivex.rxjava3.schedulers.Schedulers
 import io.reactivex.rxjava3.subjects.BehaviorSubject
 import io.reactivex.rxjava3.subjects.PublishSubject
+import java.io.BufferedOutputStream
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileNotFoundException
@@ -18,6 +19,8 @@ import java.util.Date
 import java.util.Locale
 import java.util.concurrent.TimeUnit
 import java.util.zip.GZIPOutputStream
+import java.util.zip.ZipEntry
+import java.util.zip.ZipOutputStream
 import timber.log.Timber
 
 typealias LogElement = Triple<String, Int, String?>
@@ -44,7 +47,7 @@ private val LOG_FILE_RETENTION = TimeUnit.DAYS.toMillis(14)
 private val LOG_FILE_TIME_FORMAT = SimpleDateFormat("yyyy-MM-dd_HH-mm-ss", Locale.US)
 val LOG_LINE_TIME_FORMAT = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US)
 
-private const val LOG_FILE_NAME = "insights.log"
+private const val LOG_FILE_NAME = "application.log"
 
 /**
  * The FileTree is the additional log handler which we plant.
@@ -144,6 +147,10 @@ class FileTree(val context: Context) : Timber.Tree() {
         fun getLogsDirectory(context: Context): String {
             return getLogsDirectoryFromPath(context.filesDir.absolutePath)
         }
+
+        fun zipAll(logsFolder: String): File {
+            return zipAllLogs(logsFolder)
+        }
     }
 }
 
@@ -227,4 +234,24 @@ private fun compress(file: File): Boolean {
 }
 
 private fun logException(ex: Exception) {
+}
+
+private fun zipAllLogs(logsFolder: String): File {
+    val inputDirectory = File(logsFolder)
+    val outputZipFile = File.createTempFile("out", ".zip")
+    ZipOutputStream(BufferedOutputStream(FileOutputStream(outputZipFile))).use { zos ->
+        inputDirectory.walkTopDown()
+            .filter { file -> file.extension == "log" || file.extension == "json" }
+            .forEach { file ->
+                val zipFileName = file.absolutePath.removePrefix(inputDirectory.absolutePath).removePrefix(
+                    "/"
+                )
+                val entry = ZipEntry("$zipFileName${(if (file.isDirectory) "/" else "")}")
+                zos.putNextEntry(entry)
+                if (file.isFile) {
+                    file.inputStream().use { fis -> fis.copyTo(zos) }
+                }
+            }
+    }
+    return outputZipFile
 }

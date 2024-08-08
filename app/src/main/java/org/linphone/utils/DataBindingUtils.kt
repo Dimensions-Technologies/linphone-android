@@ -58,7 +58,6 @@ import org.linphone.contact.ContactAvatarGenerator
 import org.linphone.contact.ContactDataInterface
 import org.linphone.contact.getPictureUri
 import org.linphone.core.ConsolidatedPresence
-import org.linphone.core.tools.Log
 import org.linphone.views.VoiceRecordProgressBar
 
 /**

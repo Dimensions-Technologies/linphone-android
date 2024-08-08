@@ -42,11 +42,11 @@ import org.linphone.activities.main.sidemenu.viewmodels.SideMenuViewModel
 import org.linphone.activities.main.viewmodels.DialogViewModel
 import org.linphone.authentication.AuthStateManager
 import org.linphone.core.Factory
-import org.linphone.core.tools.Log
 import org.linphone.databinding.SideMenuFragmentBinding
 import org.linphone.services.DiagnosticsService
 import org.linphone.services.UserService
 import org.linphone.utils.*
+import org.linphone.utils.Log
 
 class SideMenuFragment : GenericFragment<SideMenuFragmentBinding>() {
     private lateinit var viewModel: SideMenuViewModel
@@ -316,6 +316,6 @@ class SideMenuFragment : GenericFragment<SideMenuFragmentBinding>() {
     }
 
     public fun pushLogs() {
-        DiagnosticsService(requireContext()).uploadDiagnostics()
+        DiagnosticsService.uploadDiagnostics(requireContext())
     }
 }

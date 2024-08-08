@@ -18,7 +18,8 @@ import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
-import android.util.Log;
+
+import org.linphone.utils.Log;
 import androidx.annotation.AnyThread;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -115,7 +116,7 @@ public class AuthStateManager {
         AuthState current = getCurrent();
         current.update(response, ex);
         if (response != null) {
-            Log.d(TAG, "access token: " + response.accessToken);
+            Log.Log.d("access token: " + response.accessToken);
         }
 
         return replace(current);
@@ -157,7 +158,7 @@ public class AuthStateManager {
             try {
                 return AuthState.jsonDeserialize(currentState);
             } catch (JSONException ex) {
-                Log.w(TAG, "Failed to deserialize stored auth state - discarding");
+                Log.Log.w("Failed to deserialize stored auth state - discarding");
                 return new AuthState();
             }
         } finally {
@@ -218,10 +219,10 @@ public class AuthStateManager {
 
     private void updateObservable(@Nullable AuthState state) {
         var accessToken = state == null ? "<null>" : state.getAccessToken();
-        Log.d(TAG, "Access token: " + accessToken);
+        Log.Log.d("Access token: " + accessToken);
 
         AuthenticatedUser user = AuthenticatedUser.Companion.fromToken(accessToken);
-        Log.d(TAG, "User:"  + user);
+        Log.Log.d("User:"  + user);
 
         userSubject.onNext(user);
     }
@@ -238,5 +239,9 @@ public class AuthStateManager {
         }
 
         return "";
+    }
+
+    public AuthenticatedUser getUser() {
+        return userSubject.getValue();
     }
 }

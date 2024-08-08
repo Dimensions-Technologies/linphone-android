@@ -1,7 +1,6 @@
 package org.linphone.services
 
 import android.content.Context
-import android.util.Log
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
 import io.reactivex.rxjava3.subjects.BehaviorSubject
@@ -9,8 +8,8 @@ import io.reactivex.rxjava3.subjects.PublishSubject
 import java.util.concurrent.atomic.AtomicReference
 import org.linphone.authentication.AuthStateManager
 import org.linphone.environment.DimensionsEnvironmentService
-import org.linphone.middleware.FileTree
 import org.linphone.models.TenantBrandingDefinition
+import org.linphone.utils.Log
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
@@ -28,13 +27,13 @@ class BrandingService(val context: Context) : DefaultLifecycleObserver {
     public val brand = brandSubject.map { x -> x }
 
     init {
-        Log.d(TAG, "Created BrandingService")
+        Log.d("Created BrandingService")
 
         authStateManager.user
             .distinctUntilChanged { user -> user.id ?: "" }
             .takeUntil(destroy)
             .subscribe { user ->
-                Log.d(TAG, "Brand user: " + user.name)
+                Log.d("Brand user: " + user.name)
                 if (user.id == null && brandSubject.value != null) {
                     brandSubject.onNext(
                         Optional(null)
@@ -68,7 +67,7 @@ class BrandingService(val context: Context) : DefaultLifecycleObserver {
     }
 
     fun fetchBranding() {
-        Log.d(TAG, "Fetch branding...")
+        Log.d("Fetch branding...")
 
         apiClient.getUCGatewayService(
             context,
@@ -76,7 +75,7 @@ class BrandingService(val context: Context) : DefaultLifecycleObserver {
         ).doGetUserBranding()
             .enqueue(object : Callback<TenantBrandingDefinition> {
                 override fun onFailure(call: Call<TenantBrandingDefinition>, t: Throwable) {
-                    Log.e(TAG, "Failed to fetch brand", t)
+                    Log.e("Failed to fetch brand", t)
                 }
 
                 override fun onResponse(

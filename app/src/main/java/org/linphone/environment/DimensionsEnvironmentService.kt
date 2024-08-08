@@ -2,7 +2,6 @@ package org.linphone.environment
 
 import android.content.Context
 import android.content.SharedPreferences
-import android.util.Log
 import androidx.annotation.AnyThread
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
@@ -11,6 +10,7 @@ import java.util.concurrent.atomic.AtomicReference
 import java.util.concurrent.locks.ReentrantLock
 import org.json.JSONException
 import org.linphone.models.DimensionsEnvironment
+import org.linphone.utils.Log
 
 class DimensionsEnvironmentService(context: Context) {
     private val mContext = context
@@ -93,7 +93,7 @@ class DimensionsEnvironmentService(context: Context) {
             try {
                 return DimensionsEnvironment.jsonDeserialize(currentEnvironment)
             } catch (ex: JSONException) {
-                Log.w(TAG, "Failed to deserialize stored auth state - discarding")
+                Log.w("Failed to deserialize stored auth state - discarding")
                 return null
             }
         } finally {
