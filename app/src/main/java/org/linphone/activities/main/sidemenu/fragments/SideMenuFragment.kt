@@ -43,7 +43,6 @@ import org.linphone.activities.main.viewmodels.DialogViewModel
 import org.linphone.authentication.AuthStateManager
 import org.linphone.core.Factory
 import org.linphone.databinding.SideMenuFragmentBinding
-import org.linphone.services.DiagnosticsService
 import org.linphone.services.UserService
 import org.linphone.utils.*
 import org.linphone.utils.Log
@@ -308,14 +307,9 @@ class SideMenuFragment : GenericFragment<SideMenuFragmentBinding>() {
     }
 
     public fun logout() {
-        // val authManager = AuthStateManager.getInstance(requireContext())
-        // authManager.logout(context)
-        pushLogs()
+        val authManager = AuthStateManager.getInstance(requireContext())
+        authManager.logout(context)
         sharedViewModel.toggleDrawerEvent.value = Event(true)
         Log.i("DONE")
-    }
-
-    public fun pushLogs() {
-        DiagnosticsService.uploadDiagnostics(requireContext())
     }
 }

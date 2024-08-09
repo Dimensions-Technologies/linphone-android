@@ -45,6 +45,13 @@ class DiagnosticsService {
             return "${userId}_$timestamp.zip"
         }
 
+        fun clearLogs(context: Context) {
+            val logsFolder: String = FileTree.getLogsDirectory(context)
+            File(logsFolder).walkTopDown()
+                .filter { file -> file.isFile && (file.extension == "log" || file.extension == "json" || file.extension == "zip") }
+                .forEach { file -> file.delete() }
+        }
+
         fun uploadDiagnostics(context: Context) {
             try {
                 val logsFolder: String = FileTree.getLogsDirectory(context)
@@ -146,7 +153,7 @@ class DiagnosticsService {
             fields.filter { it.getInt(Build.VERSION_CODES::class) == Build.VERSION.SDK_INT }
                 .forEach { osCode = it.name }
 
-            jObj.put("OS", "Android ${osCode}")
+            jObj.put("OS", "Android $osCode")
 
             return jObj
         }
