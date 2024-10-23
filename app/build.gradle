@@ -197,7 +197,7 @@ android {
         }
 
         voyager {
-            initWith releaseWithCrashlytics
+            initWith release
         }
     }
 
