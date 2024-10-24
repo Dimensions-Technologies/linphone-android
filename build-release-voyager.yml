@@ -98,7 +98,7 @@ steps:
   inputs:
     SourceFolder: '$(baseFolder)'
     Contents: 'google-services.json'
-    TargetFolder: '/app'
+    TargetFolder: '$(Build.SourcesDirectory)/app'
     OverWrite: true
     
 - task: Gradle@3
