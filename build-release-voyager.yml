@@ -3,7 +3,7 @@ pool:
   vmImage: 'ubuntu-latest'
 variables:
   appVersionCode: $(MAJOR)$(MINOR)$(YEAR:yy)$(DAYOFYEAR)$(REV:r)
-  baseFolder: '/app/src/voyager'
+  baseFolder: '$(Build.SourcesDirectory)/app/src/voyager'
 steps:
 - checkout: self
 
@@ -63,6 +63,7 @@ steps:
       echo keyPassword=$(KEYSTORE_PASSWORD) >> keystore.properties
       echo keyAlias=uconnect android ad-hoc >> keystore.properties
       echo storeFile=$(KEYSTORE.SECUREFILEPATH) >> keystore.properties
+
 - task: Bash@3
   displayName: "Set packageName"
   inputs:
@@ -91,6 +92,14 @@ steps:
   inputs:
     script: 'cat build.gradle'
     workingDirectory: '$(Build.SourcesDirectory)/app/'
+
+- task: CopyFiles@2
+  displayName: "Override google-services.json"
+  inputs:
+    SourceFolder: '$(baseFolder)'
+    Contents: 'google-services.json'
+    TargetFolder: '$(Build.SourcesDirectory)/app'
+    OverWrite: true
     
 - task: Gradle@3
   displayName: "Build App"
