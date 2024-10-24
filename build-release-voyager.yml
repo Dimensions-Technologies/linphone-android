@@ -63,6 +63,7 @@ steps:
       echo keyPassword=$(KEYSTORE_PASSWORD) >> keystore.properties
       echo keyAlias=uconnect android ad-hoc >> keystore.properties
       echo storeFile=$(KEYSTORE.SECUREFILEPATH) >> keystore.properties
+      
 - task: Bash@3
   displayName: "Set packageName"
   inputs:
