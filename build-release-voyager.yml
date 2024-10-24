@@ -3,6 +3,7 @@ pool:
   vmImage: 'ubuntu-latest'
 variables:
   appVersionCode: $(MAJOR)$(MINOR)$(YEAR:yy)$(DAYOFYEAR)$(REV:r)
+  baseFolder: '/app/src/voyager'
 steps:
 - checkout: self
 
@@ -62,7 +63,14 @@ steps:
       echo keyPassword=$(KEYSTORE_PASSWORD) >> keystore.properties
       echo keyAlias=uconnect android ad-hoc >> keystore.properties
       echo storeFile=$(KEYSTORE.SECUREFILEPATH) >> keystore.properties
-      
+- task: Bash@3
+  displayName: "Set packageName"
+  inputs:
+    targetType: 'inline'
+    script: |
+      find . -name "build.gradle" | xargs sed -i "s/cloud.xarios.dimensions/com.voyager.connectmobile/g"
+    workingDirectory: '$(Build.SourcesDirectory)/app/'
+    
 - task: Bash@3
   displayName: "Set VersionCode"
   inputs:
