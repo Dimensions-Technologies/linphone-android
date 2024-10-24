@@ -63,7 +63,7 @@ steps:
       echo keyPassword=$(KEYSTORE_PASSWORD) >> keystore.properties
       echo keyAlias=uconnect android ad-hoc >> keystore.properties
       echo storeFile=$(KEYSTORE.SECUREFILEPATH) >> keystore.properties
-      
+
 - task: Bash@3
   displayName: "Set packageName"
   inputs:
@@ -92,6 +92,14 @@ steps:
   inputs:
     script: 'cat build.gradle'
     workingDirectory: '$(Build.SourcesDirectory)/app/'
+
+- task: CopyFiles@2
+  displayName: "Overried google-services.json"
+  inputs:
+    SourceFolder: '$(baseFolder)'
+    Contents: 'google-services.json'
+    TargetFolder: '/app'
+    OverWrite: true
     
 - task: Gradle@3
   displayName: "Build App"
