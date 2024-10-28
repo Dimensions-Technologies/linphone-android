@@ -1,6 +1,6 @@
 name: $(MAJOR).$(MINOR).$(YEAR:yy)$(DAYOFYEAR).$(REV:r)
-pool:
-  vmImage: 'ubuntu-latest'
+pool: 
+  name: QAAKS
 variables:
   appVersionCode: $(MAJOR)$(MINOR)$(YEAR:yy)$(DAYOFYEAR)$(REV:r)
 steps:
