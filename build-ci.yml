@@ -12,12 +12,12 @@ steps:
   inputs:
     secureFile: 'UconnectAndroidAd-Hoc.keystore'
 
-- task: JavaToolInstaller@0
-  displayName: "Install Java"
-  inputs:
-    versionSpec: '17'
-    jdkArchitectureOption: 'x64'
-    jdkSourceOption: 'PreInstalled'
+#- task: JavaToolInstaller@0
+#  displayName: "Install Java"
+#  inputs:
+#    versionSpec: '17'
+#    jdkArchitectureOption: 'x64'
+#    jdkSourceOption: 'PreInstalled'
     
 - task: Bash@3
   displayName: "Generate keystore.properties"
