@@ -45,11 +45,11 @@ import org.linphone.activities.navigateToContact
 import org.linphone.activities.navigateToContactEditor
 import org.linphone.core.Factory
 import org.linphone.core.Friend
-import org.linphone.databinding.ContactMasterFragmentBinding
+import org.linphone.databinding.ContactDimensionsFragmentBinding
 import org.linphone.utils.*
 import org.linphone.utils.Log
 
-class MasterContactsFragment : MasterFragment<ContactMasterFragmentBinding, ContactsListAdapter>() {
+class DimensionsContactsFragment : MasterFragment<ContactDimensionsFragmentBinding, ContactsListAdapter>() {
     override val dialogConfirmationMessageBeforeRemoval = R.plurals.contact_delete_dialog
     private lateinit var listViewModel: ContactsListViewModel
 
@@ -57,7 +57,7 @@ class MasterContactsFragment : MasterFragment<ContactMasterFragmentBinding, Cont
     private var editOnClick: Boolean = false
     private var contactIdToDisplay: String? = null
 
-    override fun getLayoutId(): Int = R.layout.contact_master_fragment
+    override fun getLayoutId(): Int = R.layout.contact_dimensions_fragment
 
     override fun onDestroyView() {
         binding.contactsList.adapter = null

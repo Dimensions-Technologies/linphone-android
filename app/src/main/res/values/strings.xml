@@ -1,8 +1,6 @@
 <?xml version='1.0' encoding='UTF-8'?>
 
-<!DOCTYPE resources [
-    <!ENTITY appName "Dimensions Connect Mobile">
-    ]>
+<!DOCTYPE resources [<!ENTITY appName "Dimensions Connect Mobile">]>
 
 <resources xmlns:tools="http://schemas.android.com/tools" tools:ignore="MissingTranslation">
 
@@ -38,7 +36,6 @@
     <string name="use_pending_intents">Use PendingIntent\'s for completion</string>
     <string name="log_in">Log in</string>
     <string name="log_out">Log out</string>
-
 
 
     <string name="app_name" translatable="false">&appName;</string>
@@ -330,7 +327,8 @@
     <string name="conference_schedule_send_invite_email">Send invite via email</string>
     <string name="conference_schedule_send_updated_invite_email">Send update via email</string>
     <string name="conference_schedule_encryption">Would you like to encrypt the meeting?</string>
-    <string name="conference_schedule_send_invite_chat_summary">Invite will be sent out from my &appName; account</string>
+    <string name="conference_schedule_send_invite_chat_summary">Invite will be sent out from my &appName;
+        account</string>
     <string name="conference_schedule_participants_list">Participants list</string>
     <string name="conference_schedule_speakers_list">Speakers list</string>
     <string name="conference_schedule_speakers_list_empty">Select at least one speaker</string>
@@ -478,8 +476,10 @@
     <string name="assistant_remote_provisioning">Fetch remote configuration</string>
     <string name="assistant_ec_calibration">Echo canceler calibration in progress</string>
     <string name="assistant_phone_number_info_title">What will my phone number be used for?</string>
-    <string name="assistant_phone_number_link_info_content">\nYour friends will find you more easily if you link your account to your phone number\n\nYou will see in your address book who is using &appName; and your friends will know that they can reach you on &appName; as well.\n</string>
-    <string name="assistant_phone_number_link_info_content_already_account">You can only use your phone number with one &appName; account.\n\nIf you had already linked your number to an other account but you prefer to use this one, simply link it now and your number will automatically be moved to this account.</string>
+    <string name="assistant_phone_number_link_info_content">\nYour friends will find you more easily if you link your account to your phone number\n\nYou will see in your address book who is using &appName;
+        and your friends will know that they can reach you on &appName; as well.\n</string>
+    <string name="assistant_phone_number_link_info_content_already_account">You can only use your phone number with one &appName;
+        account.\n\nIf you had already linked your number to an other account but you prefer to use this one, simply link it now and your number will automatically be moved to this account.</string>
     <string name="assistant_general_terms_link" translatable="false">https://www.linphone.org/general-terms</string>
     <string name="assistant_privacy_policy_link" translatable="false">https://www.linphone.org/privacy-policy</string>
     <string name="assistant_general_terms">terms of use</string>
@@ -520,7 +520,8 @@
     <string name="assistant_display_name_optional">Display name (optional)</string>
 
     <!-- Assistant create -->
-    <string name="assistant_create_account_part_email">Please enter a username, email and password for your &appName; account</string>
+    <string name="assistant_create_account_part_email">Please enter a username, email and password for your &appName;
+        account</string>
     <string name="assistant_confirm_password">Password confirmation</string>
     <string name="assistant_validate_account_1">Your account is created. Please check your emails to validate your account:</string>
     <string name="assistant_validate_account_2">Once it is done, come back here and click on the button.</string>
@@ -673,7 +674,8 @@
     <!-- Contacts settings -->
     <string name="contacts_settings_friendlist_subscribe_title">Friendlist subscribe</string>
     <string name="contacts_settings_native_presence_title">Presence information in native contact</string>
-    <string name="contacts_settings_native_presence_summary">Inserting information shortcuts from the &appName; contact into native Android contacts</string>
+    <string name="contacts_settings_native_presence_summary">Inserting information shortcuts from the &appName;
+        contact into native Android contacts</string>
     <string name="contacts_settings_show_organization_title">Display contact organization</string>
     <string name="contacts_settings_launcher_shortcuts_title">Create shortcuts to contacts in launcher</string>
     <string name="contacts_settings_launcher_shortcuts_summary">Will replace chat room shortcuts if any</string>
@@ -1008,4 +1010,6 @@
     <string name="content_description_emoji_picker">Toggle emoji picker visibility</string>
     <string name="content_description_menu_voicemail">Voicemail</string>
     <string name="no_device_configured">No mobile device configured</string>
+    <!-- TODO: Remove or change this placeholder text -->
+    <string name="hello_blank_fragment">Hello blank fragment</string>
 </resources>

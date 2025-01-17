@@ -94,7 +94,7 @@ class DetailContactFragment : GenericFragment<ContactDetailFragmentBinding>() {
                     sharedViewModel.updateContactsAnimationsBasedOnDestination.value =
                         Event(R.id.dialerFragment)
                     sharedViewModel.updateDialerAnimationsBasedOnDestination.value =
-                        Event(R.id.masterContactsFragment)
+                        Event(R.id.dimensionsContactsFragment)
 
                     val args = Bundle()
                     args.putString("URI", address.asStringUriOnly())

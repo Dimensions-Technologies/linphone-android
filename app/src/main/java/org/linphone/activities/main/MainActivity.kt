@@ -384,7 +384,7 @@ class MainActivity : GenericActivity(), SnackBarActivity, NavController.OnDestin
         }
 
         shouldTabsBeVisibleDependingOnDestination = when (destination.id) {
-            R.id.masterCallLogsFragment, R.id.masterContactsFragment, R.id.dialerFragment, R.id.masterChatRoomsFragment ->
+            R.id.masterCallLogsFragment, R.id.dimensionsContactsFragment, R.id.dialerFragment, R.id.masterChatRoomsFragment ->
                 true
             else -> false
         }
