@@ -47,6 +47,7 @@ import androidx.navigation.findNavController
 import androidx.window.layout.FoldingFeature
 import coil.imageLoader
 import com.google.android.material.snackbar.Snackbar
+import com.google.gson.Gson
 import java.io.UnsupportedEncodingException
 import java.net.URLDecoder
 import kotlin.math.abs
@@ -99,6 +100,7 @@ import org.linphone.utils.PermissionHelper
 import org.linphone.utils.ShortcutsHelper
 import org.linphone.utils.hideKeyboard
 import org.linphone.utils.setKeyboardInsetListener
+import kotlin.math.log
 
 class MainActivity : GenericActivity(), SnackBarActivity, NavController.OnDestinationChangedListener {
 
@@ -287,6 +289,10 @@ class MainActivity : GenericActivity(), SnackBarActivity, NavController.OnDestin
 
         CoroutineScope(Dispatchers.IO).launch {
             val user = UserService.getInstance(applicationContext).user.awaitFirst()
+
+            Log.i(user.displayName)
+            Log.i(Gson().toJson(user.permissions))
+
             if (!user.hasClientPermission()) {
                 redirectToLogin("You do not have permission to use the client.")
             }
