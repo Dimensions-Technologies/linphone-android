@@ -290,8 +290,8 @@ class MainActivity : GenericActivity(), SnackBarActivity, NavController.OnDestin
         CoroutineScope(Dispatchers.IO).launch {
             val user = UserService.getInstance(applicationContext).user.awaitFirst()
 
-            Log.i(user.displayName)
-            Log.i(Gson().toJson(user.permissions))
+            Log.i("User::" + user.displayName)
+            Log.i("Permissions::" + Gson().toJson(user.permissions))
 
             if (!user.hasClientPermission()) {
                 redirectToLogin("You do not have permission to use the client.")
