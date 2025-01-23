@@ -30,6 +30,7 @@ import org.linphone.LinphoneApplication.Companion.coreContext
 import org.linphone.LinphoneApplication.Companion.corePreferences
 import org.linphone.contact.ContactsUpdatedListenerStub
 import org.linphone.core.*
+import org.linphone.models.usergroup.UserGroupModel
 import org.linphone.utils.Event
 import org.linphone.utils.Log
 
@@ -52,6 +53,8 @@ class ContactsListViewModel : ViewModel() {
 
     val filter = MutableLiveData<String>()
     private var previousFilter = "NotSet"
+
+    val userGroup = MutableLiveData<UserGroupModel>()
 
     val moreResultsAvailableEvent: MutableLiveData<Event<Boolean>> by lazy {
         MutableLiveData<Event<Boolean>>()
@@ -118,32 +121,73 @@ class ContactsListViewModel : ViewModel() {
         }
         previousFilter = filterValue
 
-        val domain = if (sipContactsSelected.value == true) coreContext.core.defaultAccount?.params?.domain ?: "" else ""
-        val sources = MagicSearch.Source.Friends.toInt() or MagicSearch.Source.LdapServers.toInt()
-        val aggregation = MagicSearch.Aggregation.Friend
-        searchResultsPending = true
-        fastFetchJob?.cancel()
-        Log.i(
-            "[Contacts] Asking Magic search for contacts matching filter [$filterValue], domain [$domain] and in sources [$sources]"
-        )
-        coreContext.contactsManager.magicSearch.getContactsListAsync(
-            filterValue,
-            domain,
-            sources,
-            aggregation
-        )
+        val selectedUserGroup = userGroup.value
+        if (filterValue.isEmpty() && selectedUserGroup != null) {
+            // we have no search to display and we have a usergroup selected we should display the
+            // contents of the usergroup
+            processUserGroupResults(selectedUserGroup)
+        } else {
+            val domain = if (sipContactsSelected.value == true) coreContext.core.defaultAccount?.params?.domain ?: "" else ""
+            val sources = MagicSearch.Source.Friends.toInt() or MagicSearch.Source.LdapServers.toInt()
+            val aggregation = MagicSearch.Aggregation.Friend
+            searchResultsPending = true
+            fastFetchJob?.cancel()
+            Log.i(
+                "[Contacts] Asking Magic search for contacts matching filter [$filterValue], domain [$domain] and in sources [$sources]"
+            )
+            coreContext.contactsManager.magicSearch.getContactsListAsync(
+                filterValue,
+                domain,
+                sources,
+                aggregation
+            )
 
-        val spinnerDelay = corePreferences.delayBeforeShowingContactsSearchSpinner.toLong()
-        fastFetchJob = viewModelScope.launch {
-            withContext(Dispatchers.IO) {
-                delay(spinnerDelay)
-            }
-            withContext(Dispatchers.Main) {
-                if (searchResultsPending) {
-                    fetchInProgress.value = true
+            val spinnerDelay = corePreferences.delayBeforeShowingContactsSearchSpinner.toLong()
+            fastFetchJob = viewModelScope.launch {
+                withContext(Dispatchers.IO) {
+                    delay(spinnerDelay)
+                }
+                withContext(Dispatchers.Main) {
+                    if (searchResultsPending) {
+                        fetchInProgress.value = true
+                    }
                 }
             }
         }
+    }
+
+    private fun processUserGroupResults(userGroupModel: UserGroupModel) {
+        Log.i("[Contacts] Processing usergroup ${userGroupModel.name}")
+        contactsList.value.orEmpty().forEach(ContactViewModel::destroy)
+
+        val list = arrayListOf<ContactViewModel>()
+
+        for (user in userGroupModel.users) {
+            val friend = coreContext.core.createFriend()
+            friend.refKey = user.id
+            friend.name = user.name
+            friend.address = coreContext.core.interpretUrl(user.presenceId)
+            friend.starred = user.isInFavourites
+            // friend.photo = //TODO
+
+            // Disable short term presence
+            friend.isSubscribesEnabled = false
+            friend.incSubscribePolicy = SubscribePolicy.SPDeny
+
+            list.add(ContactViewModel(friend))
+        }
+
+//        for (contactItem in userGroupModel.contacts) {
+//            val fakeFriend = coreContext.contactsManager.createFriendFromContactItem(contactItem)
+//
+//            list.add(ContactViewModel(fakeFriend))
+//        }
+
+        list.sortBy { contactViewModel -> contactViewModel.fullName }
+
+        contactsList.value = list
+
+        Log.i("[Contacts] Processed usergroup ${userGroupModel.name}")
     }
 
     private fun processMagicSearchResults(results: Array<SearchResult>) {
@@ -168,7 +212,7 @@ class ContactsListViewModel : ViewModel() {
             list.add(viewModel)
         }
 
-        contactsList.value = list
+        // contactsList.value = list //WI25806
         Log.i("[Contacts] Processed ${results.size} results")
     }
 

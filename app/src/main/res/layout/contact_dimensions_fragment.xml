@@ -34,74 +34,74 @@
             android:background="?attr/backgroundColor"
             android:layout_gravity="start">
 
-            <LinearLayout
-                android:id="@+id/top_bar"
-                android:layout_width="match_parent"
-                android:layout_height="@dimen/main_activity_top_bar_size"
-                android:background="?attr/lightToolbarBackgroundColor"
-                android:orientation="horizontal">
+<!--            <LinearLayout-->
+<!--                android:id="@+id/top_bar"-->
+<!--                android:layout_width="match_parent"-->
+<!--                android:layout_height="@dimen/main_activity_top_bar_size"-->
+<!--                android:background="?attr/lightToolbarBackgroundColor"-->
+<!--                android:orientation="horizontal">-->
 
-                <RelativeLayout
-                    android:layout_width="0dp"
-                    android:layout_height="match_parent"
-                    android:layout_weight="0.2"
-                    android:visibility="@{viewModel.onlyShowSipContactsList ? View.GONE : View.VISIBLE}">
+<!--                <RelativeLayout-->
+<!--                    android:layout_width="0dp"-->
+<!--                    android:layout_height="match_parent"-->
+<!--                    android:layout_weight="0.2"-->
+<!--                    android:visibility="@{viewModel.onlyShowSipContactsList ? View.GONE : View.VISIBLE}">-->
 
-                    <ImageView
-                        android:onClick="@{allContactsToggleClickListener}"
-                        android:enabled="@{viewModel.sipContactsSelected}"
-                        android:contentDescription="@string/content_description_show_all_contacts"
-                        android:layout_width="match_parent"
-                        android:layout_height="match_parent"
-                        android:background="?attr/button_background_drawable"
-                        android:padding="15dp"
-                        android:src="@drawable/icon_users" />
+<!--                    <ImageView-->
+<!--                        android:onClick="@{allContactsToggleClickListener}"-->
+<!--                        android:enabled="@{viewModel.sipContactsSelected}"-->
+<!--                        android:contentDescription="@string/content_description_show_all_contacts"-->
+<!--                        android:layout_width="match_parent"-->
+<!--                        android:layout_height="match_parent"-->
+<!--                        android:background="?attr/button_background_drawable"-->
+<!--                        android:padding="15dp"-->
+<!--                        android:src="@drawable/icon_users" />-->
 
-                    <View
-                        android:visibility="@{viewModel.sipContactsSelected ? View.GONE : View.VISIBLE}"
-                        android:layout_width="match_parent"
-                        android:layout_height="5dp"
-                        android:layout_alignParentBottom="true"
-                        android:background="?attr/accentColor" />
+<!--                    <View-->
+<!--                        android:visibility="@{viewModel.sipContactsSelected ? View.GONE : View.VISIBLE}"-->
+<!--                        android:layout_width="match_parent"-->
+<!--                        android:layout_height="5dp"-->
+<!--                        android:layout_alignParentBottom="true"-->
+<!--                        android:background="?attr/accentColor" />-->
 
-                </RelativeLayout>
+<!--                </RelativeLayout>-->
 
-                <RelativeLayout
-                    android:layout_width="0dp"
-                    android:layout_height="match_parent"
-                    android:layout_weight="0.2"
-                    android:visibility="@{viewModel.hideSipContactsList ? View.GONE : View.VISIBLE}">
+<!--                <RelativeLayout-->
+<!--                    android:layout_width="0dp"-->
+<!--                    android:layout_height="match_parent"-->
+<!--                    android:layout_weight="0.2"-->
+<!--                    android:visibility="@{viewModel.hideSipContactsList ? View.GONE : View.VISIBLE}">-->
 
-                    <ImageView
-                        android:onClick="@{sipContactsToggleClickListener}"
-                        android:enabled="@{!viewModel.sipContactsSelected}"
-                        android:contentDescription="@string/content_description_show_sip_contacts"
-                        android:layout_width="match_parent"
-                        android:layout_height="match_parent"
-                        android:background="?attr/button_background_drawable"
-                        android:gravity="center"
-                        android:padding="15dp"
-                        android:src="@drawable/contacts_sip" />
+<!--                    <ImageView-->
+<!--                        android:onClick="@{sipContactsToggleClickListener}"-->
+<!--                        android:enabled="@{!viewModel.sipContactsSelected}"-->
+<!--                        android:contentDescription="@string/content_description_show_sip_contacts"-->
+<!--                        android:layout_width="match_parent"-->
+<!--                        android:layout_height="match_parent"-->
+<!--                        android:background="?attr/button_background_drawable"-->
+<!--                        android:gravity="center"-->
+<!--                        android:padding="15dp"-->
+<!--                        android:src="@drawable/contacts_sip" />-->
 
-                    <View
-                        android:visibility="@{viewModel.sipContactsSelected ? View.VISIBLE : View.GONE}"
-                        android:layout_width="match_parent"
-                        android:layout_height="5dp"
-                        android:layout_alignParentBottom="true"
-                        android:background="?attr/accentColor" />
+<!--                    <View-->
+<!--                        android:visibility="@{viewModel.sipContactsSelected ? View.VISIBLE : View.GONE}"-->
+<!--                        android:layout_width="match_parent"-->
+<!--                        android:layout_height="5dp"-->
+<!--                        android:layout_alignParentBottom="true"-->
+<!--                        android:background="?attr/accentColor" />-->
 
-                </RelativeLayout>
+<!--                </RelativeLayout>-->
 
-                <View
-                    android:layout_width="0dp"
-                    android:layout_height="match_parent"
-                    android:layout_weight="0.2"
-                    android:visibility="@{viewModel.onlyShowSipContactsList || viewModel.hideSipContactsList ? View.VISIBLE : View.GONE}" />
+<!--                <View-->
+<!--                    android:layout_width="0dp"-->
+<!--                    android:layout_height="match_parent"-->
+<!--                    android:layout_weight="0.2"-->
+<!--                    android:visibility="@{viewModel.onlyShowSipContactsList || viewModel.hideSipContactsList ? View.VISIBLE : View.GONE}" />-->
 
-                <View
-                    android:layout_width="0dp"
-                    android:layout_height="match_parent"
-                    android:layout_weight="0.2" />
+<!--                <View-->
+<!--                    android:layout_width="0dp"-->
+<!--                    android:layout_height="match_parent"-->
+<!--                    android:layout_weight="0.2" />-->
 
 <!--                <ImageView-->
 <!--                    android:layout_width="0dp"-->
@@ -115,19 +115,19 @@
 <!--                    android:visibility="@{viewModel.nativeAddressBookEnabled &amp;&amp; !viewModel.readOnlyNativeAddressBook ? View.VISIBLE : View.INVISIBLE}"-->
 <!--                    tools:visibility="invisible" />-->
 
-                <ImageView
-                    android:onClick="@{editClickListener}"
-                    android:enabled="@{!viewModel.contactsList.empty}"
-                    android:contentDescription="@string/content_description_enter_edition_mode"
-                    android:layout_width="0dp"
-                    android:layout_height="match_parent"
-                    android:layout_weight="0.2"
-                    android:background="?attr/button_background_drawable"
-                    android:padding="15dp"
-                    android:src="@drawable/delete"
-                    android:visibility="gone" />
+<!--                <ImageView-->
+<!--                    android:onClick="@{editClickListener}"-->
+<!--                    android:enabled="@{!viewModel.contactsList.empty}"-->
+<!--                    android:contentDescription="@string/content_description_enter_edition_mode"-->
+<!--                    android:layout_width="0dp"-->
+<!--                    android:layout_height="match_parent"-->
+<!--                    android:layout_weight="0.2"-->
+<!--                    android:background="?attr/button_background_drawable"-->
+<!--                    android:padding="15dp"-->
+<!--                    android:src="@drawable/delete"-->
+<!--                    android:visibility="gone" />-->
 
-            </LinearLayout>
+<!--            </LinearLayout>-->
 
             <androidx.fragment.app.FragmentContainerView
                 android:id="@+id/list_edit_top_bar_fragment"
@@ -139,17 +139,17 @@
 
             <EditText
                 android:id="@+id/searchBar"
-                android:text="@={viewModel.filter}"
                 android:layout_width="match_parent"
                 android:layout_height="40dp"
                 android:layout_below="@id/top_bar"
                 android:layout_margin="10dp"
-                android:inputType="textPersonName|textNoSuggestions"
-                android:drawableLeft="@drawable/icon_search"
-                android:drawablePadding="10dp"
                 android:background="@color/transparent_color"
                 android:backgroundTint="@color/transparent_color"
-                android:hint="@string/contact_filter_hint"/>
+                android:drawableLeft="@drawable/icon_search"
+                android:drawablePadding="10dp"
+                android:hint="@string/contact_filter_hint"
+                android:inputType="textPersonName|textNoSuggestions"
+                android:text="@={viewModel.filter}" />
 
             <View
                 android:layout_width="match_parent"
@@ -157,9 +157,16 @@
                 android:layout_below="@id/searchBar"
                 android:background="?attr/dividerColor" />
 
+            <Spinner
+                android:id="@+id/userGroupSpinner"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_below="@id/searchBar"
+                android:padding="17dp" />
+
             <androidx.recyclerview.widget.RecyclerView
                 android:id="@+id/contactsList"
-                android:layout_below="@id/searchBar"
+                android:layout_below="@+id/userGroupSpinner"
                 android:layout_marginTop="5dp"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent" />
@@ -190,13 +197,6 @@
                 <include
                     layout="@layout/wait_layout"
                     app:visibility="@{viewModel.fetchInProgress}"/>
-
-                <Spinner
-                    android:id="@+id/spinner"
-                    android:layout_width="match_parent"
-                    android:layout_height="40dp"
-                    android:layout_alignParentBottom="true"
-                    android:padding="17dp" />
 
             </RelativeLayout>
 

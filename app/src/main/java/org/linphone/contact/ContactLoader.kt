@@ -39,6 +39,9 @@ import org.linphone.LinphoneApplication.Companion.coreContext
 import org.linphone.LinphoneApplication.Companion.corePreferences
 import org.linphone.R
 import org.linphone.core.*
+import org.linphone.models.usergroup.GroupUserSummaryModel
+import org.linphone.models.usergroup.UserGroupModel
+import org.linphone.services.UserGroupService
 import org.linphone.utils.AppUtils
 import org.linphone.utils.Log
 import org.linphone.utils.PhoneNumberUtils
@@ -280,6 +283,25 @@ class ContactLoader : LoaderManager.LoaderCallbacks<Cursor> {
                             Log.e("[Contacts Loader] Exception: $e")
                         }
                     }
+
+                    val userGroupModel = UserGroupModel()
+                    userGroupModel.name = "Android Contacts"
+                    userGroupModel.isAndroidContacts = true
+
+                    val userList = arrayListOf<GroupUserSummaryModel>()
+                    for (friendHash in friends) {
+                        val user = GroupUserSummaryModel()
+                        user.id = friendHash.key
+                        user.name = friendHash.value.name.toString()
+                        user.presenceId = friendHash.value.phoneNumbers.firstOrNull().toString()
+
+                        userList.add(user)
+                    }
+                    userGroupModel.users = userList
+
+                    UserGroupService.getInstance(coreContext.context).localContactsSubject.onNext(
+                        arrayListOf(userGroupModel)
+                    )
 
                     withContext(Dispatchers.Main) {
                         if (core.globalState == GlobalState.Shutdown || core.globalState == GlobalState.Off) {

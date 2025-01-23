@@ -155,6 +155,7 @@
     <string name="contact_cant_be_deleted">This contact can\'t be deleted</string>
     <string name="contacts_ldap_query_more_results_available">More results are available, refine your search</string>
     <string name="contacts_new_contact_wont_be_visible_warning_dialog">You are about to create a new contact without a SIP URI nor a phone number, thus it won\'t be visible in &appName;.\n\nDo you want to create it anyway?</string>
+    <string name="contacts_favoritesGroup">Favorites</string>
 
     <!-- Dialer -->
     <string name="dialer_address_bar_hint">Enter a number or an address</string>
