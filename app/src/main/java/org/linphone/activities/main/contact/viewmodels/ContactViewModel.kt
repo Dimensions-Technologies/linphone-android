@@ -143,12 +143,12 @@ class ContactViewModel(friend: Friend) : MessageNotifierViewModel(), ContactData
     init {
         fullName = friend.name ?: ""
 
-        contact.value = friend
-        displayName.value = friend.name
-        isNativeContact.value = friend.refKey != null
-        presenceStatus.value = friend.consolidatedPresence
-        readOnlyNativeAddressBook.value = corePreferences.readOnlyNativeContacts
-        hasLongTermPresence.value = friend.hasLongTermPresence()
+        contact.postValue(friend)
+        displayName.postValue(friend.name)
+        isNativeContact.postValue(friend.refKey != null)
+        presenceStatus.postValue(friend.consolidatedPresence)
+        readOnlyNativeAddressBook.postValue(corePreferences.readOnlyNativeContacts)
+        hasLongTermPresence.postValue(friend.hasLongTermPresence())
 
         friend.addListener {
             presenceStatus.value = it.consolidatedPresence

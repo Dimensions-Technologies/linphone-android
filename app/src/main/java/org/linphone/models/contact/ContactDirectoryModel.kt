@@ -3,33 +3,33 @@ package org.linphone.models.contact
 import com.google.gson.annotations.SerializedName
 
 data class ContactDirectoryModel(
-    @SerializedName("Id")
+    @SerializedName("id")
     val id: String = "",
 
-    @SerializedName("TenantId")
+    @SerializedName("tenantId")
     val tenantId: String = "",
 
-    @SerializedName("Name")
+    @SerializedName("name")
     val name: String = "",
 
-    @SerializedName("Description")
+    @SerializedName("description")
     val description: String = "",
 
-    @SerializedName("Fields")
+    @SerializedName("fields")
     val fields: List<FieldDefinitionModel> = emptyList(),
 
-    @SerializedName("DisplayFields")
+    @SerializedName("displayFields")
     val displayFields: List<String> = emptyList(),
 
-    @SerializedName("TagFields")
+    @SerializedName("tagFields")
     val tagFields: List<String> = emptyList(),
 
-    @SerializedName("UserRoleAssociations")
+    @SerializedName("userRoleAssociations")
     val userRoleAssociations: Map<String, String>,
 
-    @SerializedName("Items")
-    val items: List<Int> = emptyList(),
+    @SerializedName("items")
+    val items: Int = 0,
 
-    @SerializedName("AvatarDisplayFieldId")
+    @SerializedName("avatarDisplayFieldId")
     val avatarDisplayFieldId: String = ""
 )

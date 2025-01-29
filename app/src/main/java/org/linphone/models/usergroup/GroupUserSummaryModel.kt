@@ -13,7 +13,10 @@ data class GroupUserSummaryModel(
     var email: String = "",
 
     @SerializedName("presenceId")
-    var presenceId: String = ""
+    var presenceId: String = "",
+
+    @SerializedName("profileImagePath")
+    var profileImagePath: String = ""
 ) {
     var isInFavourites: Boolean = false // Calculated
 }

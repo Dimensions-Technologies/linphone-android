@@ -7,6 +7,7 @@ import org.linphone.authentication.AuthStateManager
 import org.linphone.interfaces.CTGatewayService
 import org.linphone.middleware.AuthAuthenticator
 import retrofit2.Retrofit
+import retrofit2.adapter.rxjava3.RxJava3CallAdapterFactory
 import retrofit2.converter.gson.GsonConverterFactory
 
 class APIClientService {
@@ -33,6 +34,7 @@ class APIClientService {
     ): Retrofit {
         return Retrofit.Builder()
             .baseUrl(baseUrl)
+            .addCallAdapterFactory(RxJava3CallAdapterFactory.create())
             .addConverterFactory(GsonConverterFactory.create())
             .client(getOkHttpClient(authService, asm))
             .build()

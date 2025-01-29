@@ -24,13 +24,20 @@ import android.provider.ContactsContract
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import java.util.*
+import io.reactivex.rxjava3.core.Observable
+import io.reactivex.rxjava3.disposables.Disposable
+import io.reactivex.rxjava3.subjects.BehaviorSubject
+import kotlin.collections.ArrayList
 import kotlinx.coroutines.*
 import org.linphone.LinphoneApplication.Companion.coreContext
 import org.linphone.LinphoneApplication.Companion.corePreferences
 import org.linphone.contact.ContactsUpdatedListenerStub
 import org.linphone.core.*
+import org.linphone.environment.DimensionsEnvironmentService
+import org.linphone.models.contact.ContactItemModel
+import org.linphone.models.search.SearchItemViewModel
 import org.linphone.models.usergroup.UserGroupModel
+import org.linphone.services.DirectoriesService
 import org.linphone.utils.Event
 import org.linphone.utils.Log
 
@@ -52,9 +59,48 @@ class ContactsListViewModel : ViewModel() {
     private var fastFetchJob: Job? = null
 
     val filter = MutableLiveData<String>()
+
     private var previousFilter = "NotSet"
 
     val userGroup = MutableLiveData<UserGroupModel>()
+
+    private val userGroupResultsSubject = BehaviorSubject.createDefault(
+        arrayListOf<ContactViewModel>()
+    )
+    private val magicSearchResultsSubject = BehaviorSubject.createDefault(
+        arrayListOf<ContactViewModel>()
+    )
+    private val contactSearchResultsSubject = BehaviorSubject.createDefault(
+        arrayListOf<ContactViewModel>()
+    )
+
+    private val dialSearchText = DirectoriesService.getInstance(coreContext.context).dialSearchTextSubject
+    private val userGroupResults = userGroupResultsSubject.startWithItem(arrayListOf())
+    private val magicSearchResults = magicSearchResultsSubject.startWithItem(arrayListOf())
+    private val contactSearchResults = contactSearchResultsSubject.startWithItem(arrayListOf())
+
+    // TODO: these subscriptions should be mopped up.
+    private var searchSubscription: Disposable? = null
+    private var combinedSearchSubscription: Disposable? = null
+
+    private val combinedSearch = Observable.combineLatest(
+        dialSearchText,
+        userGroupResults,
+        magicSearchResults,
+        contactSearchResults
+    ) { searchText, userGroup, magicSearch, contactSearch ->
+        if (searchText.isBlank() || searchText.length < 3) {
+            return@combineLatest ArrayList<ContactViewModel>(
+                userGroup.sortedBy { r -> r.fullName }
+            )
+        }
+
+        val combinedResults = magicSearch + contactSearch
+
+        return@combineLatest ArrayList<ContactViewModel>(
+            combinedResults.sortedBy { r -> r.fullName }
+        )
+    }
 
     val moreResultsAvailableEvent: MutableLiveData<Event<Boolean>> by lazy {
         MutableLiveData<Event<Boolean>>()
@@ -97,6 +143,18 @@ class ContactsListViewModel : ViewModel() {
 
         coreContext.contactsManager.addListener(contactsUpdatedListener)
         coreContext.contactsManager.magicSearch.addListener(magicSearchListener)
+
+        searchSubscription =
+            DirectoriesService.getInstance(coreContext.context).searchResults.subscribe { r ->
+                processContactSearchResults(
+                    r
+                )
+            }
+
+        combinedSearchSubscription = combinedSearch.subscribe { r ->
+            contactsList.value.orEmpty().forEach(ContactViewModel::destroy)
+            contactsList.postValue(r)
+        }
     }
 
     override fun onCleared() {
@@ -122,7 +180,7 @@ class ContactsListViewModel : ViewModel() {
         previousFilter = filterValue
 
         val selectedUserGroup = userGroup.value
-        if (filterValue.isEmpty() && selectedUserGroup != null) {
+        if (filterValue.isBlank() && selectedUserGroup != null) {
             // we have no search to display and we have a usergroup selected we should display the
             // contents of the usergroup
             processUserGroupResults(selectedUserGroup)
@@ -142,6 +200,10 @@ class ContactsListViewModel : ViewModel() {
                 aggregation
             )
 
+            DirectoriesService.getInstance(coreContext.context).dialSearchTextSubject.onNext(
+                filterValue
+            )
+
             val spinnerDelay = corePreferences.delayBeforeShowingContactsSearchSpinner.toLong()
             fastFetchJob = viewModelScope.launch {
                 withContext(Dispatchers.IO) {
@@ -156,19 +218,29 @@ class ContactsListViewModel : ViewModel() {
         }
     }
 
-    private fun processUserGroupResults(userGroupModel: UserGroupModel) {
-        Log.i("[Contacts] Processing usergroup ${userGroupModel.name}")
-        contactsList.value.orEmpty().forEach(ContactViewModel::destroy)
+    private fun processUserGroupResults(results: UserGroupModel) {
+        Log.i(
+            "processUserGroupResults Processing ${results.users.count() + results.contacts.count()} results"
+        )
+
+        val dimensionsEnvironmentService = DimensionsEnvironmentService.getInstance(
+            coreContext.context
+        )
+        val resourceBaseUrl = dimensionsEnvironmentService.getCurrentEnvironment()?.resourcesBlobUrl
 
         val list = arrayListOf<ContactViewModel>()
 
-        for (user in userGroupModel.users) {
+        for (user in results.users) {
             val friend = coreContext.core.createFriend()
             friend.refKey = user.id
             friend.name = user.name
-            friend.address = coreContext.core.interpretUrl(user.presenceId)
+            friend.address = coreContext.core.interpretUrl(user.presenceId, false)
             friend.starred = user.isInFavourites
-            // friend.photo = //TODO
+
+            if (user.profileImagePath.isNotBlank()) {
+                // TODO #25806 - When converted to ContactViewModel the photo doesn't appear to be taken into account
+                friend.photo = resourceBaseUrl + "/images/" + user.profileImagePath
+            }
 
             // Disable short term presence
             friend.isSubscribesEnabled = false
@@ -177,6 +249,7 @@ class ContactsListViewModel : ViewModel() {
             list.add(ContactViewModel(friend))
         }
 
+        // TODO #25806 - Handle Contacts
 //        for (contactItem in userGroupModel.contacts) {
 //            val fakeFriend = coreContext.contactsManager.createFriendFromContactItem(contactItem)
 //
@@ -185,14 +258,13 @@ class ContactsListViewModel : ViewModel() {
 
         list.sortBy { contactViewModel -> contactViewModel.fullName }
 
-        contactsList.value = list
+        userGroupResultsSubject.onNext(list)
 
-        Log.i("[Contacts] Processed usergroup ${userGroupModel.name}")
+        Log.i("processUserGroupResults Processed ${list.size} results")
     }
 
     private fun processMagicSearchResults(results: Array<SearchResult>) {
-        Log.i("[Contacts] Processing ${results.size} results")
-        contactsList.value.orEmpty().forEach(ContactViewModel::destroy)
+        Log.i("processMagicSearchResults Processing ${results.size} results")
 
         val list = arrayListOf<ContactViewModel>()
 
@@ -212,8 +284,85 @@ class ContactsListViewModel : ViewModel() {
             list.add(viewModel)
         }
 
-        // contactsList.value = list //WI25806
-        Log.i("[Contacts] Processed ${results.size} results")
+        list.sortBy { contactViewModel -> contactViewModel.fullName }
+
+        magicSearchResultsSubject.onNext(list)
+
+        Log.i("processMagicSearchResults Processed ${list.size} results")
+    }
+
+    private fun processContactSearchResults(results: List<SearchItemViewModel>) {
+        Log.i("processUserGroupResults Processing ${results.size} results")
+
+        val dimensionsEnvironmentService = DimensionsEnvironmentService.getInstance(
+            coreContext.context
+        )
+        val resourceBaseUrl = dimensionsEnvironmentService.getCurrentEnvironment()?.resourcesBlobUrl
+
+        val list = arrayListOf<ContactViewModel>()
+
+        for (searchItemViewModel in results) {
+            val friend = coreContext.core.createFriend()
+            if (searchItemViewModel.contact != null) {
+                // TODO how do we get name etc out of a contact?
+                val fieldDictionary = searchItemViewModel.contact.fields.associateBy(
+                    { it.id },
+                    { it.value }
+                )
+
+                friend.refKey = searchItemViewModel.contact.id
+
+                // TODO #25806 get name
+                friend.name = ""
+                friend.address = coreContext.core.interpretUrl(
+                    fieldDictionary[ContactItemModel.PHONE1]
+                        ?: fieldDictionary[ContactItemModel.PHONE2]
+                        ?: fieldDictionary[ContactItemModel.PHONE3]
+                        ?: fieldDictionary[ContactItemModel.PHONE4] ?: "",
+                    false
+                )
+
+                // TODO #25806 handle displayfields
+
+                if (fieldDictionary.keys.contains(ContactItemModel.AVATARURL)) {
+                    // TODO #25806 - When converted to ContactViewModel the photo doesn't appear to be taken into account
+                    friend.photo = resourceBaseUrl + "/images/" + fieldDictionary[ContactItemModel.AVATARURL]
+                }
+
+                // Disable short term presence
+                friend.isSubscribesEnabled = false
+                friend.incSubscribePolicy = SubscribePolicy.SPDeny
+
+                list.add(ContactViewModel(friend))
+            }
+
+            if (searchItemViewModel.user != null) {
+                friend.refKey = searchItemViewModel.user.id
+                friend.name = searchItemViewModel.user.name
+                friend.address = coreContext.core.interpretUrl(
+                    searchItemViewModel.user.presenceId,
+                    false
+                )
+                friend.starred = searchItemViewModel.user.isInFavourites
+
+                if (searchItemViewModel.user.profileImagePath.isNotBlank()) {
+                    // TODO #25806 - When converted to ContactViewModel the photo doesn't appear to be taken into account
+                    friend.photo = resourceBaseUrl + "/images/" + searchItemViewModel.user.profileImagePath
+                }
+
+                // Disable short term presence
+                friend.isSubscribesEnabled = false
+                friend.incSubscribePolicy = SubscribePolicy.SPDeny
+
+                list.add(ContactViewModel(friend))
+            }
+        }
+
+        list.sortBy { contactViewModel -> contactViewModel.fullName }
+
+        contactSearchResultsSubject.onNext(list)
+
+        Log.i("processUserGroupResults Processed ${results.size} results")
     }
 
     fun deleteContact(friend: Friend) {

@@ -3,15 +3,15 @@ package org.linphone.models.contact
 import com.google.gson.annotations.SerializedName
 
 data class FieldDefinitionModel(
-    @SerializedName("Id")
+    @SerializedName("id")
     var id: String = "",
 
-    @SerializedName("Name")
+    @SerializedName("name")
     var name: String = "",
 
-    @SerializedName("Validation")
+    @SerializedName("validation")
     var validation: String = "",
 
-    @SerializedName("DefinitionType")
+    @SerializedName("definitionType")
     var definitionType: String = ""
 )
