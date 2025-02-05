@@ -16,10 +16,6 @@ data class UserGroupModel(
     @SerializedName("contacts")
     var contacts: List<ContactItemModel> = emptyList()
 ) {
-
-    var isFavorites: Boolean = false // Calculated
-    var isAndroidContacts: Boolean = false
-
     override fun toString(): String {
         return name
     }

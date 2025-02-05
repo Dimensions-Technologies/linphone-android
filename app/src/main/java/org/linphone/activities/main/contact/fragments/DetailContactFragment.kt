@@ -131,6 +131,10 @@ class DetailContactFragment : GenericFragment<ContactDetailFragmentBinding>() {
             confirmContactRemoval()
         }
 
+        binding.setToggleFavouriteListener {
+            toggleFavorite()
+        }
+
         viewModel.onMessageToNotifyEvent.observe(
             viewLifecycleOwner
         ) {
@@ -138,6 +142,7 @@ class DetailContactFragment : GenericFragment<ContactDetailFragmentBinding>() {
                 (activity as MainActivity).showSnackBar(messageResourceId)
             }
         }
+
         viewModel.updateNumbersAndAddresses()
 
         startPostponedEnterTransition()
@@ -157,6 +162,10 @@ class DetailContactFragment : GenericFragment<ContactDetailFragmentBinding>() {
         if (this::viewModel.isInitialized) {
             viewModel.unregisterContactListener()
         }
+    }
+
+    private fun toggleFavorite() {
+        viewModel.toggleFavorite()
     }
 
     private fun confirmContactRemoval() {

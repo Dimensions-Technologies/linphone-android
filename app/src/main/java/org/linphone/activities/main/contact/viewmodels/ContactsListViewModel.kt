@@ -33,14 +33,9 @@ import org.linphone.LinphoneApplication.Companion.coreContext
 import org.linphone.LinphoneApplication.Companion.corePreferences
 import org.linphone.contact.ContactsUpdatedListenerStub
 import org.linphone.core.*
-import org.linphone.environment.DimensionsEnvironmentService
-import org.linphone.models.contact.ContactItemModel
-import org.linphone.models.search.SearchItemViewModel
-import org.linphone.models.usergroup.UserGroupModel
 import org.linphone.services.DirectoriesService
 import org.linphone.utils.Event
 import org.linphone.utils.Log
-
 class ContactsListViewModel : ViewModel() {
     val sipContactsSelected = MutableLiveData<Boolean>()
 
@@ -62,7 +57,7 @@ class ContactsListViewModel : ViewModel() {
 
     private var previousFilter = "NotSet"
 
-    val userGroup = MutableLiveData<UserGroupModel>()
+    val userGroup = MutableLiveData<UserGroupViewModel>()
 
     private val userGroupResultsSubject = BehaviorSubject.createDefault(
         arrayListOf<ContactViewModel>()
@@ -74,7 +69,6 @@ class ContactsListViewModel : ViewModel() {
         arrayListOf<ContactViewModel>()
     )
 
-    private val dialSearchText = DirectoriesService.getInstance(coreContext.context).dialSearchTextSubject
     private val userGroupResults = userGroupResultsSubject.startWithItem(arrayListOf())
     private val magicSearchResults = magicSearchResultsSubject.startWithItem(arrayListOf())
     private val contactSearchResults = contactSearchResultsSubject.startWithItem(arrayListOf())
@@ -84,7 +78,7 @@ class ContactsListViewModel : ViewModel() {
     private var combinedSearchSubscription: Disposable? = null
 
     private val combinedSearch = Observable.combineLatest(
-        dialSearchText,
+        DirectoriesService.getInstance(coreContext.context).dialSearchText,
         userGroupResults,
         magicSearchResults,
         contactSearchResults
@@ -181,8 +175,8 @@ class ContactsListViewModel : ViewModel() {
 
         val selectedUserGroup = userGroup.value
         if (filterValue.isBlank() && selectedUserGroup != null) {
-            // we have no search to display and we have a usergroup selected we should display the
-            // contents of the usergroup
+            // we have no search to display and we have a user group selected we should display the
+            // contents of the user group
             processUserGroupResults(selectedUserGroup)
         } else {
             val domain = if (sipContactsSelected.value == true) coreContext.core.defaultAccount?.params?.domain ?: "" else ""
@@ -218,151 +212,71 @@ class ContactsListViewModel : ViewModel() {
         }
     }
 
-    private fun processUserGroupResults(results: UserGroupModel) {
-        Log.i(
-            "processUserGroupResults Processing ${results.users.count() + results.contacts.count()} results"
-        )
+    private fun processUserGroupResults(results: UserGroupViewModel) {
+        CoroutineScope(Dispatchers.Main).launch {
+            Log.i(
+                "processUserGroupResults Processing ${results.count()} results"
+            )
+            val list = arrayListOf<ContactViewModel>()
 
-        val dimensionsEnvironmentService = DimensionsEnvironmentService.getInstance(
-            coreContext.context
-        )
-        val resourceBaseUrl = dimensionsEnvironmentService.getCurrentEnvironment()?.resourcesBlobUrl
-
-        val list = arrayListOf<ContactViewModel>()
-
-        for (user in results.users) {
-            val friend = coreContext.core.createFriend()
-            friend.refKey = user.id
-            friend.name = user.name
-            friend.address = coreContext.core.interpretUrl(user.presenceId, false)
-            friend.starred = user.isInFavourites
-
-            if (user.profileImagePath.isNotBlank()) {
-                // TODO #25806 - When converted to ContactViewModel the photo doesn't appear to be taken into account
-                friend.photo = resourceBaseUrl + "/images/" + user.profileImagePath
+            for (friend in results.friends) {
+                list.add(ContactViewModel(friend))
             }
 
-            // Disable short term presence
-            friend.isSubscribesEnabled = false
-            friend.incSubscribePolicy = SubscribePolicy.SPDeny
+            list.sortBy { contactViewModel -> contactViewModel.fullName }
 
-            list.add(ContactViewModel(friend))
+            userGroupResultsSubject.onNext(list)
+
+            Log.i("processUserGroupResults Processed ${list.size} results")
         }
-
-        // TODO #25806 - Handle Contacts
-//        for (contactItem in userGroupModel.contacts) {
-//            val fakeFriend = coreContext.contactsManager.createFriendFromContactItem(contactItem)
-//
-//            list.add(ContactViewModel(fakeFriend))
-//        }
-
-        list.sortBy { contactViewModel -> contactViewModel.fullName }
-
-        userGroupResultsSubject.onNext(list)
-
-        Log.i("processUserGroupResults Processed ${list.size} results")
     }
 
     private fun processMagicSearchResults(results: Array<SearchResult>) {
-        Log.i("processMagicSearchResults Processing ${results.size} results")
+        CoroutineScope(Dispatchers.Main).launch {
+            Log.i("processMagicSearchResults Processing ${results.size} results")
 
-        val list = arrayListOf<ContactViewModel>()
+            val list = arrayListOf<ContactViewModel>()
 
-        for (result in results) {
-            val friend = result.friend
+            for (result in results) {
+                val friend = result.friend
 
-            val viewModel = if (friend != null) {
-                ContactViewModel(friend)
-            } else {
-                Log.w("[Contacts] SearchResult [$result] has no Friend!")
-                val fakeFriend = coreContext.contactsManager.createFriendFromSearchResult(
-                    result
-                )
-                ContactViewModel(fakeFriend)
+                val viewModel = if (friend != null) {
+                    ContactViewModel(friend)
+                } else {
+                    Log.w("[Contacts] SearchResult [$result] has no Friend!")
+                    val fakeFriend = coreContext.contactsManager.createFriendFromSearchResult(
+                        result
+                    )
+                    ContactViewModel(fakeFriend)
+                }
+
+                list.add(viewModel)
             }
 
-            list.add(viewModel)
+            list.sortBy { contactViewModel -> contactViewModel.fullName }
+
+            magicSearchResultsSubject.onNext(list)
+
+            Log.i("processMagicSearchResults Processed ${list.size} results")
         }
-
-        list.sortBy { contactViewModel -> contactViewModel.fullName }
-
-        magicSearchResultsSubject.onNext(list)
-
-        Log.i("processMagicSearchResults Processed ${list.size} results")
     }
 
-    private fun processContactSearchResults(results: List<SearchItemViewModel>) {
-        Log.i("processUserGroupResults Processing ${results.size} results")
+    private fun processContactSearchResults(results: UserGroupViewModel) {
+        CoroutineScope(Dispatchers.Main).launch {
+            Log.i("processContactSearchResults Processing ${results.count()} results")
 
-        val dimensionsEnvironmentService = DimensionsEnvironmentService.getInstance(
-            coreContext.context
-        )
-        val resourceBaseUrl = dimensionsEnvironmentService.getCurrentEnvironment()?.resourcesBlobUrl
+            val list = arrayListOf<ContactViewModel>()
 
-        val list = arrayListOf<ContactViewModel>()
-
-        for (searchItemViewModel in results) {
-            val friend = coreContext.core.createFriend()
-            if (searchItemViewModel.contact != null) {
-                // TODO how do we get name etc out of a contact?
-                val fieldDictionary = searchItemViewModel.contact.fields.associateBy(
-                    { it.id },
-                    { it.value }
-                )
-
-                friend.refKey = searchItemViewModel.contact.id
-
-                // TODO #25806 get name
-                friend.name = ""
-                friend.address = coreContext.core.interpretUrl(
-                    fieldDictionary[ContactItemModel.PHONE1]
-                        ?: fieldDictionary[ContactItemModel.PHONE2]
-                        ?: fieldDictionary[ContactItemModel.PHONE3]
-                        ?: fieldDictionary[ContactItemModel.PHONE4] ?: "",
-                    false
-                )
-
-                // TODO #25806 handle displayfields
-
-                if (fieldDictionary.keys.contains(ContactItemModel.AVATARURL)) {
-                    // TODO #25806 - When converted to ContactViewModel the photo doesn't appear to be taken into account
-                    friend.photo = resourceBaseUrl + "/images/" + fieldDictionary[ContactItemModel.AVATARURL]
-                }
-
-                // Disable short term presence
-                friend.isSubscribesEnabled = false
-                friend.incSubscribePolicy = SubscribePolicy.SPDeny
-
+            for (friend in results.friends) {
                 list.add(ContactViewModel(friend))
             }
 
-            if (searchItemViewModel.user != null) {
-                friend.refKey = searchItemViewModel.user.id
-                friend.name = searchItemViewModel.user.name
-                friend.address = coreContext.core.interpretUrl(
-                    searchItemViewModel.user.presenceId,
-                    false
-                )
-                friend.starred = searchItemViewModel.user.isInFavourites
+            list.sortBy { contactViewModel -> contactViewModel.fullName }
 
-                if (searchItemViewModel.user.profileImagePath.isNotBlank()) {
-                    // TODO #25806 - When converted to ContactViewModel the photo doesn't appear to be taken into account
-                    friend.photo = resourceBaseUrl + "/images/" + searchItemViewModel.user.profileImagePath
-                }
+            contactSearchResultsSubject.onNext(list)
 
-                // Disable short term presence
-                friend.isSubscribesEnabled = false
-                friend.incSubscribePolicy = SubscribePolicy.SPDeny
-
-                list.add(ContactViewModel(friend))
-            }
+            Log.i("processUserGroupResults Processed ${results.count()} results")
         }
-
-        list.sortBy { contactViewModel -> contactViewModel.fullName }
-
-        contactSearchResultsSubject.onNext(list)
-
-        Log.i("processUserGroupResults Processed ${results.size} results")
     }
 
     fun deleteContact(friend: Friend) {
@@ -370,7 +284,7 @@ class ContactsListViewModel : ViewModel() {
 
         val id = friend.refKey
         if (id == null) {
-            Log.w("[Contacts] Friend has no refkey, can't delete it from native address book")
+            Log.w("[Contacts] Friend has no ref key, can't delete it from native address book")
             return
         }
 

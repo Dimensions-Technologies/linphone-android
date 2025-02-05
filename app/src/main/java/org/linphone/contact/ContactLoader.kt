@@ -38,8 +38,8 @@ import kotlinx.coroutines.withContext
 import org.linphone.LinphoneApplication.Companion.coreContext
 import org.linphone.LinphoneApplication.Companion.corePreferences
 import org.linphone.R
+import org.linphone.activities.main.contact.viewmodels.UserGroupViewModel
 import org.linphone.core.*
-import org.linphone.models.usergroup.GroupUserSummaryModel
 import org.linphone.models.usergroup.UserGroupModel
 import org.linphone.services.UserGroupService
 import org.linphone.utils.AppUtils
@@ -285,23 +285,19 @@ class ContactLoader : LoaderManager.LoaderCallbacks<Cursor> {
                     }
 
                     val userGroupModel = UserGroupModel()
-                    userGroupModel.name = "Android Contacts"
-                    userGroupModel.isAndroidContacts = true
-
-                    val userList = arrayListOf<GroupUserSummaryModel>()
-                    for (friendHash in friends) {
-                        val user = GroupUserSummaryModel()
-                        user.id = friendHash.key
-                        user.name = friendHash.value.name.toString()
-                        user.presenceId = friendHash.value.phoneNumbers.firstOrNull().toString()
-
-                        userList.add(user)
-                    }
-                    userGroupModel.users = userList
-
-                    UserGroupService.getInstance(coreContext.context).localContactsSubject.onNext(
-                        arrayListOf(userGroupModel)
+                    userGroupModel.id = UserGroupViewModel.ANDROID_CONTACTS_GROUP_NAME
+                    userGroupModel.name = coreContext.context.resources.getString(
+                        R.string.contacts_androidContactsGroup
                     )
+
+                    val userGroupViewModel = UserGroupViewModel(userGroupModel)
+                    for (friendHash in friends) {
+                        userGroupViewModel.friends.add(friendHash.value)
+
+                        UserGroupService.getInstance(coreContext.context).localContactsSubject.onNext(
+                            userGroupViewModel
+                        )
+                    }
 
                     withContext(Dispatchers.Main) {
                         if (core.globalState == GlobalState.Shutdown || core.globalState == GlobalState.Off) {

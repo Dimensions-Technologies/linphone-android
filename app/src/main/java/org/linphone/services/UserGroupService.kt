@@ -10,10 +10,15 @@ import io.reactivex.rxjava3.subjects.BehaviorSubject
 import io.reactivex.rxjava3.subjects.PublishSubject
 import java.util.concurrent.atomic.AtomicReference
 import org.linphone.R
+import org.linphone.activities.main.contact.viewmodels.UserGroupViewModel
 import org.linphone.authentication.AuthStateManager
 import org.linphone.authentication.AuthorizationServiceManager
+import org.linphone.core.Friend
 import org.linphone.environment.DimensionsEnvironmentService
 import org.linphone.models.AuthenticatedUser
+import org.linphone.models.contact.ContactItemModel
+import org.linphone.models.search.UserDataModel
+import org.linphone.models.usergroup.GroupUserSummaryModel
 import org.linphone.models.usergroup.UserGroupModel
 import org.linphone.utils.Log
 import retrofit2.Call
@@ -28,13 +33,15 @@ class UserGroupService(val context: Context) : DefaultLifecycleObserver {
     private val authStateManager = AuthStateManager.getInstance(context)
     private val destroy = PublishSubject.create<Unit>()
 
-    private val tenantUserGroupsSubject = BehaviorSubject.create<List<UserGroupModel>>()
-    private val personalUserGroupsSubject = BehaviorSubject.create<List<UserGroupModel>>()
-    val localContactsSubject = BehaviorSubject.create<List<UserGroupModel>>()
+    private val tenantUserGroupsSubject = BehaviorSubject.create<List<UserGroupViewModel>>()
+    private val personalUserGroupsSubject = BehaviorSubject.create<List<UserGroupViewModel>>()
+    val localContactsSubject = BehaviorSubject.create<UserGroupViewModel>()
+
+    var favouritesGroup: UserGroupViewModel? = null
 
     private var userSubscription: Disposable? = null
 
-    val userGroups: Observable<List<UserGroupModel>> = Observable.zip(
+    val userGroups: Observable<List<UserGroupViewModel>> = Observable.combineLatest(
         tenantUserGroupsSubject,
         personalUserGroupsSubject,
         localContactsSubject,
@@ -75,8 +82,7 @@ class UserGroupService(val context: Context) : DefaultLifecycleObserver {
                             listOf()
                         )
                     } else {
-                        fetchTenantUserGroups()
-                        fetchPersonalUserGroups()
+                        fetchUserGroups()
                     }
                 } catch (ex: Exception) {
                     Log.e(ex)
@@ -86,7 +92,6 @@ class UserGroupService(val context: Context) : DefaultLifecycleObserver {
 
     companion object {
         private const val TAG: String = "UserGroupService"
-        private const val FAVORITES_GROUP_NAME: String = "CosmosPersonalUserGroupFavoritesName"
 
         private val instance: AtomicReference<UserGroupService> =
             AtomicReference<UserGroupService>()
@@ -99,6 +104,11 @@ class UserGroupService(val context: Context) : DefaultLifecycleObserver {
             }
             return svc
         }
+    }
+
+    fun fetchUserGroups() {
+        fetchTenantUserGroups()
+        fetchPersonalUserGroups()
     }
 
     private fun fetchTenantUserGroups() {
@@ -119,7 +129,14 @@ class UserGroupService(val context: Context) : DefaultLifecycleObserver {
                     response: Response<List<UserGroupModel>>
                 ) {
                     Timber.d("Got tenant user groups from API")
-                    response.body()?.let { tenantUserGroupsSubject.onNext(it) }
+
+                    val userGroupViewModels = arrayListOf<UserGroupViewModel>()
+                    response.body()?.let {
+                        for (userGroupModel in it) {
+                            userGroupViewModels.add(UserGroupViewModel(userGroupModel))
+                        }
+                    }
+                    tenantUserGroupsSubject.onNext(userGroupViewModels)
                 }
             })
     }
@@ -141,32 +158,64 @@ class UserGroupService(val context: Context) : DefaultLifecycleObserver {
                     call: Call<List<UserGroupModel>>,
                     response: Response<List<UserGroupModel>>
                 ) {
-                    Timber.d("Got tenant personal user groups from API")
-                    response.body()?.let { personalUserGroupsSubject.onNext(it) }
+                    Timber.d("Got personal user groups from API")
+
+                    val userGroupViewModels = arrayListOf<UserGroupViewModel>()
+                    response.body()?.let {
+                        for (userGroupModel in it) {
+                            userGroupViewModels.add(UserGroupViewModel(userGroupModel))
+                        }
+                    }
+                    personalUserGroupsSubject.onNext(userGroupViewModels)
                 }
             })
     }
 
+    private fun setIsFavorite(friend: Friend, isFavorite: Boolean) {
+        val user = friend.userData as? GroupUserSummaryModel
+        if (user != null) {
+            user.isInFavourites = isFavorite
+        }
+
+        val contact = friend.userData as? ContactItemModel
+        if (contact != null) {
+            contact.isInFavourites = isFavorite
+        }
+
+        val searchItem = friend.userData as? UserDataModel
+        if (searchItem != null) {
+            searchItem.isInFavourites = isFavorite
+        }
+    }
+
     private fun mergeUserGroups(
-        tenantUserGroups: List<UserGroupModel>,
-        personalUserGroups: List<UserGroupModel>,
-        localContactsUserGroup: List<UserGroupModel>
-    ): List<UserGroupModel> {
-        val favoriteGroup = personalUserGroups.firstOrNull { x -> x.name == FAVORITES_GROUP_NAME }
-        if (favoriteGroup != null) {
-            favoriteGroup.name = context.resources.getString(R.string.contacts_favoritesGroup)
-            favoriteGroup.isFavorites = true
+        tenantUserGroups: List<UserGroupViewModel>,
+        personalUserGroups: List<UserGroupViewModel>,
+        localContactsUserGroup: UserGroupViewModel
+    ): List<UserGroupViewModel> {
+        val favorites = personalUserGroups.firstOrNull { x ->
+            x.name == context.resources.getString(
+                R.string.contacts_favoritesGroup
+            )
+        }
+        if (favorites != null) {
+            favorites.friends.forEach { f -> setIsFavorite(f, true) }
 
             tenantUserGroups.forEach { group ->
-                group.users.forEach { u ->
-                    if (favoriteGroup.users.any { fu -> fu.id == u.id }) {
-                        u.isInFavourites = true
-                    }
+                group.friends.forEach { f ->
+                    setIsFavorite(f, favorites.friends.any { fu -> fu.refKey == f.refKey })
                 }
             }
         }
 
-        val sortedUserGroups = (personalUserGroups + tenantUserGroups).sortedBy { x -> x.name }
+        favouritesGroup = favorites
+
+        // Put favourites at the top, then order the rest alpha ascending with contacts at the end
+        val sortedUserGroups = (personalUserGroups + tenantUserGroups).sortedWith(
+            compareBy<UserGroupViewModel> {
+                !it.isFavorites
+            }.thenBy { it.name }
+        )
 
         return sortedUserGroups + localContactsUserGroup
     }

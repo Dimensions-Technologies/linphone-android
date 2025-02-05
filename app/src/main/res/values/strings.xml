@@ -156,6 +156,19 @@
     <string name="contacts_ldap_query_more_results_available">More results are available, refine your search</string>
     <string name="contacts_new_contact_wont_be_visible_warning_dialog">You are about to create a new contact without a SIP URI nor a phone number, thus it won\'t be visible in &appName;.\n\nDo you want to create it anyway?</string>
     <string name="contacts_favoritesGroup">Favorites</string>
+    <string name="contacts_androidContactsGroup">Android Contacts</string>
+    <string name="contacts_searchResultsGroup">Search Results</string>
+    <string name="contacts_user">User</string>
+    <string name="content_description_is_favourite">This is one of your favorite contacts</string>
+    <string name="contacts_failedToAddContactToFavorites">Failed to add contact to favourites</string>
+    <string name="contacts_successfullyAddedContactToFavorites">Successfully added contact to favourites</string>
+    <string name="contacts_failedToRemoveContactFromFavorites">Failed to remove contact from favourites</string>
+    <string name="contacts_successfullyRemovedContactFromFavorites">Successfully removed contact from favourites</string>
+    <string name="contacts_failedToAddUserToFavorites">Failed to add user to favourites</string>
+    <string name="contacts_successfullyAddedUserToFavorites">Successfully added user to favourites</string>
+    <string name="contacts_failedToRemoveUserFromFavorites">Failed to remove user from favourites</string>
+    <string name="contacts_successfullyRemovedUserFromFavorites">Successfully removed user from favourites</string>
+
 
     <!-- Dialer -->
     <string name="dialer_address_bar_hint">Enter a number or an address</string>

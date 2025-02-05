@@ -43,6 +43,7 @@ import org.linphone.activities.clearDisplayedContact
 import org.linphone.activities.main.MainActivity
 import org.linphone.activities.main.contact.adapters.ContactsListAdapter
 import org.linphone.activities.main.contact.viewmodels.ContactsListViewModel
+import org.linphone.activities.main.contact.viewmodels.UserGroupViewModel
 import org.linphone.activities.main.fragments.MasterFragment
 import org.linphone.activities.main.viewmodels.DialogViewModel
 import org.linphone.activities.navigateToContact
@@ -50,7 +51,6 @@ import org.linphone.activities.navigateToContactEditor
 import org.linphone.core.Factory
 import org.linphone.core.Friend
 import org.linphone.databinding.ContactDimensionsFragmentBinding
-import org.linphone.models.usergroup.UserGroupModel
 import org.linphone.services.UserGroupService
 import org.linphone.utils.*
 import org.linphone.utils.Log
@@ -362,7 +362,7 @@ class DimensionsContactsFragment : MasterFragment<ContactDimensionsFragmentBindi
             }
 
             override fun onItemSelected(p0: AdapterView<*>?, p1: View?, position: Int, p3: Long) {
-                showUserGroup(usergroupSpinner.selectedItem as UserGroupModel)
+                showUserGroup(usergroupSpinner.selectedItem as UserGroupViewModel)
             }
         }
 
@@ -401,7 +401,7 @@ class DimensionsContactsFragment : MasterFragment<ContactDimensionsFragmentBindi
         listViewModel.updateContactsList(true)
     }
 
-    private fun updateSpinnerAdapter(userGroups: List<UserGroupModel>) {
+    private fun updateSpinnerAdapter(userGroups: List<UserGroupViewModel>) {
         val spinner: Spinner = requireView().findViewById(R.id.userGroupSpinner)
         val adapter = ArrayAdapter(
             requireContext(),
@@ -412,7 +412,7 @@ class DimensionsContactsFragment : MasterFragment<ContactDimensionsFragmentBindi
         spinner.adapter = adapter
     }
 
-    private fun showUserGroup(userGroupModel: UserGroupModel) {
+    private fun showUserGroup(userGroupModel: UserGroupViewModel) {
         listViewModel.userGroup.value = userGroupModel
     }
 

@@ -13,6 +13,10 @@
             name="editClickListener"
             type="android.view.View.OnClickListener"/>
         <variable
+            name="toggleFavouriteListener"
+            type="android.view.View.OnClickListener"/>
+
+        <variable
             name="viewModel"
             type="org.linphone.activities.main.contact.viewmodels.ContactViewModel" />
         <variable
@@ -47,27 +51,38 @@
                 android:layout_height="match_parent"
                 android:layout_weight="0.4" />
 
-            <ImageView
-                android:onClick="@{editClickListener}"
-                android:visibility="@{viewModel.isNativeContact &amp;&amp; !viewModel.readOnlyNativeAddressBook ? View.VISIBLE : View.INVISIBLE}"
-                android:contentDescription="@string/content_description_edit_contact"
-                android:layout_width="0dp"
-                android:layout_height="match_parent"
-                android:layout_weight="0.2"
-                android:background="?attr/button_background_drawable"
-                android:padding="15dp"
-                android:src="@drawable/icon_edit" />
+<!--            <ImageView-->
+<!--                android:onClick="@{editClickListener}"-->
+<!--                android:visibility="@{viewModel.isNativeContact &amp;&amp; !viewModel.readOnlyNativeAddressBook ? View.VISIBLE : View.INVISIBLE}"-->
+<!--                android:contentDescription="@string/content_description_edit_contact"-->
+<!--                android:layout_width="0dp"-->
+<!--                android:layout_height="match_parent"-->
+<!--                android:layout_weight="0.2"-->
+<!--                android:background="?attr/button_background_drawable"-->
+<!--                android:padding="15dp"-->
+<!--                android:src="@drawable/icon_edit" />-->
+
+<!--            <ImageView-->
+<!--                android:onClick="@{deleteClickListener}"-->
+<!--                android:visibility="@{viewModel.isNativeContact &amp;&amp; !viewModel.readOnlyNativeAddressBook ? View.VISIBLE : View.INVISIBLE}"-->
+<!--                android:contentDescription="@string/content_description_delete_contact"-->
+<!--                android:layout_width="0dp"-->
+<!--                android:layout_height="match_parent"-->
+<!--                android:layout_weight="0.2"-->
+<!--                android:background="?attr/button_background_drawable"-->
+<!--                android:padding="15dp"-->
+<!--                android:src="@drawable/icon_delete" />-->
 
             <ImageView
-                android:onClick="@{deleteClickListener}"
-                android:visibility="@{viewModel.isNativeContact &amp;&amp; !viewModel.readOnlyNativeAddressBook ? View.VISIBLE : View.INVISIBLE}"
-                android:contentDescription="@string/content_description_delete_contact"
+                android:onClick="@{toggleFavouriteListener}"
+                android:contentDescription="@string/content_description_is_favourite"
                 android:layout_width="0dp"
                 android:layout_height="match_parent"
                 android:layout_weight="0.2"
                 android:background="?attr/button_background_drawable"
                 android:padding="15dp"
-                android:src="@drawable/icon_delete" />
+                android:src="@{viewModel.isFavourite ? @drawable/icon_star_filled : @drawable/icon_star}"
+                android:alpha="@{viewModel.canBeFavourite ? 1.0f : 0.25f }"/>
 
         </LinearLayout>
 
@@ -134,6 +149,14 @@
                     android:orientation="vertical"
                     app:entries="@{viewModel.numbersAndAddresses}"
                     app:layout="@{@layout/contact_detail_cell}"/>
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:paddingTop="10dp"
+                    android:orientation="vertical"
+                    app:entries="@{viewModel.additionalData}"
+                    app:layout="@{@layout/contact_additional_detail_cell}"/>
 
             </LinearLayout>
 
