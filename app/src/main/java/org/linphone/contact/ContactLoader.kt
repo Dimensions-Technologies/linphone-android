@@ -231,7 +231,10 @@ class ContactLoader : LoaderManager.LoaderCallbacks<Cursor> {
                                             } == null
                                         ) {
                                             val phoneNumber = Factory.instance()
-                                                .createFriendPhoneNumber(number, label)
+                                                .createFriendPhoneNumber(
+                                                    number,
+                                                    label
+                                                )
                                             friend.addPhoneNumberWithLabel(phoneNumber)
                                             friendsPhoneNumbers.add(number)
                                         }

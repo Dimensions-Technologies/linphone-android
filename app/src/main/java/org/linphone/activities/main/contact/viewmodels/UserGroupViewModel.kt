@@ -3,9 +3,9 @@ package org.linphone.activities.main.contact.viewmodels
 import org.linphone.LinphoneApplication.Companion.coreContext
 import org.linphone.R
 import org.linphone.activities.main.contact.data.ContactAdditionalData
+import org.linphone.core.Factory
 import org.linphone.core.Friend
 import org.linphone.core.SubscribePolicy
-import org.linphone.environment.DimensionsEnvironmentService
 import org.linphone.models.contact.ContactItemModel
 import org.linphone.models.search.UserDataModel
 import org.linphone.models.usergroup.GroupUserSummaryModel
@@ -24,10 +24,10 @@ class UserGroupViewModel(
         const val FAVORITES_GROUP_NAME: String = "CosmosPersonalUserGroupFavoritesName"
         const val SEARCH_RESULTS_GROUP_NAME: String = "SearchResultsGroupName"
         const val ANDROID_CONTACTS_GROUP_NAME: String = "AndroidContactsGroupName"
+        const val EMPTY_USERGROUP_ID: String = "EMPTY"
 
         fun createFriendFromGroupUserSummaryModel(
-            user: GroupUserSummaryModel,
-            resourceBaseUrl: String?
+            user: GroupUserSummaryModel
         ): Friend {
             val friend = coreContext.core.createFriend()
 
@@ -37,11 +37,16 @@ class UserGroupViewModel(
                 R.string.contacts_user
             )
 
-            friend.addPhoneNumber(user.presenceId)
+            val phoneNumberWithLabel = Factory.instance()
+                .createFriendPhoneNumber(
+                    user.presenceId,
+                    coreContext.context.resources.getString(R.string.contacts_phoneType_work)
+                )
+            friend.addPhoneNumberWithLabel(phoneNumberWithLabel)
 
             if (user.profileImagePath.isNotBlank()) {
                 // TODO #25806 - When converted to ContactViewModel the photo doesn't appear to be taken into account
-                friend.photo = resourceBaseUrl + "/images/" + user.profileImagePath
+                friend.photo = user.profileImagePath
             }
 
             // Disable short term presence
@@ -54,8 +59,7 @@ class UserGroupViewModel(
         }
 
         private fun createFriendFromContactItemModel(
-            contactItemModel: ContactItemModel,
-            resourceBaseUrl: String?
+            contactItemModel: ContactItemModel
         ): Friend {
             val friend = coreContext.core.createFriend()
 
@@ -83,12 +87,18 @@ class UserGroupViewModel(
             phoneNumbers.add(fieldDictionary[ContactItemModel.PHONE4] ?: "")
 
             for (phoneNumber in phoneNumbers.filter { x -> x.isNotBlank() }) {
-                friend.addPhoneNumber(phoneNumber)
+                val phoneNumberWithLabel = Factory.instance()
+                    .createFriendPhoneNumber(
+                        phoneNumber,
+                        coreContext.context.resources.getString(R.string.contacts_phoneType_work)
+                    )
+
+                friend.addPhoneNumberWithLabel(phoneNumberWithLabel)
             }
 
             if (fieldDictionary.keys.contains(ContactItemModel.AVATAR_URL)) {
                 // TODO #25806 - When converted to ContactViewModel the photo doesn't appear to be taken into account
-                friend.photo = resourceBaseUrl + "/images/" + fieldDictionary[ContactItemModel.AVATAR_URL]
+                friend.photo = fieldDictionary[ContactItemModel.AVATAR_URL]
             }
 
             // Disable short term presence
@@ -107,21 +117,38 @@ class UserGroupViewModel(
                     "avatar"
                 )
 
-                for (displayField in contactDirectoryModel.displayFields) {
-                    if (fieldExclusions.contains(displayField)) continue
+//          NOTE:IOS uses all the fields?
+//                for (displayField in contactDirectoryModel.displayFields) {
+//                    if (fieldExclusions.contains(displayField)) continue
+//
+//                    val fieldDefinition = contactDirectoryModel.fields.singleOrNull { x -> x.id == displayField }
+//                    if (fieldDefinition != null) {
+//                        val fieldValue = fieldDictionary[fieldDefinition.id]
+//                        if (fieldValue != null) {
+//                            additionalData.add(
+//                                ContactAdditionalData(
+//                                    fieldDefinition.id,
+//                                    fieldDefinition.name,
+//                                    fieldValue
+//                                )
+//                            )
+//                        }
+//                    }
+//                }
 
-                    val fieldDefinition = contactDirectoryModel.fields.singleOrNull { x -> x.id == displayField }
-                    if (fieldDefinition != null) {
-                        val fieldValue = fieldDictionary[fieldDefinition.id]
-                        if (fieldValue != null) {
-                            additionalData.add(
-                                ContactAdditionalData(
-                                    fieldDefinition.id,
-                                    fieldDefinition.name,
-                                    fieldValue
-                                )
+                for (fieldDefinition in contactDirectoryModel.fields) {
+                    if (fieldExclusions.contains(fieldDefinition.id)) continue
+
+                    val fieldValue = fieldDictionary[fieldDefinition.id]
+                    if (fieldValue != null) {
+                        additionalData.add(
+                            ContactAdditionalData(
+                                fieldDefinition.id,
+                                fieldDefinition.name,
+                                fieldValue,
+                                fieldDefinition.definitionType
                             )
-                        }
+                        )
                     }
                 }
 
@@ -146,7 +173,9 @@ class UserGroupViewModel(
         }
 
         fun empty(): UserGroupViewModel {
-            return UserGroupViewModel(UserGroupModel("empty", "empty", emptyList(), emptyList()))
+            return UserGroupViewModel(
+                UserGroupModel(EMPTY_USERGROUP_ID, EMPTY_USERGROUP_ID, emptyList(), emptyList())
+            )
         }
     }
 
@@ -160,16 +189,12 @@ class UserGroupViewModel(
                 isFavorites = true
             }
 
-            val resourceBaseUrl = DimensionsEnvironmentService
-                .getInstance(coreContext.context)
-                .getCurrentEnvironment()?.resourcesBlobUrl
-
             userGroupModel.users.forEach {
-                friends.add(createFriendFromGroupUserSummaryModel(it, resourceBaseUrl))
+                friends.add(createFriendFromGroupUserSummaryModel(it))
             }
 
             userGroupModel.contacts.forEach {
-                friends.add(createFriendFromContactItemModel(it, resourceBaseUrl))
+                friends.add(createFriendFromContactItemModel(it))
             }
         }
     }

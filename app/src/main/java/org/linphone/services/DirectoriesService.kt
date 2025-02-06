@@ -39,7 +39,7 @@ class DirectoriesService(val context: Context) : DefaultLifecycleObserver {
 
     private var contactDirectoriesSubscription: Disposable? = null
     val contactDirectoriesSubject = BehaviorSubject.create<List<ContactDirectoryModel>>()
-    private val contactDirectories = contactDirectoriesSubject.map { x -> x }
+    val contactDirectories = contactDirectoriesSubject.map { x -> x }
 
     private var allUsersSubscription: Disposable? = null
     private val allUsersSubject = BehaviorSubject.create<List<UserInfo>>()
@@ -56,7 +56,7 @@ class DirectoriesService(val context: Context) : DefaultLifecycleObserver {
             .switchMap { text ->
                 if (text.length >= 3) {
                     Log.i("searchResults($text)")
-                    search(text)
+                    search(PhoneFormatterService.getInstance(context).getSearchNumber(text))
                 } else {
                     Observable.just(UserGroupViewModel.empty())
                 }

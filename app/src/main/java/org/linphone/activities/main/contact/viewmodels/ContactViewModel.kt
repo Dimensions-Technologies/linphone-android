@@ -39,6 +39,7 @@ import org.linphone.contact.hasLongTermPresence
 import org.linphone.core.*
 import org.linphone.models.search.UserDataModel
 import org.linphone.services.DirectoriesService
+import org.linphone.services.PhoneFormatterService
 import org.linphone.utils.Event
 import org.linphone.utils.LinphoneUtils
 import org.linphone.utils.Log
@@ -257,7 +258,9 @@ class ContactViewModel(friend: Friend) : MessageNotifierViewModel(), ContactData
             val noa = ContactNumberOrAddressData(
                 address,
                 hasPresence,
-                displayValue,
+                PhoneFormatterService.getInstance(coreContext.context).formatPhoneNumber(
+                    displayValue
+                ),
                 showSecureChat = secureChatAllowed,
                 listener = listener
             )
@@ -293,13 +296,14 @@ class ContactViewModel(friend: Friend) : MessageNotifierViewModel(), ContactData
                 coreContext.context.resources,
                 phoneNumber.label ?: ""
             )
+
             val noa = ContactNumberOrAddressData(
                 address,
                 hasPresence,
-                number,
+                PhoneFormatterService.getInstance(coreContext.context).formatPhoneNumber(number),
                 isSip = false,
                 showSecureChat = secureChatAllowed,
-                typeLabel = label,
+                typeLabel = "($label)",
                 listener = listener
             )
             list.add(noa)
@@ -343,5 +347,17 @@ class ContactViewModel(friend: Friend) : MessageNotifierViewModel(), ContactData
             userData.isInFavourites = true
             isFavourite.postValue(true)
         }
+    }
+
+    fun startCall() {
+        val numbersAndAddresses = numbersAndAddresses.value
+        if (numbersAndAddresses != null && numbersAndAddresses.any()) {
+            numbersAndAddresses.first().startCall()
+        }
+    }
+
+    fun canStartCall(): Boolean {
+        val numbersAndAddresses = numbersAndAddresses.value
+        return numbersAndAddresses != null && numbersAndAddresses.any()
     }
 }
