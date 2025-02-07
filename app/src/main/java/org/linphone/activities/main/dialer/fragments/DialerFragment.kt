@@ -71,6 +71,17 @@ class DialerFragment : SecureFragment<DialerFragmentBinding>() {
         viewModel = ViewModelProvider(this)[DialerViewModel::class.java]
         binding.viewModel = viewModel
 
+        // FIXME:get rid of this accessibility nag warning
+//        val editText = view.findViewById<EditText>(org.linphone.R.id.sip_uri_input)
+//        editText.setOnTouchListener { v, event ->
+//            v.onTouchEvent(event)
+//            val imm = v.context.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+//            if (imm != null) {
+//                imm.hideSoftInputFromWindow(v.windowToken, 0)
+//            }
+//            true
+//        }
+
         useMaterialSharedAxisXForwardAnimation = false
         sharedViewModel.updateDialerAnimationsBasedOnDestination.observe(
             viewLifecycleOwner
