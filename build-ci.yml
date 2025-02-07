@@ -54,6 +54,7 @@ steps:
   displayName: "Build App"
   inputs:
     gradleWrapperFile: 'gradlew'
+    options: 'org.gradle.jvmargs=-Xms512m -Xmx2048m'
     tasks: 'bundleRelease'
     publishJUnitResults: false
     javaHomeOption: 'JDKVersion'
