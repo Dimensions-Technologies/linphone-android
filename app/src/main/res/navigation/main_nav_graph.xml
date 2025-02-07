@@ -36,33 +36,6 @@
     <action
         android:id="@+id/action_global_masterChatRoomsFragment"
         app:destination="@id/masterChatRoomsFragment" />
-<!--    <fragment-->
-<!--        android:id="@+id/masterContactsFragment"-->
-<!--        android:name="org.linphone.activities.main.contact.fragments.MasterContactsFragment"-->
-<!--        android:label="MasterContactsFragment"-->
-<!--        tools:layout="@layout/contact_master_fragment" >-->
-<!--        <action-->
-<!--            android:id="@+id/action_masterContactsFragment_to_masterCallLogsFragment"-->
-<!--            app:destination="@id/masterCallLogsFragment" />-->
-<!--        <action-->
-<!--            android:id="@+id/action_masterContactsFragment_to_dialerFragment"-->
-<!--            app:destination="@id/dialerFragment" />-->
-<!--        <action-->
-<!--            android:id="@+id/action_masterContactsFragment_to_masterChatRoomsFragment"-->
-<!--            app:destination="@id/masterChatRoomsFragment" />-->
-<!--        <deepLink-->
-<!--            app:uri="linphone-android://contact/view/{id}"-->
-<!--            android:autoVerify="true" />-->
-<!--        <deepLink-->
-<!--            app:uri="linphone-android://contact/view-friend/{address}"-->
-<!--            android:autoVerify="true" />-->
-<!--        <deepLink-->
-<!--            app:uri="linphone-android://contact/new/{sipUri}"-->
-<!--            android:autoVerify="true" />-->
-<!--    </fragment>-->
-<!--    <action-->
-<!--        android:id="@+id/action_global_masterContactsFragment"-->
-<!--        app:destination="@id/masterContactsFragment" />-->
     <fragment
         android:id="@+id/masterCallLogsFragment"
         android:name="org.linphone.activities.main.history.fragments.MasterCallLogsFragment"

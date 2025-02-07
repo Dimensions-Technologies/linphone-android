@@ -90,28 +90,6 @@ class UserGroupService(val context: Context) : DefaultLifecycleObserver {
                     Log.e(ex)
                 }
             }
-
-//        userSubscription = authStateManager.user
-//            .distinctUntilChanged { user -> user.id ?: "" }
-//            .takeUntil(destroy)
-//            .subscribe { user ->
-//                try {
-//                    Log.d("ContactDirectory user: " + user.name)
-//                    if ((user.id == null || user.id == AuthenticatedUser.UNINTIALIZED_AUTHENTICATEDUSER) && tenantUserGroupsSubject.value != null) {
-//                        tenantUserGroupsSubject.onNext(
-//                            listOf()
-//                        )
-//
-//                        personalUserGroupsSubject.onNext(
-//                            listOf()
-//                        )
-//                    } else {
-//                        fetchUserGroups()
-//                    }
-//                } catch (ex: Exception) {
-//                    Log.e(ex)
-//                }
-//            }
     }
 
     companion object {

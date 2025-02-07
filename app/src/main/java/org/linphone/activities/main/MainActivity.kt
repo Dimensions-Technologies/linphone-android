@@ -49,14 +49,17 @@ import coil.imageLoader
 import com.google.android.material.snackbar.Snackbar
 import com.google.gson.Gson
 import io.reactivex.rxjava3.subjects.PublishSubject
+import kotlinx.coroutines.CoroutineScope
 import java.io.UnsupportedEncodingException
 import java.net.URLDecoder
 import kotlin.math.abs
 import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.rx3.awaitFirst
 import net.openid.appauth.AuthorizationException
 import net.openid.appauth.AuthorizationResponse
 import net.openid.appauth.AuthorizationService
@@ -286,17 +289,6 @@ class MainActivity : GenericActivity(), SnackBarActivity, NavController.OnDestin
                 exchangeAuthorizationCode(response)
             }
         }
-
-//        CoroutineScope(Dispatchers.IO).launch {
-//            val user = UserService.getInstance(applicationContext).user.awaitFirst()
-//
-//            Log.i("User::" + user.displayName)
-//            Log.i("Permissions::" + Gson().toJson(user.permissions))
-//
-//            if (!user.hasClientPermission()) {
-//                redirectToLogin("You do not have permission to use the client.")
-//            }
-//        }
 
         // TODO this may bleed on subsequent logins
         val userSubscription = UserService.getInstance(applicationContext).user
