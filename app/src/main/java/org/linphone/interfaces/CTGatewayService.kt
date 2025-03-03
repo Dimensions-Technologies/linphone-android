@@ -1,5 +1,6 @@
 package org.linphone.interfaces
 
+import io.reactivex.rxjava3.core.Observable
 import okhttp3.RequestBody
 import org.linphone.models.TenantBrandingDefinition
 import org.linphone.models.UserDevice
@@ -7,6 +8,8 @@ import org.linphone.models.UserInfo
 import org.linphone.models.contact.ContactDirectoryModel
 import org.linphone.models.contact.ContactGroupItem
 import org.linphone.models.contact.ContactItemModel
+import org.linphone.models.realtime.PresenceProfile
+import org.linphone.models.realtime.SetPresenceModel
 import org.linphone.models.usergroup.UserGroupModel
 import retrofit2.Call
 import retrofit2.Response
@@ -78,4 +81,15 @@ interface CTGatewayService {
         @Path("id") directoryId: String,
         @Path("contactId") contactId: String
     ): Call<Void>
+
+    @GET("api/v1.0/contactdirectories/{directoryId}/items")
+    fun doGetPresenceProfiles(
+        @Path("userId") userId: String
+    ): Call<List<PresenceProfile>>
+
+    @PUT("api/v1.0/users/{userId}/currentpresence")
+    fun doSetPresence(
+        @Path("userId") userId: String,
+        @Body setPresenceModel: SetPresenceModel
+    ): Observable<Unit>
 }
