@@ -119,19 +119,23 @@ open class StatusViewModel : ViewModel() {
 
         presenceSubscription = PresenceService.getInstance(coreContext.context).currentUserPresence.subscribe(
             { p: Any ->
-                // Log.i("presenceInfo: " + GsonBuilder().create().toJson(p))
+                Log.i("presenceInfo: " + GsonBuilder().create().toJson(p))
 
                 if (p is Optional<*>) {
                     if (p.isPresent()) {
                         val eventData = p.get()
                         if (eventData is PresenceEventData) {
-                            dimensionsPresenceStatus.value = PresenceIconState.toConsolidatedPresence(
-                                eventData.iconState
+                            dimensionsPresenceStatus.postValue(
+                                PresenceIconState.toConsolidatedPresence(
+                                    PresenceIconState.fromString(eventData.iconState)
+                                )
                             )
                         }
                     } else {
-                        dimensionsPresenceStatus.value = PresenceIconState.toConsolidatedPresence(
-                            null
+                        dimensionsPresenceStatus.postValue(
+                            PresenceIconState.toConsolidatedPresence(
+                                null
+                            )
                         )
                     }
                 }

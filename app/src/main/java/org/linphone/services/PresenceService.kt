@@ -14,7 +14,7 @@ import org.linphone.authentication.AuthStateManager
 import org.linphone.authentication.AuthorizationServiceManager
 import org.linphone.environment.DimensionsEnvironmentService
 import org.linphone.models.AuthenticatedUser
-import org.linphone.models.realtime.RealtimeEvent
+import org.linphone.models.realtime.RealtimeEventPresence
 import org.linphone.models.realtime.RealtimeEventType
 import org.linphone.models.realtime.SetPresenceModel
 import org.linphone.services.realtime.RealtimeUserService
@@ -52,7 +52,7 @@ class PresenceService(val context: Context) : DefaultLifecycleObserver {
     }
 
     private val presenceObservables = mutableMapOf<String, PresenceObservable>()
-    private val presenceEventSubject: ReplaySubject<RealtimeEvent<PresenceEventData>> =
+    private val presenceEventSubject: ReplaySubject<RealtimeEventPresence> =
         ReplaySubject.create(1)
 
     val currentUserPresence: Observable<Optional<PresenceEventData>> = authStateManager.user
@@ -68,18 +68,18 @@ class PresenceService(val context: Context) : DefaultLifecycleObserver {
         }
 
     init {
-        realtimeUserService.hubConnection.on(RealtimeEventType.PresenceEvent.eventName, { event: RealtimeEvent<PresenceEventData> ->
+        realtimeUserService.hubConnection.on(RealtimeEventType.PresenceEvent.eventName, { event: RealtimeEventPresence ->
             Log.d(RealtimeEventType.PresenceEvent.eventName, event)
 
             try {
                 val observable = presenceObservables[event.userId]
                 observable?.subject?.onNext(event.data)
 
-                presenceEventSubject.onNext(event)
+                // presenceEventSubject.onNext(event)
             } catch (e: Exception) {
                 Log.e(RealtimeEventType.PresenceEvent.eventName, e)
             }
-        }, RealtimeEvent::class.java)
+        }, RealtimeEventPresence::class.java)
     }
 
     fun setPresenceState(presence: SetPresenceModel): Observable<Unit> {

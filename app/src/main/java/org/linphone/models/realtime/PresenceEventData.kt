@@ -1,10 +1,10 @@
+import androidx.annotation.Keep
 import com.google.gson.annotations.SerializedName
 import org.linphone.models.realtime.CallRoutingState
 import org.linphone.models.realtime.ForwardState
-import org.linphone.models.realtime.PresenceIconState
-import org.linphone.models.realtime.RealtimeEventData
 import org.linphone.models.realtime.RoutingState
 
+@Keep
 class PresenceEventData(
     @SerializedName("availability")
     val availability: String,
@@ -22,10 +22,10 @@ class PresenceEventData(
     val hideFromSelection: Boolean,
 
     @SerializedName("iconState")
-    val iconState: PresenceIconState?,
+    val iconState: String,
 
     @SerializedName("message")
-    val message: String,
+    val message: String?,
 
     @SerializedName("stateId")
     val stateId: String,
@@ -35,4 +35,4 @@ class PresenceEventData(
 
     @SerializedName("updatePersonalRoutingGroup")
     val updatePersonalRoutingGroup: Boolean
-) : RealtimeEventData()
+)
