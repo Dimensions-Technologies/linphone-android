@@ -42,7 +42,11 @@ open class RealtimeBaseService(context: Context, private val hubSuffix: String) 
 
     private var currentEnvironmentSubscription: Disposable? =
         environmentService.currentEnvironmentObservable.subscribe {
-            hubConnection = createHubConnection()
+            try {
+                hubConnection = createHubConnection()
+            } catch (e: Exception) {
+                Log.e("currentEnvironmentSubscription", e)
+            }
         }
 
     var hubConnection: HubConnection = createHubConnection()

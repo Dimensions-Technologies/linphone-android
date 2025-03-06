@@ -1039,4 +1039,7 @@
     <string name="statustext_available_acd">Waiting</string>
     <string name="statustext_unavailable_acd">Not taking calls</string>
     <string name="statustext_busy_call">On a call</string>
+    <string name="presence_apply">Apply</string>
+    <string name="presenceservice_presence_updated">Presence updated</string>
+    <string name="presenceservice_presence_update_failed">There was a problem updating your presence, please try again</string>
 </resources>

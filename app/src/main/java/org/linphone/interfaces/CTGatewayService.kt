@@ -1,6 +1,5 @@
 package org.linphone.interfaces
 
-import io.reactivex.rxjava3.core.Observable
 import okhttp3.RequestBody
 import org.linphone.models.TenantBrandingDefinition
 import org.linphone.models.UserDevice
@@ -82,7 +81,7 @@ interface CTGatewayService {
         @Path("contactId") contactId: String
     ): Call<Void>
 
-    @GET("api/v1.0/contactdirectories/{directoryId}/items")
+    @GET("api/v1.0/users/{userId}/presenceprofiles")
     fun doGetPresenceProfiles(
         @Path("userId") userId: String
     ): Call<List<PresenceProfile>>
@@ -91,5 +90,5 @@ interface CTGatewayService {
     fun doSetPresence(
         @Path("userId") userId: String,
         @Body setPresenceModel: SetPresenceModel
-    ): Observable<Unit>
+    ): Call<Void>
 }

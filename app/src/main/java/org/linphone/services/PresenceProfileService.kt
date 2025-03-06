@@ -26,7 +26,9 @@ class PresenceProfileService(val context: Context) : DefaultLifecycleObserver {
     private val destroy = PublishSubject.create<Unit>()
 
     private val presenceProfilesSubject = BehaviorSubject.create<List<PresenceProfile>>()
-    public val presenceProfiles = presenceProfilesSubject.map { x -> x }
+    val presenceProfiles = presenceProfilesSubject.map { x -> x }
+        .replay(1)
+        .autoConnect()
 
     private var userSubscription: Disposable? = null
 

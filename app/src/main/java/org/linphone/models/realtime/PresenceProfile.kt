@@ -32,4 +32,8 @@ data class PresenceProfile(
 
     @SerializedName("hideFromSelection")
     var hideFromSelection: Boolean = false
-)
+) {
+    override fun toString(): String {
+        return name
+    }
+}

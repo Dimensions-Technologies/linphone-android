@@ -3,99 +3,102 @@ package org.linphone.activities.main.presence.viewmodels
 import androidx.databinding.ObservableField
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
+import io.reactivex.rxjava3.core.Observable
+import io.reactivex.rxjava3.disposables.Disposable
 import org.linphone.LinphoneApplication.Companion.coreContext
-import org.linphone.LinphoneApplication.Companion.corePreferences
-import org.linphone.activities.main.settings.SettingListenerStub
-import org.linphone.activities.main.settings.viewmodels.AccountSettingsViewModel
-import org.linphone.core.Account
+import org.linphone.authentication.AuthStateManager
 import org.linphone.core.ConsolidatedPresence
-import org.linphone.core.Core
-import org.linphone.core.CoreListenerStub
-import org.linphone.core.RegistrationState
+import org.linphone.models.AuthenticatedUser
 import org.linphone.models.UserInfo
-import org.linphone.utils.LinphoneUtils
+import org.linphone.models.realtime.PresenceIconState
+import org.linphone.models.realtime.PresenceProfile
+import org.linphone.models.realtime.SetPresenceModel
+import org.linphone.services.PresenceProfileService
+import org.linphone.services.PresenceService
+import org.linphone.utils.Log
 
-class PresenceEditorViewModel() : ViewModel() {
+class PresenceEditorViewModel : ViewModel() {
+    private val presenceService = PresenceService.getInstance(coreContext.context)
+    private val presenceProfileService = PresenceProfileService.getInstance(coreContext.context)
+
     val userImageUrl = ObservableField<String>()
-    val defaultAccountFound = MutableLiveData<Boolean>()
-    val defaultAccountAvatar = MutableLiveData<String>()
-    val defaultAccountViewModel = MutableLiveData<AccountSettingsViewModel>()
-
-    val accounts = MutableLiveData<ArrayList<AccountSettingsViewModel>>()
 
     val user = ObservableField<UserInfo>()
 
     val presenceStatus = MutableLiveData<ConsolidatedPresence>()
 
+    val presenceProfile = MutableLiveData<PresenceProfile>()
+
     val statusMessage = MutableLiveData<String>()
-    val callWaiting = MutableLiveData<Boolean>()
 
-    lateinit var accountsSettingsListener: SettingListenerStub
-
-    private val listener: CoreListenerStub = object : CoreListenerStub() {
-        override fun onAccountRegistrationStateChanged(
-            core: Core,
-            account: Account,
-            state: RegistrationState,
-            message: String
-        ) {
-            // +1 is for the default account, otherwise this will trigger every time
-            if (accounts.value.isNullOrEmpty() ||
-                coreContext.core.accountList.size != accounts.value.orEmpty().size + 1
-            ) {
-                // Only refresh the list if an account has been added or removed
-                updateAccountsList()
-            }
-        }
-    }
+    private var presenceSubscription: Disposable? = null
 
     init {
-        defaultAccountFound.value = false
-        defaultAccountAvatar.value = corePreferences.defaultAccountAvatarPath
 
-        coreContext.core.addListener(listener)
-        updateAccountsList()
-        refreshConsolidatedPresence()
-    }
+        presenceSubscription = Observable.combineLatest(
+            presenceService.currentUserPresence,
+            presenceProfileService.presenceProfiles
+        ) { currentUserPresence, presenceProfiles -> Pair(currentUserPresence, presenceProfiles) }
+            .subscribe { pair ->
+                try {
+                    if (pair.first.isPresent()) {
+                        val eventData = pair.first.get()
+                        presenceStatus.postValue(
+                            PresenceIconState.toConsolidatedPresence(
+                                PresenceIconState.fromString(eventData.iconState)
+                            )
+                        )
 
-    fun refreshConsolidatedPresence() {
-        presenceStatus.value = coreContext.core.consolidatedPresence
-    }
-
-    fun updateAccountsList() {
-        defaultAccountFound.value = false // Do not assume a default account will still be found
-        defaultAccountViewModel.value?.destroy()
-        accounts.value.orEmpty().forEach(AccountSettingsViewModel::destroy)
-
-        val list = arrayListOf<AccountSettingsViewModel>()
-        val defaultAccount = coreContext.core.defaultAccount
-        if (defaultAccount != null) {
-            val defaultViewModel = AccountSettingsViewModel(defaultAccount)
-            defaultViewModel.accountsSettingsListener = object : SettingListenerStub() {
-                override fun onAccountClicked(identity: String) {
-                    accountsSettingsListener.onAccountClicked(identity)
-                }
-            }
-            defaultAccountViewModel.value = defaultViewModel
-            defaultAccountFound.value = true
-        }
-
-        for (account in LinphoneUtils.getAccountsNotHidden()) {
-            if (account != coreContext.core.defaultAccount) {
-                val viewModel = AccountSettingsViewModel(account)
-                viewModel.accountsSettingsListener = object : SettingListenerStub() {
-                    override fun onAccountClicked(identity: String) {
-                        accountsSettingsListener.onAccountClicked(identity)
+                        val selectedPresence = pair.second.single { it.id == eventData.stateId }
+                        presenceProfile.postValue(selectedPresence)
+                        statusMessage.postValue(eventData.message ?: "")
+                    } else {
+                        presenceStatus.postValue(
+                            PresenceIconState.toConsolidatedPresence(
+                                null
+                            )
+                        )
                     }
+                } catch (e: Exception) {
+                    Log.e("presenceSubscription", e)
                 }
-                list.add(viewModel)
             }
-        }
-        accounts.value = list
     }
 
-    override fun onCleared() {
-        defaultAccountViewModel.value?.destroy()
-        super.onCleared()
+    fun applyPresence() {
+        try {
+            val userId = AuthStateManager.getInstance(coreContext.context).getUser().id
+            if (userId.isNullOrBlank() || userId == AuthenticatedUser.UNINTIALIZED_AUTHENTICATEDUSER) {
+                Log.i("applyPresence called with no authed user")
+                return
+            }
+
+            val selectedProfile = presenceProfile.value
+            val selectedProfileMessage = statusMessage.value
+            if (selectedProfile != null) {
+                val currentPresence = presenceService.getCurrent(userId)
+                val currentPresenceHasChanged = currentPresence == null || currentPresence.stateId != selectedProfile.id
+
+                if (currentPresence == null || currentPresenceHasChanged || currentPresence.message != selectedProfileMessage) {
+                    val message = if (currentPresenceHasChanged) selectedProfile.message else selectedProfileMessage
+
+                    val selectedMessage = statusMessage.value
+                    val setPresenceModel = SetPresenceModel(
+                        selectedProfile.id ?: "",
+                        message ?: "",
+                        selectedProfile.dnd,
+                        selectedProfile.forward,
+                        selectedProfile.callRouting,
+                        selectedProfile.acd,
+                        selectedProfile.enablePersonalRoutingGroup,
+                        selectedProfile.hideFromSelection
+                    )
+
+                    presenceService.setPresenceState(userId, setPresenceModel)
+                }
+            }
+        } catch (e: Exception) {
+            Log.e("applyPresence", e)
+        }
     }
 }
