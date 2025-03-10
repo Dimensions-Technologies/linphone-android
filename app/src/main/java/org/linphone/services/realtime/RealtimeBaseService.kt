@@ -118,6 +118,7 @@ open class RealtimeBaseService(context: Context, private val hubSuffix: String) 
 
         connection.onClosed {
             Log.w("RealtimeBaseService.connection closed")
+
             try {
                 onDisconnected()
 
@@ -170,6 +171,7 @@ open class RealtimeBaseService(context: Context, private val hubSuffix: String) 
 
     private fun connect() {
         Log.d("RealtimeBaseService.connect")
+
         val connection = hubConnection
 
         if (connection != null) {
