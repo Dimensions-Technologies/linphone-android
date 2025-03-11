@@ -191,13 +191,13 @@ open class RealtimeBaseService(context: Context, private val hubSuffix: String) 
         if (connection != null) {
             hubConnectionCompletable?.dispose()
             hubConnectionCompletable = connection.start()
-                // .doOnComplete { Log.d("SignalR", "Connection started") }
-                // .doOnError { error ->
-                //   Log.e(
-                //        "SignalR",
-//                        "Error starting connection: ${error.message}"
-//                    )
-//                }
+                .doOnComplete { Log.d("SignalR", "Connection started") }
+                .doOnError { error ->
+                    Log.e(
+                        "SignalR",
+                        "Error starting connection: ${error.message}"
+                    )
+                }
                 .subscribeOn(Schedulers.io())
                 .observeOn(Schedulers.io())
                 .subscribe(
