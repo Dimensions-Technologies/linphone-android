@@ -96,6 +96,8 @@ stages:
           serviceConnection: 'Dimensions Google Play Store Connection'
           applicationId: 'cloud.xarios.dimensions'
           action: 'SingleBundle'
-          bundleFile: '**/*.aab'
+          bundleFile: '$(Pipeline.Workspace)/bundle/release/app-release.aab'
           track: 'internal'
+          shouldUploadMappingFile: true
+          mappingFilePath: '$(Pipeline.Workspace)/bundle/mapping/mapping.txt'
           releaseName: '$(BUILD.BUILDNUMBER)'
