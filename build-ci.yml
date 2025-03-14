@@ -3,6 +3,7 @@ pool:
   vmImage: 'ubuntu-latest'
 variables:
   appVersionCode: $(MAJOR)$(MINOR)$(YEAR:yy)$(DAYOFYEAR)$(REV:r)
+  artifactName: 'apk-release'
 
 stages:
 - stage: Build
