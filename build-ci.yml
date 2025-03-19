@@ -60,16 +60,16 @@ stages:
           script: 'cat build.gradle'
           workingDirectory: '$(Build.SourcesDirectory)/app/'
 
-      - task: qetza.replacetokens.replacetokens-task.replacetokens@3
-        displayName: 'Replace tokens in **/*.js **/index.html'
+      - task: qetza.replacetokens.replacetokens-task.replacetokens@5
+        displayName: 'Replace tokens in Strings.xml'
         inputs:
           rootDirectory: '$(Build.SourcesDirectory)/app/'
-          targetFiles: '**/*.xml'
-          escapeType: none
-          actionOnMissing: fail
-          keepToken: true
+          targetFiles: '**/strings.xml'
+          tokenPattern: custom
           tokenPrefix: '@~#'
-          tokenSuffix: '#~@'       
+          tokenSuffix: '#~@'
+          escapeType: custom
+          actionOnNoFiles: fail     
              
       - task: Gradle@3
         displayName: "Build App"
