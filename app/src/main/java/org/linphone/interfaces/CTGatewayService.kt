@@ -1,9 +1,13 @@
 package org.linphone.interfaces
 
+import ReportResult
+import java.util.Date
 import okhttp3.RequestBody
 import org.linphone.models.TenantBrandingDefinition
 import org.linphone.models.UserDevice
 import org.linphone.models.UserInfo
+import org.linphone.models.callhistory.ReportRequest
+import org.linphone.models.callhistory.UserCallHistorySummary
 import org.linphone.models.contact.ContactDirectoryModel
 import org.linphone.models.contact.ContactGroupItem
 import org.linphone.models.contact.ContactItemModel
@@ -91,4 +95,20 @@ interface CTGatewayService {
         @Path("userId") userId: String,
         @Body setPresenceModel: SetPresenceModel
     ): Call<Void>
+
+    @GET("api/v1.0/usercallhistory/summary")
+    fun doGetMissedCallDate(): Response<UserCallHistorySummary>
+
+    @PUT("api/v1.0/usercallhistory/summary")
+    fun doSetMissedCallDate(
+        @Query("dateTime") dateTime: Date
+    ): Call<Void>
+
+    @POST("usercallhistory/report")
+    fun postReportRequest(@Body request: Map<String, String?>): ReportRequest
+
+    @GET("api/v1.0/usercallhistory/report")
+    fun getReportResult(
+        @Query("requestId") requestId: String
+    ): Response<ReportResult>
 }
