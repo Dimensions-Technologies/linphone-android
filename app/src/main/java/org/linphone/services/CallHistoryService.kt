@@ -43,8 +43,10 @@ import org.linphone.utils.DateUtils
 import org.linphone.utils.Log
 import org.linphone.utils.Optional
 import org.threeten.bp.LocalDateTime
+import org.threeten.bp.ZoneId
 import org.threeten.bp.ZoneOffset
 import org.threeten.bp.ZonedDateTime
+import org.threeten.bp.format.DateTimeFormatter
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
@@ -490,13 +492,15 @@ class CallHistoryService(val context: Context) : DefaultLifecycleObserver {
     }
 
     fun updateMissedCallTimestamp() {
-        val now = ZonedDateTime.now()
+        val now = ZonedDateTime.now(ZoneId.of("UTC"))
+
+        val formattedDateTime = now.format(DateTimeFormatter.ISO_OFFSET_DATE_TIME)
 
         missedCallTimestampSubject.onNext(now)
 
         APIClientService(context)
             .getUCGatewayService()
-            .doSetMissedCallDate(now)
+            .doSetMissedCallDate(formattedDateTime)
             .enqueue(object : Callback<Void> {
                 override fun onFailure(call: Call<Void>, t: Throwable) {
                     Log.e("Failed to update MissedCallTimestamp", t)

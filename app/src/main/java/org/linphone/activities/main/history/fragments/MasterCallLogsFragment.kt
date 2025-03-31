@@ -43,10 +43,12 @@ import org.linphone.activities.navigateToConferenceCallHistory
 import org.linphone.activities.navigateToDialer
 import org.linphone.core.ConferenceInfo
 import org.linphone.databinding.HistoryMasterFragmentBinding
+import org.linphone.services.CallHistoryService
 import org.linphone.utils.*
 import org.linphone.utils.Log
 
 class MasterCallLogsFragment : MasterFragment<HistoryMasterFragmentBinding, CallLogsListAdapter>() {
+    val callHistoryService = CallHistoryService.getInstance(coreContext.context)
     override val dialogConfirmationMessageBeforeRemoval = R.plurals.history_delete_dialog
     private lateinit var listViewModel: CallLogsListViewModel
 
@@ -270,6 +272,8 @@ class MasterCallLogsFragment : MasterFragment<HistoryMasterFragmentBinding, Call
                 }
             }
         }
+
+        callHistoryService.updateMissedCallTimestamp()
 
         coreContext.core.resetMissedCallsCount()
         coreContext.notificationsManager.dismissMissedCallNotification()

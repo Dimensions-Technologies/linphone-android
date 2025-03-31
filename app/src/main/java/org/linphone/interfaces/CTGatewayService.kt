@@ -13,7 +13,6 @@ import org.linphone.models.contact.ContactItemModel
 import org.linphone.models.realtime.PresenceProfile
 import org.linphone.models.realtime.SetPresenceModel
 import org.linphone.models.usergroup.UserGroupModel
-import org.threeten.bp.ZonedDateTime
 import retrofit2.Call
 import retrofit2.Response
 import retrofit2.http.Body
@@ -101,7 +100,7 @@ interface CTGatewayService {
 
     @PUT("api/v1.0/usercallhistory/summary")
     fun doSetMissedCallDate(
-        @Query("dateTime") dateTime: ZonedDateTime
+        @Query("dateTime") dateTime: String
     ): Call<Void>
 
     @POST("api/v1.0/usercallhistory/report")
