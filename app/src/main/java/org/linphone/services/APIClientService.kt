@@ -1,5 +1,6 @@
 package org.linphone.services
 
+import ZonedDateTimeAdapter
 import android.content.Context
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
@@ -14,6 +15,7 @@ import org.linphone.interfaces.CTGatewayService
 import org.linphone.middleware.AuthAuthenticator
 import org.linphone.typeadapters.BooleanTypeAdapter
 import org.linphone.typeadapters.DateTypeAdapter
+import org.threeten.bp.ZonedDateTime
 import retrofit2.Retrofit
 import retrofit2.adapter.rxjava3.RxJava3CallAdapterFactory
 import retrofit2.converter.gson.GsonConverterFactory
@@ -47,6 +49,7 @@ class APIClientService(val context: Context) {
         val gson: Gson = GsonBuilder()
             .registerTypeAdapter(Boolean::class.java, BooleanTypeAdapter()) // Register the adapter
             .registerTypeAdapter(Date::class.java, DateTypeAdapter())
+            .registerTypeAdapter(ZonedDateTime::class.java, ZonedDateTimeAdapter())
             .create()
 
         return Retrofit.Builder()

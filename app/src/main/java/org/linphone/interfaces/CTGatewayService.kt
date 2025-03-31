@@ -1,7 +1,6 @@
 package org.linphone.interfaces
 
 import ReportResult
-import java.util.Date
 import okhttp3.RequestBody
 import org.linphone.models.TenantBrandingDefinition
 import org.linphone.models.UserDevice
@@ -14,6 +13,7 @@ import org.linphone.models.contact.ContactItemModel
 import org.linphone.models.realtime.PresenceProfile
 import org.linphone.models.realtime.SetPresenceModel
 import org.linphone.models.usergroup.UserGroupModel
+import org.threeten.bp.ZonedDateTime
 import retrofit2.Call
 import retrofit2.Response
 import retrofit2.http.Body
@@ -101,7 +101,7 @@ interface CTGatewayService {
 
     @PUT("api/v1.0/usercallhistory/summary")
     fun doSetMissedCallDate(
-        @Query("dateTime") dateTime: Date
+        @Query("dateTime") dateTime: ZonedDateTime
     ): Call<Void>
 
     @POST("api/v1.0/usercallhistory/report")

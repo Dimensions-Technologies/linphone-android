@@ -7,5 +7,5 @@ data class UserCallHistorySummary(
     val userId: String,
 
     @SerializedName("missedCallTimestamp")
-    val missedCallTimestamp: String // Handling as a string rather than a offsetDatetime due to API level issues
+    val missedCallTimestamp: String
 )

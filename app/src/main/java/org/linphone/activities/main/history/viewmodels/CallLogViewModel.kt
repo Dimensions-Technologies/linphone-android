@@ -36,6 +36,8 @@ import org.linphone.utils.Event
 import org.linphone.utils.LinphoneUtils
 import org.linphone.utils.Log
 import org.linphone.utils.TimestampUtils
+import org.threeten.bp.ZoneId
+import org.threeten.bp.format.DateTimeFormatter
 
 class CallLogViewModel(val callLog: CallLog, private val isRelated: Boolean = false) : GenericContactViewModel(
     callLog.remoteAddress
@@ -224,7 +226,10 @@ class CallLogViewModel(val callLog: CallLog, private val isRelated: Boolean = fa
         if (callLog is CallHistoryItemViewModel) {
             dimensionsContactName.value = callLog.contactName
             dimensionsContactNumber.value = callLog.formattedNumber
-            dimensionsStartTime.value = "${callLog.date} ${callLog.time}"
+
+            val formatter = DateTimeFormatter.ofPattern("HH:mm")
+            val localDateTime = callLog.call.startTime.withZoneSameInstant(ZoneId.systemDefault())
+            dimensionsStartTime.value = localDateTime.format(formatter)
         }
     }
 

@@ -1,7 +1,6 @@
 package org.linphone.models.callhistory
 
 import io.reactivex.rxjava3.core.Observable
-import java.util.Date
 import org.linphone.LinphoneApplication.Companion.coreContext
 import org.linphone.R
 import org.linphone.core.Address
@@ -12,11 +11,16 @@ import org.linphone.core.ErrorInfo
 import org.linphone.services.PhoneFormatterService
 import org.linphone.utils.DateUtils
 import org.linphone.utils.LinphoneUtils
+import org.threeten.bp.LocalDateTime
 
-class CallHistoryItemViewModel(val call: CallHistoryItem, val today: Date, val countryCode: String) : CallLog {
+class CallHistoryItemViewModel(
+    val call: CallHistoryItem,
+    val localDateTime: LocalDateTime,
+    val countryCode: String
+) : CallLog {
     val rowClass: String = if (call.missedCall) "missed" else ""
 
-    val date: String = DateUtils.formatFriendlyDate(call.startTime, Date())
+    val date: String = DateUtils.formatFriendlyDate(call.startTime, localDateTime)
     val time: String = DateUtils.toLocaleHMString(call.startTime)
     var contactName: String = ""
     var contactIcon: String = buildContactMatchIcon()
@@ -202,7 +206,7 @@ class CallHistoryItemViewModel(val call: CallHistoryItem, val today: Date, val c
     }
 
     override fun getStartDate(): Long {
-        return call.startTime.time
+        return call.startTime.toInstant().toEpochMilli()
     }
 
     override fun getStatus(): Call.Status {

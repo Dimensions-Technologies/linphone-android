@@ -2,7 +2,7 @@ package org.linphone.models.callhistory
 
 import androidx.annotation.Keep
 import com.google.gson.annotations.SerializedName
-import java.util.Date
+import org.threeten.bp.ZonedDateTime
 
 @Keep
 data class CallHistoryItem(
@@ -16,7 +16,7 @@ data class CallHistoryItem(
     val hasRecording: Boolean,
 
     @SerializedName("startTime")
-    val startTime: Date,
+    val startTime: ZonedDateTime,
 
     @SerializedName("connectionId")
     val connectionId: String,

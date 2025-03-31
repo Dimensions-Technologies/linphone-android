@@ -44,6 +44,7 @@ import org.linphone.utils.Log
 import org.linphone.utils.Optional
 import org.threeten.bp.LocalDateTime
 import org.threeten.bp.ZoneOffset
+import org.threeten.bp.ZonedDateTime
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
@@ -68,8 +69,8 @@ class CallHistoryService(val context: Context) : DefaultLifecycleObserver {
 
     private var statusQueryAttempts: Int = 0
 
-    private val missedCallTimestampSubject = BehaviorSubject.create<Date>()
-    private val missedCallTimestamp: Observable<Date> = missedCallTimestampSubject.hide()
+    private val missedCallTimestampSubject = BehaviorSubject.create<ZonedDateTime>()
+    private val missedCallTimestamp: Observable<ZonedDateTime> = missedCallTimestampSubject.hide()
 
     private val authSubscription: Disposable = authStateManager.user
         .filter { u -> u.id != null && u.id != AuthenticatedUser.UNINTIALIZED_AUTHENTICATEDUSER }
@@ -99,8 +100,9 @@ class CallHistoryService(val context: Context) : DefaultLifecycleObserver {
         .switchMap {
             val arr = callHistorySubject.value ?: emptyList()
             val maxStartTime = arr.maxOfOrNull {
-                it.startTime.time
+                it.startTime.toInstant().toEpochMilli()
             } ?: 0L
+
             val fromDate = if (maxStartTime > 0) {
                 val dateFormat = SimpleDateFormat(
                     "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'",
@@ -120,7 +122,7 @@ class CallHistoryService(val context: Context) : DefaultLifecycleObserver {
                             .postReportRequest(
                                 mapOf(
                                     "fromDate" to fromDate,
-                                    "timeZoneId" to TimeZone.getDefault().id
+                                    "timeZoneId" to "UTC"
                                 )
                             )
                     }
@@ -183,9 +185,14 @@ class CallHistoryService(val context: Context) : DefaultLifecycleObserver {
         history,
         missedCallTimestamp,
         { history, timestamp ->
-            history.filter {
-                it.missedCall && it.startTime > timestamp
-            }.size
+            try {
+                history.filter {
+                    it.missedCall && it.startTime > timestamp
+                }.size
+            } catch (e: Exception) {
+                Log.e("missedCallCount", e)
+                0
+            }
         }
     )
 
@@ -474,13 +481,8 @@ class CallHistoryService(val context: Context) : DefaultLifecycleObserver {
             throw Exception("Error fetching user info: " + response.message())
         }
 
-        val formattedDateTimeString = response.body()!!.missedCallTimestamp.replace("Z", "+0000").replace(
-            ":",
-            ""
-        )
-        val dateFormat = SimpleDateFormat("yyyy-MM-dd'T'HHmmssZ", Locale.getDefault())
-        dateFormat.timeZone = TimeZone.getTimeZone("UTC")
-        val missedCallTimestamp: Date? = dateFormat.parse(formattedDateTimeString)
+        val formattedDateTimeString = response.body()!!.missedCallTimestamp
+        val missedCallTimestamp: ZonedDateTime? = ZonedDateTime.parse(formattedDateTimeString)
 
         missedCallTimestampSubject.onNext(
             missedCallTimestamp!!
@@ -488,7 +490,7 @@ class CallHistoryService(val context: Context) : DefaultLifecycleObserver {
     }
 
     fun updateMissedCallTimestamp() {
-        val now = Date()
+        val now = ZonedDateTime.now()
 
         missedCallTimestampSubject.onNext(now)
 
@@ -515,10 +517,10 @@ class CallHistoryService(val context: Context) : DefaultLifecycleObserver {
 
     private fun transformData(
         callHistoryData: List<CallHistoryItem>,
-        todaysDate: Date
+        localDateTime: LocalDateTime
     ): List<CallHistoryItemViewModel> {
         return callHistoryData.map { call ->
-            CallHistoryItemViewModel(call, todaysDate, "US") // Replace with actual logic to get the country code
+            CallHistoryItemViewModel(call, localDateTime, Locale.getDefault().country)
         }
     }
 
