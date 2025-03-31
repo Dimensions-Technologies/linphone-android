@@ -1,7 +1,10 @@
 package org.linphone.models.callhistory
 
+import androidx.annotation.Keep
 import com.google.gson.annotations.SerializedName
+import java.util.Date
 
+@Keep
 data class CallHistoryItem(
     @SerializedName("missedCall")
     val missedCall: Boolean,
@@ -13,7 +16,7 @@ data class CallHistoryItem(
     val hasRecording: Boolean,
 
     @SerializedName("startTime")
-    val startTime: Long,
+    val startTime: Date,
 
     @SerializedName("connectionId")
     val connectionId: String,
@@ -22,37 +25,37 @@ data class CallHistoryItem(
     val callType: CallTypes,
 
     @SerializedName("callDirection")
-    val callDirection: CallDirections,
+    val callDirection: Int,
 
     @SerializedName("contactName")
-    val contactName: String,
+    val contactName: String?,
 
     @SerializedName("contactMatchType")
-    val contactMatchType: String,
+    val contactMatchType: String?,
 
     @SerializedName("hasContactMatch")
     val hasContactMatch: Boolean,
 
     @SerializedName("calledUserName")
-    val calledUserName: String,
+    val calledUserName: String?,
 
     @SerializedName("calledUserNumber")
-    val calledUserNumber: String,
+    val calledUserNumber: String?,
 
     @SerializedName("callingUserName")
-    val callingUserName: String,
+    val callingUserName: String?,
 
     @SerializedName("callingUserNumber")
-    val callingUserNumber: String,
+    val callingUserNumber: String?,
 
     @SerializedName("routePathName")
-    val routePathName: String,
+    val routePathName: String?,
 
     @SerializedName("groupName")
-    val groupName: String,
+    val groupName: String?,
 
     @SerializedName("huntgroupName")
-    val huntgroupName: String,
+    val huntgroupName: String?,
 
     @SerializedName("documentId")
     val documentId: String,
@@ -64,5 +67,5 @@ data class CallHistoryItem(
     val pbxType: PbxType,
 
     @SerializedName("interactionTags")
-    val interactionTags: ArrayList<CallInteractionTag>
+    val interactionTags: List<CallInteractionTag>
 )

@@ -19,14 +19,11 @@
  */
 package org.linphone.activities.main.history.fragments
 
-import android.app.Dialog
 import android.content.res.Configuration
 import android.os.Bundle
 import android.view.View
-import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModelProvider
 import androidx.navigation.fragment.NavHostFragment
-import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.transition.MaterialSharedAxis
@@ -40,7 +37,6 @@ import org.linphone.activities.main.fragments.MasterFragment
 import org.linphone.activities.main.history.adapters.CallLogsListAdapter
 import org.linphone.activities.main.history.data.GroupedCallLogData
 import org.linphone.activities.main.history.viewmodels.CallLogsListViewModel
-import org.linphone.activities.main.viewmodels.DialogViewModel
 import org.linphone.activities.main.viewmodels.TabsViewModel
 import org.linphone.activities.navigateToCallHistory
 import org.linphone.activities.navigateToConferenceCallHistory
@@ -131,64 +127,65 @@ class MasterCallLogsFragment : MasterFragment<HistoryMasterFragmentBinding, Call
         binding.callLogsList.layoutManager = layoutManager
 
         // Swipe action
-        val swipeConfiguration = RecyclerViewSwipeConfiguration()
-        val white = ContextCompat.getColor(requireContext(), R.color.white_color)
-
-        swipeConfiguration.rightToLeftAction = RecyclerViewSwipeConfiguration.Action(
-            requireContext().getString(R.string.dialog_delete),
-            white,
-            ContextCompat.getColor(requireContext(), R.color.red_color)
-        )
-        val swipeListener = object : RecyclerViewSwipeListener {
-            override fun onLeftToRightSwipe(viewHolder: RecyclerView.ViewHolder) {}
-
-            override fun onRightToLeftSwipe(viewHolder: RecyclerView.ViewHolder) {
-                val viewModel = DialogViewModel(getString(R.string.history_delete_one_dialog))
-                viewModel.showIcon = true
-                viewModel.iconResource = R.drawable.dialog_delete_icon
-                val dialog: Dialog = DialogUtils.getDialog(requireContext(), viewModel)
-
-                val index = viewHolder.bindingAdapterPosition
-                if (index < 0 || index >= adapter.currentList.size) {
-                    Log.e("[History] Index is out of bound, can't delete call log")
-                } else {
-                    viewModel.showCancelButton {
-                        adapter.notifyItemChanged(index)
-                        dialog.dismiss()
-                    }
-
-                    viewModel.showDeleteButton(
-                        {
-                            val deletedCallGroup = adapter.currentList[index]
-                            listViewModel.deleteCallLogGroup(deletedCallGroup)
-                            if (!binding.slidingPane.isSlideable &&
-                                deletedCallGroup.lastCallLogId == sharedViewModel.selectedCallLogGroup.value?.lastCallLogId
-                            ) {
-                                Log.i(
-                                    "[History] Currently displayed history has been deleted, removing detail fragment"
-                                )
-                                clearDisplayedCallHistory()
-                            }
-                            dialog.dismiss()
-                        },
-                        getString(R.string.dialog_delete)
-                    )
-                }
-
-                dialog.show()
-            }
-        }
-        RecyclerViewSwipeUtils(ItemTouchHelper.LEFT, swipeConfiguration, swipeListener)
-            .attachToRecyclerView(binding.callLogsList)
+//        val swipeConfiguration = RecyclerViewSwipeConfiguration()
+//        val white = ContextCompat.getColor(requireContext(), R.color.white_color)
+//
+//        swipeConfiguration.rightToLeftAction = RecyclerViewSwipeConfiguration.Action(
+//            requireContext().getString(R.string.dialog_delete),
+//            white,
+//            ContextCompat.getColor(requireContext(), R.color.red_color)
+//        )
+//        val swipeListener = object : RecyclerViewSwipeListener {
+//            override fun onLeftToRightSwipe(viewHolder: RecyclerView.ViewHolder) {}
+//
+//            override fun onRightToLeftSwipe(viewHolder: RecyclerView.ViewHolder) {
+//                val viewModel = DialogViewModel(getString(R.string.history_delete_one_dialog))
+//                viewModel.showIcon = true
+//                viewModel.iconResource = R.drawable.dialog_delete_icon
+//                val dialog: Dialog = DialogUtils.getDialog(requireContext(), viewModel)
+//
+//                val index = viewHolder.bindingAdapterPosition
+//                if (index < 0 || index >= adapter.currentList.size) {
+//                    Log.e("[History] Index is out of bound, can't delete call log")
+//                } else {
+//                    viewModel.showCancelButton {
+//                        adapter.notifyItemChanged(index)
+//                        dialog.dismiss()
+//                    }
+//
+//                    viewModel.showDeleteButton(
+//                        {
+//                            val deletedCallGroup = adapter.currentList[index]
+//                            listViewModel.deleteCallLogGroup(deletedCallGroup)
+//                            if (!binding.slidingPane.isSlideable &&
+//                                deletedCallGroup.lastCallLogId == sharedViewModel.selectedCallLogGroup.value?.lastCallLogId
+//                            ) {
+//                                Log.i(
+//                                    "[History] Currently displayed history has been deleted, removing detail fragment"
+//                                )
+//                                clearDisplayedCallHistory()
+//                            }
+//                            dialog.dismiss()
+//                        },
+//                        getString(R.string.dialog_delete)
+//                    )
+//                }
+//
+//                dialog.show()
+//            }
+//        }
+//
+//        RecyclerViewSwipeUtils(ItemTouchHelper.LEFT, swipeConfiguration, swipeListener)
+//            .attachToRecyclerView(binding.callLogsList)
 
         // Divider between items
-        binding.callLogsList.addItemDecoration(
-            AppUtils.getDividerDecoration(requireContext(), layoutManager)
-        )
+//        binding.callLogsList.addItemDecoration(
+//            AppUtils.getDividerDecoration(requireContext(), layoutManager)
+//        )
 
         // Displays formatted date header
-        val headerItemDecoration = RecyclerViewHeaderDecoration(requireContext(), adapter)
-        binding.callLogsList.addItemDecoration(headerItemDecoration)
+//        val headerItemDecoration = RecyclerViewHeaderDecoration(requireContext(), adapter)
+//        binding.callLogsList.addItemDecoration(headerItemDecoration)
 
         listViewModel.callLogs.observe(
             viewLifecycleOwner

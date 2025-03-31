@@ -1,7 +1,6 @@
 package org.linphone.models.callhistory
 
 import com.google.gson.annotations.SerializedName
-import java.util.Date
 
 data class CallInteractionTag(
     @SerializedName("id")
@@ -20,8 +19,9 @@ data class CallInteractionTag(
     val required: Boolean?,
 
     @SerializedName("userId")
-    val userId: String?,
+    val userId: String?
 
-    @SerializedName("timestamp")
-    val timestamp: Date?
+// FixMe: This causes issues with Date serialization in DateTypeAdapter
+//    @SerializedName("timestamp")
+//    val timestamp: Date?
 )

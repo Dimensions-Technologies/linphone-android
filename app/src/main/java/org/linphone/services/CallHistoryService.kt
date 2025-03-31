@@ -1,12 +1,9 @@
 package org.linphone.services
 
 import ReportResult
-import android.annotation.SuppressLint
 import android.content.ContentValues
 import android.content.Context
 import android.database.Cursor
-import android.os.Handler
-import android.os.Looper
 import android.util.Base64
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
@@ -14,7 +11,6 @@ import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import io.reactivex.rxjava3.core.Observable
 import io.reactivex.rxjava3.disposables.Disposable
-import io.reactivex.rxjava3.functions.BiFunction
 import io.reactivex.rxjava3.subjects.BehaviorSubject
 import io.reactivex.rxjava3.subjects.PublishSubject
 import java.io.ByteArrayInputStream
@@ -27,8 +23,11 @@ import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicReference
 import java.util.zip.GZIPInputStream
 import java.util.zip.GZIPOutputStream
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.rx3.rxSingle
 import kotlinx.coroutines.withContext
 import org.linphone.authentication.AuthStateManager
 import org.linphone.models.AuthenticatedUser
@@ -43,6 +42,8 @@ import org.linphone.utils.CallHistoryDatabaseHelper
 import org.linphone.utils.DateUtils
 import org.linphone.utils.Log
 import org.linphone.utils.Optional
+import org.threeten.bp.LocalDateTime
+import org.threeten.bp.ZoneOffset
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
@@ -53,16 +54,17 @@ class CallHistoryService(val context: Context) : DefaultLifecycleObserver {
 
     private val destroy = PublishSubject.create<Unit>()
 
-    private var callHistorySubscription: Disposable? = null
-
-    private val callHistorySubject = BehaviorSubject.create<List<CallHistoryItem>>()
+    private val callHistorySubject = BehaviorSubject.createDefault<List<CallHistoryItem>>(listOf())
     val history: Observable<List<CallHistoryItem>> = callHistorySubject.hide()
 
     /** Each time a value is emitted, a new report request will be submitted.  */
     private val newReportRequest: PublishSubject<Unit> = PublishSubject.create()
 
     /** Each time a value is emitted and new attempt will be made to query the current report result. */
-    private val queryStatus = BehaviorSubject.createDefault(0)
+    private val queryStatusSubject = BehaviorSubject.createDefault(0)
+    private val queryStatus = queryStatusSubject.map { x -> x }
+        .replay(1)
+        .autoConnect()
 
     private var statusQueryAttempts: Int = 0
 
@@ -74,72 +76,104 @@ class CallHistoryService(val context: Context) : DefaultLifecycleObserver {
         .distinctUntilChanged { user -> user.id ?: "" }
         .takeUntil(destroy)
         .subscribe {
-            getMissedCallTimestamp()
+            CoroutineScope(Dispatchers.IO).launch {
+                getMissedCallTimestamp()
+            }
         }
 
     private val userId: Observable<String> = authStateManager.user
         .filter { u -> u.id != null && u.id != AuthenticatedUser.UNINTIALIZED_AUTHENTICATEDUSER }
         .distinctUntilChanged { user -> user.id ?: "" }
+        .map { user ->
+            user.id.toString()
+        }
         .takeUntil(destroy)
-        .map { user -> user.id.toString() }
 
-    @SuppressLint("SimpleDateFormat")
     private val historyRequest: Observable<ReportRequest> = Observable.merge(
         userId,
         newReportRequest
     )
-        .doOnNext { statusQueryAttempts = 0 }
+        .doOnNext {
+            statusQueryAttempts = 0
+        }
         .switchMap {
             val arr = callHistorySubject.value ?: emptyList()
-            val maxStartTime = arr.maxOfOrNull { it.startTime } ?: 0L
+            val maxStartTime = arr.maxOfOrNull {
+                it.startTime.time
+            } ?: 0L
             val fromDate = if (maxStartTime > 0) {
-                val dateFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'")
+                val dateFormat = SimpleDateFormat(
+                    "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'",
+                    Locale.getDefault()
+                )
                 dateFormat.timeZone = TimeZone.getTimeZone("UTC")
                 dateFormat.format(Date(maxStartTime))
             } else {
                 null
             }
-            val timeZoneId = TimeZone.getDefault().id
 
-            // FixME: should we be using runBlocking for this?
-            Observable.fromCallable {
-                runBlocking {
+            rxSingle {
+                try {
                     withContext(Dispatchers.IO) {
                         APIClientService(context)
                             .getUCGatewayService()
                             .postReportRequest(
-                                mapOf("fromDate" to fromDate, "timeZoneId" to timeZoneId)
+                                mapOf(
+                                    "fromDate" to fromDate,
+                                    "timeZoneId" to TimeZone.getDefault().id
+                                )
                             )
                     }
+                } catch (throwable: Throwable) {
+                    Log.e("historyRequest", throwable)
+                    ReportRequest(ReportStates.Failed.value, "") // Provide a fallback ReportResult
                 }
-            }
+            }.toObservable()
         }
         .share()
+        .replay(1)
+        .autoConnect()
 
     private val startCache = authStateManager.user
         .filter { u -> u.id != null && u.id != AuthenticatedUser.UNINTIALIZED_AUTHENTICATEDUSER }
         .distinctUntilChanged { user -> user.id ?: "" }
+        .map { user ->
+            getCachedCallHistory(user.id ?: "")
+        }
         .takeUntil(destroy)
-        .map { user -> getCachedCallHistory(user.id ?: "") }
 
     private val reportQuery: Observable<ReportResult> = Observable.combineLatest(
         queryStatus,
-        historyRequest,
-        { _, request -> request }
-    )
-        .switchMap { request -> backoffQuery(request) }
+        historyRequest
+    ) { _, request ->
+        request
+    }
+        .switchMap { request ->
+            backoffQuery(request)
+        }
         .doOnNext { r ->
             statusQueryAttempts++
-            if (!ReportStates.isDone(r.status)) queueNextQuery()
+            if (!ReportStates.isDone(r.status)) queueNextQuery(r.status)
         }
         .share()
+        .replay(1)
+        .autoConnect()
 
     val appendHistoryObservable = Observable.merge(
         startCache,
         reportQuery
-            .filter { r -> ReportStates.isDone(r.status) }
-            .map { r -> r.data as? List<CallHistoryItem> ?: listOf() }
-            .doOnNext { data -> Log.d("History report returned item count ${data.size}") }
+            .filter { r ->
+                ReportStates.isDone(r.status)
+            }
+            .map
+            {
+                    r ->
+                r.data ?: listOf()
+            }
+            .doOnNext {
+                    data ->
+                Log.d("History report returned item count ${data.size}")
+            }
     )
         .subscribe { data ->
             appendToHistory(data)
@@ -149,7 +183,9 @@ class CallHistoryService(val context: Context) : DefaultLifecycleObserver {
         history,
         missedCallTimestamp,
         { history, timestamp ->
-            history.filter { it.missedCall && Date(it.startTime) > timestamp }.size
+            history.filter {
+                it.missedCall && it.startTime > timestamp
+            }.size
         }
     )
 
@@ -160,6 +196,8 @@ class CallHistoryService(val context: Context) : DefaultLifecycleObserver {
             transformData(history, date)
         }
     )
+        .replay(1)
+        .autoConnect()
 
     val historyMessage: Observable<String> = Observable.combineLatest(
         reportQuery,
@@ -178,15 +216,17 @@ class CallHistoryService(val context: Context) : DefaultLifecycleObserver {
 
     val currentCallHistoryItemView: Observable<Optional<CallHistoryItemViewModel>> = Observable.combineLatest(
         selectedCallSessionId,
-        formattedHistory,
-        BiFunction { selectedCallId: String?, callHistory: List<CallHistoryItemViewModel> ->
-            Optional.ofNullable(
-                callHistory.find {
-                    it.callId == selectedCallId
-                }
-            )
-        }
-    ).share()
+        formattedHistory
+    ) { selectedCallId: String?, callHistory: List<CallHistoryItemViewModel> ->
+        Optional.ofNullable(
+            callHistory.find {
+                it.callId == selectedCallId
+            }
+        )
+    }
+        .share()
+        .replay(1)
+        .autoConnect()
 
     companion object {
         private const val TAG: String = "CallHistoryService"
@@ -212,63 +252,63 @@ class CallHistoryService(val context: Context) : DefaultLifecycleObserver {
         destroy.onComplete()
 
         authSubscription.dispose()
+
+        runBlocking {
+            authStateManager.getUser().id?.let {
+                realtimeUserService.removeSubscription(
+                    RealtimeEventType.CallHistoryEvent,
+                    it,
+                    null
+                )
+            }
+        }
     }
 
     init {
         Log.d("Created CallHistoryService")
 
-        callHistorySubscription = authStateManager.user
-            .filter { u -> u.id != null && u.id != AuthenticatedUser.UNINTIALIZED_AUTHENTICATEDUSER }
-            .distinctUntilChanged { user -> user.id ?: "" }
-            .takeUntil(destroy)
-            .subscribe { user ->
-                try {
-                    Log.d("CallHistory user: " + user.name)
-                    if ((user.id == null || user.id == AuthenticatedUser.UNINTIALIZED_AUTHENTICATEDUSER)) {
-                        callHistorySubject.onNext(
-                            listOf()
-                        )
-                    } else {
-                        fetchCallHistory()
-                    }
-                } catch (ex: Exception) {
-                    Log.e(ex)
-                }
-            }
-
-        realtimeUserService.hubConnection?.on(RealtimeEventType.CallHistoryEvent.eventName, { event: Any ->
+        realtimeUserService.hubConnection?.on(RealtimeEventType.CallHistoryEvent.eventName, { event ->
             try {
                 Log.d(RealtimeEventType.CallHistoryEvent.eventName, event)
 
-                getMissedCallTimestamp()
+                CoroutineScope(Dispatchers.IO).launch {
+                    getMissedCallTimestamp()
 
-                newReportRequest.onNext(Unit)
+                    newReportRequest.onNext(Unit)
+                }
             } catch (e: Exception) {
-                Log.e(RealtimeEventType.PresenceEvent.eventName, e)
+                Log.e(RealtimeEventType.CallHistoryEvent.eventName, e)
             }
         }, Any::class.java)
-    }
 
-    fun fetchCallHistory() {
-    }
-
-    private fun queueNextQuery() {
-        Handler(Looper.getMainLooper()).post {
-            queryStatus.onNext(0)
+        runBlocking {
+            authStateManager.getUser().id?.let {
+                realtimeUserService.addSubscription(
+                    RealtimeEventType.CallHistoryEvent,
+                    it,
+                    null
+                )
+            }
         }
+
+        newReportRequest.onNext(Unit)
+    }
+
+    private fun queueNextQuery(status: Int) {
+        queryStatusSubject.onNext(status)
     }
 
     private fun backoffQuery(request: ReportRequest): Observable<ReportResult> {
         if (statusQueryAttempts > 10) {
             return Observable.just(
                 ReportResult(
-                    Date(),
+                    LocalDateTime.now(ZoneOffset.UTC).toString(),
                     request.requestId,
                     "",
                     ReportStates.Timeout.value,
                     "",
                     "",
-                    Unit
+                    listOf()
                 )
             )
         }
@@ -276,49 +316,62 @@ class CallHistoryService(val context: Context) : DefaultLifecycleObserver {
         val delayMs = statusQueryAttempts * 500L
 
         return Observable.timer(delayMs, TimeUnit.MILLISECONDS)
-            .switchMap {
-                val response = APIClientService(context).getUCGatewayService().getReportResult(
-                    request.requestId
-                )
-                if (response.isSuccessful && response.body() != null) {
-                    Observable.just(response.body()!!)
-                } else {
-                    Observable.just(
+            .flatMap {
+                rxSingle {
+                    val response = APIClientService(context).getUCGatewayService().getReportResult(
+                        request.requestId
+                    )
+
+                    if (response.isSuccessful && response.body() != null) {
+                        response.body()!!
+                    } else {
                         ReportResult(
-                            Date(),
+                            LocalDateTime.now(ZoneOffset.UTC).toString(),
                             request.requestId,
                             "",
                             ReportStates.Failed.value,
                             "",
                             "",
-                            Unit
+                            listOf()
                         )
-                    )
-                }
+                    }
+                }.toObservable()
             }
             .onErrorReturn {
-                println("Error: ${it.message}")
-                ReportResult(Date(), request.requestId, "", ReportStates.Failed.value, "", "", Unit)
+                Log.e("backoffQuery", it.message ?: "Unknown error")
+                ReportResult(
+                    Date().toString(),
+                    request.requestId,
+                    "",
+                    ReportStates.Failed.value,
+                    "",
+                    "",
+                    listOf()
+                )
             }
     }
 
     private fun appendToHistory(items: List<CallHistoryItem>) {
-        var arr = callHistorySubject.value?.toMutableList()
+        try {
+            val arr = callHistorySubject.value?.toMutableList()
 
-        if (arr != null) {
-            if (arr.isNotEmpty() && items.isNotEmpty()) {
+            if (arr != null && items.isNotEmpty()) {
                 // Insert any new items at the beginning
-                arr.addAll(0, items)
+                arr.addAll(
+                    0,
+                    items
+                )
 
                 // Take the first 200, removing any duplicates
-                arr = arr.distinctBy { it.connectionId }
+                val newArr: List<CallHistoryItem> = arr.distinctBy { it.connectionId }
                     .take(200)
-                    .toMutableList()
 
-                callHistorySubject.onNext(arr)
+                callHistorySubject.onNext(newArr)
 
-                cacheCallHistory(arr, authStateManager.getUser().id!!)
+                cacheCallHistory(newArr, authStateManager.getUser().id!!)
             }
+        } catch (e: Exception) {
+            Log.e("appendToHistory", e)
         }
     }
 
@@ -344,7 +397,7 @@ class CallHistoryService(val context: Context) : DefaultLifecycleObserver {
                 put("data", cacheObj.data)
             }
 
-            db.insert("CallHistoryCache", null, contentValues)
+            db.replace("CallHistoryCache", null, contentValues)
             db.close()
         } catch (e: Exception) {
             // May not have access - this is OK
@@ -414,18 +467,23 @@ class CallHistoryService(val context: Context) : DefaultLifecycleObserver {
         }
     }
 
-    private fun getMissedCallTimestamp() {
+    private suspend fun getMissedCallTimestamp() {
         val response = APIClientService(context).getUCGatewayService().doGetMissedCallDate()
 
         if (response.code() < 200 || response.code() > 299) {
             throw Exception("Error fetching user info: " + response.message())
         }
 
-        var missedCallTimestamp = deserializeDateTimeOffset(response.body()!!.missedCallTimestamp)
-        if (missedCallTimestamp == null) missedCallTimestamp = Date()
+        val formattedDateTimeString = response.body()!!.missedCallTimestamp.replace("Z", "+0000").replace(
+            ":",
+            ""
+        )
+        val dateFormat = SimpleDateFormat("yyyy-MM-dd'T'HHmmssZ", Locale.getDefault())
+        dateFormat.timeZone = TimeZone.getTimeZone("UTC")
+        val missedCallTimestamp: Date? = dateFormat.parse(formattedDateTimeString)
 
         missedCallTimestampSubject.onNext(
-            missedCallTimestamp
+            missedCallTimestamp!!
         )
     }
 
@@ -455,46 +513,12 @@ class CallHistoryService(val context: Context) : DefaultLifecycleObserver {
             })
     }
 
-    private fun deserializeDateTimeOffset(dateTimeOffsetString: String): Date? {
-        // This delight is brought to you by then API Level 23 compatibility requirement
-        // Split the string into date-time and offset parts
-        val parts = dateTimeOffsetString.split("+", "-")
-        if (parts.size != 2) {
-            throw IllegalArgumentException("Invalid DateTimeOffset format")
-        }
-
-        val dateTimePart = parts[0]
-        val offsetPart = dateTimeOffsetString.substring(dateTimePart.length)
-
-        // Parse the date-time part
-        val dateFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS", Locale.US)
-        dateFormat.timeZone = TimeZone.getTimeZone("UTC")
-        val date = dateFormat.parse(dateTimePart)
-
-        // Calculate the offset in milliseconds
-        val offsetHours = offsetPart.substring(1, 3).toInt()
-        val offsetMinutes = offsetPart.substring(4, 6).toInt()
-        val offsetMillis = (offsetHours * 60 + offsetMinutes) * 60 * 1000
-
-        // Adjust the date by the offset
-        if (date != null) {
-            return if (offsetPart.startsWith("+")) {
-                Date(date.time - offsetMillis)
-            } else {
-                Date(date.time + offsetMillis)
-            }
-        }
-
-        return null
-    }
-
     private fun transformData(
         callHistoryData: List<CallHistoryItem>,
         todaysDate: Date
     ): List<CallHistoryItemViewModel> {
-        val countryCode = "US" // Replace with actual logic to get the country code
         return callHistoryData.map { call ->
-            CallHistoryItemViewModel(call, todaysDate, countryCode)
+            CallHistoryItemViewModel(call, todaysDate, "US") // Replace with actual logic to get the country code
         }
     }
 

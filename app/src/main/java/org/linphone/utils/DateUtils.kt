@@ -43,41 +43,46 @@ class DateUtils {
         fun formatFriendlyDate(dateTime: Date?, todaysDate: Date?, useLastWeek: Boolean = false): String {
             if (dateTime == null || todaysDate == null) return ""
 
-            val dateOnly = Calendar.getInstance().apply {
-                time = dateTime
-                set(Calendar.HOUR_OF_DAY, 0)
-                set(Calendar.MINUTE, 0)
-                set(Calendar.SECOND, 0)
-                set(Calendar.MILLISECOND, 0)
-            }.time
+            val midnightTodaysDate = getMidnight(todaysDate)
+            val midnightDate = getMidnight(dateTime)
+
+            if (midnightDate == midnightTodaysDate) return ""
 
             val yesterday = Calendar.getInstance().apply {
-                time = todaysDate
+                time = midnightTodaysDate
                 add(Calendar.DAY_OF_MONTH, -1)
             }.time
 
             val aWeekAgo = Calendar.getInstance().apply {
-                time = todaysDate
+                time = midnightTodaysDate
                 add(Calendar.DAY_OF_MONTH, -7)
             }.time
 
             val twoWeeksAgo = Calendar.getInstance().apply {
-                time = todaysDate
+                time = midnightTodaysDate
                 add(Calendar.DAY_OF_MONTH, -14)
             }.time
 
             return when {
-                dateOnly == todaysDate -> ""
-                dateOnly == yesterday -> "Yesterday"
-                dateOnly.after(aWeekAgo) -> getDayName(dateTime.day)
-                useLastWeek && dateOnly.after(twoWeeksAgo) -> "Last week"
+                midnightDate == todaysDate -> ""
+                midnightDate == yesterday -> "Yesterday"
+                midnightDate.after(aWeekAgo) -> getDayName(dateTime.day)
+                useLastWeek && midnightDate.after(twoWeeksAgo) -> "Last week"
                 else -> SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(dateTime)
             }
         }
 
-        fun toLocaleHMString(dateTime: Date): String {
-            val hmsString = SimpleDateFormat("HH:mm", Locale.getDefault()).format(dateTime)
-            return hmsString.replace(Regex("(:[0-9]{2})($| )"), " ").trimEnd()
+        fun toLocaleHMString(dateTime: Date?): String {
+            val hmsString = dateTime?.let {
+                SimpleDateFormat("HH:mm", Locale.getDefault()).format(
+                    it
+                )
+            }
+            if (hmsString != null) {
+                return hmsString
+                // return hmsString.replace(Regex("(:[0-9]{2})($| )"), " ").trimEnd()
+            }
+            return ""
         }
 
         private fun getDayName(dayIndex: Int): String {
@@ -110,6 +115,16 @@ class DateUtils {
 
         private fun padLeft(value: Int): String {
             return value.toString().padStart(2, '0')
+        }
+
+        fun getMidnight(date: Date): Date {
+            val calendar = Calendar.getInstance()
+            calendar.time = date
+            calendar.set(Calendar.HOUR_OF_DAY, 0)
+            calendar.set(Calendar.MINUTE, 0)
+            calendar.set(Calendar.SECOND, 0)
+            calendar.set(Calendar.MILLISECOND, 0)
+            return calendar.time
         }
     }
 }

@@ -1,9 +1,9 @@
 import com.google.gson.annotations.SerializedName
-import java.util.Date
+import org.linphone.models.callhistory.CallHistoryItem
 
 data class ReportResult(
     @SerializedName("dateCreated")
-    val dateCreated: Date,
+    val dateCreated: String,
 
     @SerializedName("requestId")
     val requestId: String,
@@ -21,5 +21,5 @@ data class ReportResult(
     val userId: String,
 
     @SerializedName("data")
-    val data: Any
+    val data: List<CallHistoryItem>?
 )

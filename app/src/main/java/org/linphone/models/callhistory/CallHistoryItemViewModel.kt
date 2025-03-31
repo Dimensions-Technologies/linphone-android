@@ -3,27 +3,28 @@ package org.linphone.models.callhistory
 import io.reactivex.rxjava3.core.Observable
 import java.util.Date
 import org.linphone.LinphoneApplication.Companion.coreContext
+import org.linphone.R
+import org.linphone.core.Address
+import org.linphone.core.Call
+import org.linphone.core.CallLog
+import org.linphone.core.ConferenceInfo
+import org.linphone.core.ErrorInfo
 import org.linphone.services.PhoneFormatterService
 import org.linphone.utils.DateUtils
+import org.linphone.utils.LinphoneUtils
 
-class CallHistoryItemViewModel(val call: CallHistoryItem, val today: Date, val countryCode: String) {
-    val callId: String = call.documentId
+class CallHistoryItemViewModel(val call: CallHistoryItem, val today: Date, val countryCode: String) : CallLog {
     val rowClass: String = if (call.missedCall) "missed" else ""
-    val date: String = if (call.startTime != 0L) {
-        DateUtils.formatFriendlyDate(
-            Date(call.startTime),
-            today
-        )
-    } else {
-        ""
-    }
-    val time: String = if (call.startTime != 0L) DateUtils.toLocaleHMString(Date(call.startTime)) else ""
-    var number: String = ""
-    var formattedNumber: String = ""
-    var fields: List<String> = buildFields()
-    var icon: String = buildIcon()
+
+    val date: String = DateUtils.formatFriendlyDate(call.startTime, Date())
+    val time: String = DateUtils.toLocaleHMString(call.startTime)
+    var contactName: String = ""
     var contactIcon: String = buildContactMatchIcon()
     var contactLabel: String = buildContactMatchLabel()
+    var number: String = getOtherPartyNumber()
+    var formattedNumber: String = retrieveFormattedNumber(number)
+    var fields: List<String> = buildFields()
+    var icon: String = buildIcon()
     var isSelected: Boolean = false
 
     val canCall: Observable<Boolean> = Observable.defer {
@@ -36,22 +37,39 @@ class CallHistoryItemViewModel(val call: CallHistoryItem, val today: Date, val c
 
     private fun retrieveFormattedNumber(number: String): String {
         return if (call.isConference && call.pbxType == PbxType.Teams) {
-            "Microsoft Teams"
+            coreContext.context.getString(R.string.microsoft_teams)
         } else {
             if (number.isNotEmpty()) {
-                PhoneFormatterService.getInstance(coreContext.context).formatPhoneNumber(number)
+                try {
+                    PhoneFormatterService.getInstance(coreContext.context).formatPhoneNumber(number)
+                } catch (e: Exception) {
+                    number
+                }
             } else {
-                "Unknown"
+                coreContext.context.getString(R.string.unknown_formatted_number)
             }
         }
     }
 
     private fun buildFields(): List<String> {
-        val name = call.contactName ?: if (call.callDirection == CallDirections.Incoming) call.callingUserName else call.calledUserName
-        val route = call.routePathName ?: call.groupName ?: call.huntgroupName
+        var name = call.contactName
+        if (name.isNullOrBlank()) {
+            name = if (CallDirections.fromValue(call.callDirection) == CallDirections.Incoming) {
+                call.callingUserName
+            } else {
+                call.calledUserName
+            }
+        }
+
+        val route = call.routePathName ?: call.groupName ?: call.huntgroupName ?: ""
+
         val fields = mutableListOf<String>()
 
-        fields.add(name)
+        if (name != null) {
+            fields.add(name)
+            contactName = name
+        }
+
         if (formattedNumber.isNotEmpty() && formattedNumber != name) fields.add(formattedNumber)
         if (!route.contains(number ?: "")) fields.add("via $route")
 
@@ -61,7 +79,7 @@ class CallHistoryItemViewModel(val call: CallHistoryItem, val today: Date, val c
     private fun buildIcon(): String {
         return when {
             call.isConference -> CallHistoryIcons.Conference.iconValue
-            call.callDirection == CallDirections.Incoming -> {
+            CallDirections.fromValue(call.callDirection) == CallDirections.Incoming -> {
                 when {
                     call.missedCall -> CallHistoryIcons.CallMissed.iconValue
                     !call.answered -> CallHistoryIcons.CallNotAnswered.iconValue
@@ -73,6 +91,8 @@ class CallHistoryItemViewModel(val call: CallHistoryItem, val today: Date, val c
     }
 
     private fun buildContactMatchIcon(): String {
+        if (call.contactMatchType == null) return ""
+
         return when (call.contactMatchType) {
             "ClioContactMatch" -> "assets/crm-icons/Clio.png"
             "Dynamics365ContactMatch" -> "assets/crm-icons/Microsoft.svg"
@@ -85,6 +105,7 @@ class CallHistoryItemViewModel(val call: CallHistoryItem, val today: Date, val c
     }
 
     private fun buildContactMatchLabel(): String {
+        if (call.contactMatchType == null) return ""
         return when (call.contactMatchType) {
             "ClioContactMatch" -> "Open Clio record"
             "Dynamics365ContactMatch" -> "Open Dynamics record"
@@ -93,6 +114,157 @@ class CallHistoryItemViewModel(val call: CallHistoryItem, val today: Date, val c
             "ZendeskContactMatch" -> "Open Zendesk record"
             "ZohoContactMatch" -> "Open Zoho record"
             else -> ""
+        }
+    }
+
+    /* CallLog Interface */
+
+    private var userData: Any? = null
+
+    override fun getCallId(): String? {
+        return call.documentId
+    }
+
+    override fun getConferenceInfo(): ConferenceInfo? {
+        return null
+    }
+
+    override fun getDir(): Call.Dir {
+        return when (CallDirections.fromValue(call.callDirection)) {
+            CallDirections.Incoming -> Call.Dir.Incoming
+            CallDirections.Outgoing -> Call.Dir.Outgoing
+            else -> Call.Dir.Incoming // TODO: this may not be correct
+        }
+    }
+
+    override fun getDuration(): Int {
+        return 0 // Note: We don't currently have this
+    }
+
+    override fun getErrorInfo(): ErrorInfo? {
+        return null
+    }
+
+    fun getOtherPartyNumber(): String {
+        return if (CallDirections.fromValue(call.callDirection) == CallDirections.Outgoing) {
+            call.calledUserNumber ?: ""
+        } else {
+            call.callingUserNumber ?: ""
+        }
+    }
+
+    fun getOtherPartyName(): String {
+        return if (CallDirections.fromValue(call.callDirection) == CallDirections.Outgoing) {
+            call.calledUserName ?: ""
+        } else {
+            call.callingUserName ?: ""
+        }
+    }
+
+    override fun getFromAddress(): Address {
+        return if (CallDirections.fromValue(call.callDirection) == CallDirections.Outgoing) {
+            getAddress(call.callingUserNumber)!!
+        } else {
+            getAddress(call.calledUserNumber)!!
+        }
+    }
+
+    override fun getLocalAddress(): Address {
+        return if (CallDirections.fromValue(call.callDirection) == CallDirections.Outgoing) {
+            getAddress(call.callingUserNumber)!!
+        } else {
+            getAddress(call.calledUserNumber)!!
+        }
+    }
+
+    override fun getQuality(): Float {
+        return 0.0F
+    }
+
+    override fun getRefKey(): String? {
+        return callId
+    }
+
+    override fun setRefKey(refkey: String?) {
+        throw UnsupportedOperationException("RefKey is readonly")
+    }
+
+    override fun getRemoteAddress(): Address {
+        return if (CallDirections.fromValue(call.callDirection) == CallDirections.Outgoing) {
+            getAddress(call.calledUserNumber)!!
+        } else {
+            getAddress(call.callingUserNumber)!!
+        }
+    }
+
+    override fun setRemoteAddress(address: Address) {
+        throw UnsupportedOperationException("RemoteAddress is readonly")
+    }
+
+    override fun getStartDate(): Long {
+        return call.startTime.time
+    }
+
+    override fun getStatus(): Call.Status {
+        if (call.missedCall) return Call.Status.Missed
+        return Call.Status.Success
+
+        /* Which of these can we model?
+            case 0: return Success;
+            case 1: return Aborted;
+            case 2: return Missed;
+            case 3: return Declined;
+            case 4: return EarlyAborted;
+            case 5: return AcceptedElsewhere;
+            case 6: return DeclinedElsewhere;
+         */
+    }
+
+    override fun getToAddress(): Address {
+        return if (CallDirections.fromValue(call.callDirection) == CallDirections.Outgoing) {
+            getAddress(call.calledUserNumber)!!
+        } else {
+            getAddress(call.callingUserNumber)!!
+        }
+    }
+
+    override fun isVideoEnabled(): Boolean {
+        return false
+    }
+
+    override fun toStr(): String {
+        return contactLabel
+    }
+
+    override fun wasConference(): Boolean {
+        return false
+    }
+
+    override fun setUserData(data: Any?) {
+        userData = data
+    }
+
+    override fun getUserData(): Any {
+        return call
+    }
+
+    override fun getNativePointer(): Long {
+        return -1 // FixMe - not sure how linphone get native pointers
+    }
+
+    private fun getAddress(number: String?): Address? {
+        try {
+            if (number.isNullOrBlank()) throw IllegalArgumentException()
+
+            return coreContext.core.interpretUrl(
+                number,
+                LinphoneUtils.applyInternationalPrefix()
+            )
+        } catch (e: Exception) {
+            return coreContext.core.interpretUrl(
+                "07921910119",
+                LinphoneUtils.applyInternationalPrefix()
+            )
         }
     }
 }

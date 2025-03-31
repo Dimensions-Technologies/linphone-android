@@ -14,8 +14,7 @@ class CallHistoryDatabaseHelper(context: Context) : SQLiteOpenHelper(
     override fun onCreate(db: SQLiteDatabase) {
         val createTable = """
             CREATE TABLE CallHistoryCache (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                userId TEXT,
+                userId TEXT PRIMARY KEY,
                 version INTEGER,
                 data TEXT
             )

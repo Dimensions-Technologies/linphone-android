@@ -30,7 +30,7 @@ import coil.decode.SvgDecoder
 import coil.decode.VideoFrameDecoder
 import coil.disk.DiskCache
 import coil.memory.MemoryCache
-// import com.jakewharton.threetenabp.AndroidThreeTen
+import com.jakewharton.threetenabp.AndroidThreeTen
 import org.linphone.core.*
 import org.linphone.mediastream.Version
 import org.linphone.utils.Log
@@ -117,7 +117,8 @@ class LinphoneApplication : Application(), ImageLoaderFactory {
         android.util.Log.i("[$appName]", "Application is being created")
         createConfig(applicationContext)
 
-        // AndroidThreeTen.init(this)
+        AndroidThreeTen.init(this)
+
         Log.i("[Application] Created")
     }
 

@@ -97,18 +97,16 @@ interface CTGatewayService {
     ): Call<Void>
 
     @GET("api/v1.0/usercallhistory/summary")
-    fun doGetMissedCallDate(): Response<UserCallHistorySummary>
+    suspend fun doGetMissedCallDate(): Response<UserCallHistorySummary>
 
     @PUT("api/v1.0/usercallhistory/summary")
     fun doSetMissedCallDate(
         @Query("dateTime") dateTime: Date
     ): Call<Void>
 
-    @POST("usercallhistory/report")
-    fun postReportRequest(@Body request: Map<String, String?>): ReportRequest
+    @POST("api/v1.0/usercallhistory/report")
+    suspend fun postReportRequest(@Body request: Map<String, String?>): ReportRequest
 
     @GET("api/v1.0/usercallhistory/report")
-    fun getReportResult(
-        @Query("requestId") requestId: String
-    ): Response<ReportResult>
+    suspend fun getReportResult(@Query("requestId") requestId: String): Response<ReportResult>
 }
