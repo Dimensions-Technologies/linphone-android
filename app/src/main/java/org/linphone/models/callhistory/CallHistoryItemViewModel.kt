@@ -26,6 +26,7 @@ class CallHistoryItemViewModel(
     var contactIcon: String = buildContactMatchIcon()
     var contactLabel: String = buildContactMatchLabel()
     var number: String = getOtherPartyNumber()
+    var name: String = getOtherPartyName()
     var formattedNumber: String = retrieveFormattedNumber(number)
     var fields: List<String> = buildFields()
     var icon: String = buildIcon()

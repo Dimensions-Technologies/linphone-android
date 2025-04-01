@@ -43,6 +43,8 @@ import org.linphone.activities.navigateToConferenceCallHistory
 import org.linphone.activities.navigateToDialer
 import org.linphone.core.ConferenceInfo
 import org.linphone.databinding.HistoryMasterFragmentBinding
+import org.linphone.models.callhistory.CallHistoryItemViewModel
+import org.linphone.models.callhistory.PbxType
 import org.linphone.services.CallHistoryService
 import org.linphone.utils.*
 import org.linphone.utils.Log
@@ -218,56 +220,78 @@ class MasterCallLogsFragment : MasterFragment<HistoryMasterFragmentBinding, Call
 
         adapter.startCallToEvent.observe(
             viewLifecycleOwner
-        ) {
+        ) { it ->
             it.consume { callLogGroup ->
                 val callLog = callLogGroup.lastCallLog
-                val conferenceInfo = callLog.conferenceInfo
-                when {
-                    conferenceInfo != null -> {
-                        if (conferenceInfo.state == ConferenceInfo.State.Cancelled) {
-                            var snackRes = R.string.conference_scheduled_cancelled_by_organizer
 
-                            val organizer = conferenceInfo.organizer
-                            if (organizer != null) {
-                                val localAccount = coreContext.core.accountList.find { account ->
-                                    val address = account.params.identityAddress
-                                    address != null && organizer.weakEqual(address)
-                                }
-                                if (localAccount != null) {
-                                    snackRes = R.string.conference_scheduled_cancelled_by_me
-                                }
-                            }
-
-                            val activity = requireActivity() as MainActivity
-                            activity.showSnackBar(snackRes)
-                        } else {
-                            navigateToConferenceWaitingRoom(
-                                conferenceInfo.uri?.asStringUriOnly().orEmpty(),
-                                conferenceInfo.subject
+                if (callLog is CallHistoryItemViewModel &&
+                    callLog.call.pbxType == PbxType.Teams
+                ) {
+                    if (!callLog.call.isConference) {
+                        context?.let {
+                            UrlHelper.openBrowser(
+                                it,
+                                "https://teams.microsoft.com/l/call/0/0?users=${callLog.number}"
                             )
                         }
                     }
-                    coreContext.core.callsNb > 0 -> {
-                        val cleanAddress = LinphoneUtils.getCleanedAddress(callLog.remoteAddress)
-                        Log.i(
-                            "[History] Starting dialer with pre-filled URI ${cleanAddress.asStringUriOnly()}, is transfer? ${sharedViewModel.pendingCallTransfer}"
-                        )
-                        sharedViewModel.updateDialerAnimationsBasedOnDestination.value = Event(
-                            R.id.masterCallLogsFragment
-                        )
-                        val args = Bundle()
-                        args.putString("URI", cleanAddress.asStringUriOnly())
-                        args.putBoolean("Transfer", sharedViewModel.pendingCallTransfer)
-                        args.putBoolean("SkipAutoCallStart", true) // If auto start call setting is enabled, ignore it
-                        navigateToDialer(args)
-                    }
-                    else -> {
-                        val cleanAddress = LinphoneUtils.getCleanedAddress(callLog.remoteAddress)
-                        val localAddress = callLogGroup.lastCallLog.localAddress
-                        Log.i(
-                            "[History] Starting call to ${cleanAddress.asStringUriOnly()} with local address ${localAddress.asStringUriOnly()}"
-                        )
-                        coreContext.startCall(cleanAddress, localAddress = localAddress)
+                } else {
+                    val conferenceInfo = callLog.conferenceInfo
+                    when {
+                        conferenceInfo != null -> {
+                            if (conferenceInfo.state == ConferenceInfo.State.Cancelled) {
+                                var snackRes = R.string.conference_scheduled_cancelled_by_organizer
+
+                                val organizer = conferenceInfo.organizer
+                                if (organizer != null) {
+                                    val localAccount =
+                                        coreContext.core.accountList.find { account ->
+                                            val address = account.params.identityAddress
+                                            address != null && organizer.weakEqual(address)
+                                        }
+                                    if (localAccount != null) {
+                                        snackRes = R.string.conference_scheduled_cancelled_by_me
+                                    }
+                                }
+
+                                val activity = requireActivity() as MainActivity
+                                activity.showSnackBar(snackRes)
+                            } else {
+                                navigateToConferenceWaitingRoom(
+                                    conferenceInfo.uri?.asStringUriOnly().orEmpty(),
+                                    conferenceInfo.subject
+                                )
+                            }
+                        }
+
+                        coreContext.core.callsNb > 0 -> {
+                            val cleanAddress =
+                                LinphoneUtils.getCleanedAddress(callLog.remoteAddress)
+                            Log.i(
+                                "[History] Starting dialer with pre-filled URI ${cleanAddress.asStringUriOnly()}, is transfer? ${sharedViewModel.pendingCallTransfer}"
+                            )
+                            sharedViewModel.updateDialerAnimationsBasedOnDestination.value = Event(
+                                R.id.masterCallLogsFragment
+                            )
+                            val args = Bundle()
+                            args.putString("URI", cleanAddress.asStringUriOnly())
+                            args.putBoolean("Transfer", sharedViewModel.pendingCallTransfer)
+                            args.putBoolean(
+                                "SkipAutoCallStart",
+                                true
+                            ) // If auto start call setting is enabled, ignore it
+                            navigateToDialer(args)
+                        }
+
+                        else -> {
+                            val cleanAddress =
+                                LinphoneUtils.getCleanedAddress(callLog.remoteAddress)
+                            val localAddress = callLogGroup.lastCallLog.localAddress
+                            Log.i(
+                                "[History] Starting call to ${cleanAddress.asStringUriOnly()} with local address ${localAddress.asStringUriOnly()}"
+                            )
+                            coreContext.startCall(cleanAddress, localAddress = localAddress)
+                        }
                     }
                 }
             }
