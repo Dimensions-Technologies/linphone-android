@@ -40,6 +40,9 @@ interface CTGatewayService {
     @GET("api/v1.0/users/me/branding")
     fun doGetUserBranding(): Call<TenantBrandingDefinition>
 
+    @GET("api/v1.0/users/me/branding")
+    suspend fun getUserBranding(): Response<TenantBrandingDefinition>
+
     @POST("api/v1.0/clientdiagnostics/{fileName}")
     suspend fun postClientDiagnostics(
         @Path("fileName") fileName: String,
@@ -98,7 +101,7 @@ interface CTGatewayService {
     ): Call<Void>
 
     @GET("api/v1.0/usercallhistory/summary")
-    suspend fun doGetMissedCallDate(): Response<UserCallHistorySummary>
+    suspend fun getMissedCallDate(): Response<UserCallHistorySummary>
 
     @PUT("api/v1.0/usercallhistory/summary")
     fun doSetMissedCallDate(@Query("dateTime") dateTime: String): Call<Void>
