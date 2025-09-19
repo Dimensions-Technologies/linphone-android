@@ -33,7 +33,9 @@ import coil.memory.MemoryCache
 import com.jakewharton.threetenabp.AndroidThreeTen
 import org.linphone.core.*
 import org.linphone.mediastream.Version
+import org.linphone.middleware.FileTree
 import org.linphone.utils.Log
+import timber.log.Timber
 
 class LinphoneApplication : Application(), ImageLoaderFactory {
     companion object {
@@ -113,6 +115,10 @@ class LinphoneApplication : Application(), ImageLoaderFactory {
     override fun onCreate() {
         super.onCreate()
         val appName = getString(R.string.app_name)
+
+        Timber.plant(Timber.DebugTree(), FileTree(applicationContext))
+        Timber.tag("cloud.dimensions.uconnect")
+
         android.util.Log.i("[$appName]", "Application is being created")
         createConfig(applicationContext)
 
