@@ -48,11 +48,9 @@ import org.linphone.authentication.AuthorizationServiceManager
 import org.linphone.environment.DimensionsEnvironmentService
 import org.linphone.environment.DimensionsEnvironmentService.Companion.getInstance
 import org.linphone.environment.EnvironmentSelectionAdapter
-import org.linphone.middleware.FileTree
 import org.linphone.services.DiagnosticsService
 import org.linphone.services.UserService
 import org.linphone.utils.Log
-import timber.log.Timber
 
 /**
  * Demonstrates the usage of the AppAuth to authorize a user with an OAuth2 / OpenID Connect
@@ -90,12 +88,6 @@ class LoginActivity : AppCompatActivity() {
         installSplashScreen()
 
         setContentView(R.layout.login_activity)
-
-        if (!isLoggingInitialised) {
-            Timber.plant(Timber.DebugTree(), FileTree(applicationContext))
-            Timber.tag("cloud.dimensions.uconnect")
-            isLoggingInitialised = true
-        }
 
         mAuthStateManager = AuthStateManager.getInstance(this)
         mConfiguration = AuthConfiguration.getInstance(this)
@@ -732,7 +724,6 @@ class LoginActivity : AppCompatActivity() {
     companion object {
         private const val EXTRA_FAILED = "failed"
         private const val RC_AUTH = 100
-        private var isLoggingInitialised = false
     }
 
     private inner class NotifyingDataSetObserver : DataSetObserver() {
