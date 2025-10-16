@@ -645,21 +645,21 @@ class CoreContext(
     fun onForeground() {
         // We can't rely on defaultAccount?.params?.isPublishEnabled
         // as it will be modified by the SDK when changing the presence status
-        if (corePreferences.publishPresence) {
-            Log.i("[Context] App is in foreground, PUBLISHING presence as Online")
-            core.consolidatedPresence = ConsolidatedPresence.Online
-        }
+//        if (corePreferences.publishPresence) {
+//            Log.i("[Context] App is in foreground, PUBLISHING presence as Online")
+//            core.consolidatedPresence = ConsolidatedPresence.Online
+//        }
     }
 
     fun onBackground() {
         // We can't rely on defaultAccount?.params?.isPublishEnabled
         // as it will be modified by the SDK when changing the presence status
-        if (corePreferences.publishPresence) {
-            Log.i("[Context] App is in background, un-PUBLISHING presence info")
-            // We don't use ConsolidatedPresence.Busy but Offline to do an unsubscribe,
-            // Flexisip will handle the Busy status depending on other devices
-            core.consolidatedPresence = ConsolidatedPresence.Offline
-        }
+//        if (corePreferences.publishPresence) {
+//            Log.i("[Context] App is in background, un-PUBLISHING presence info")
+//            // We don't use ConsolidatedPresence.Busy but Offline to do an unsubscribe,
+//            // Flexisip will handle the Busy status depending on other devices
+//            core.consolidatedPresence = ConsolidatedPresence.Offline
+//        }
     }
 
     private fun configureCore() {
@@ -756,14 +756,14 @@ class CoreContext(
                     }
 
                     // Enable presence publish/subscribe for new feature
-                    if (!account.params.isPublishEnabled) {
-                        Log.i(
-                            "[Context] Enabling presence publish on account ${params.identityAddress?.asString()}"
-                        )
-                        params.isPublishEnabled = true
-                        params.publishExpires = 120
-                        paramsChanged = true
-                    }
+//                    if (!account.params.isPublishEnabled) {
+//                        Log.i(
+//                            "[Context] Enabling presence publish on account ${params.identityAddress?.asString()}"
+//                        )
+//                        params.isPublishEnabled = true
+//                        params.publishExpires = 120
+//                        paramsChanged = true
+//                    }
                 }
 
                 // Ensure conference factory URI is set on sip.linphone.org accounts
