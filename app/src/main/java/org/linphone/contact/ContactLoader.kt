@@ -301,10 +301,6 @@ class ContactLoader : LoaderManager.LoaderCallbacks<Cursor> {
                     val userGroupViewModel = UserGroupViewModel(userGroupModel)
                     for (friendHash in friends) {
                         userGroupViewModel.friends.add(friendHash.value)
-
-                        UserGroupService.getInstance(coreContext.context).localContactsSubject.onNext(
-                            UserGroupViewModelSubjectWrapper(userGroupViewModel)
-                        )
                     }
 
                     withContext(Dispatchers.Main) {
@@ -314,6 +310,11 @@ class ContactLoader : LoaderManager.LoaderCallbacks<Cursor> {
                             )
                         } else {
                             Log.i("[Contacts Loader] ${friends.size} friends created")
+
+                            UserGroupService.getInstance(coreContext.context).localContactsSubject.onNext(
+                                UserGroupViewModelSubjectWrapper(userGroupViewModel)
+                            )
+
                             val contactId = coreContext.contactsManager.contactIdToWatchFor
                             if (contactId.isNotEmpty()) {
                                 val friend = friends[contactId]

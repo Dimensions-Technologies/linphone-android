@@ -72,7 +72,7 @@ class DimensionsContactsFragment : MasterFragment<ContactDimensionsFragmentBindi
         binding.contactsList.adapter = null
         binding.userGroupSpinner.adapter = null
 
-        // usergroupSubscription?.dispose()
+        usergroupSubscription?.dispose()
 
         super.onDestroyView()
     }
@@ -402,7 +402,9 @@ class DimensionsContactsFragment : MasterFragment<ContactDimensionsFragmentBindi
     }
 
     private fun updateSpinnerAdapter(userGroups: List<UserGroupViewModel>) {
-        val spinner: Spinner = requireView().findViewById(R.id.userGroupSpinner)
+        if (view == null || !isAdded) return
+
+        val spinner = binding.userGroupSpinner
         val adapter = ArrayAdapter(
             requireContext(),
             android.R.layout.simple_spinner_dropdown_item,
