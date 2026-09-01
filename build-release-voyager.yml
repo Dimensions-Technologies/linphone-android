@@ -2,10 +2,13 @@ name: $(Build.SourceBranchName)
 pool:
   vmImage: 'ubuntu-latest'
 variables:
-  appVersionCode: $(MAJOR)$(MINOR)$(YEAR:yy)$(DAYOFYEAR)$(REV:r)
-  baseFolder: '$(Build.SourcesDirectory)/app/src/voyager'
-  resellerName: 'Voyager Internet'
-
+- group: Sentry-Symbol-Upload
+- name: appVersionCode
+  value: $(MAJOR)$(MINOR)$(YEAR:yy)$(DAYOFYEAR)$(REV:r)
+- name: baseFolder
+  value: '$(Build.SourcesDirectory)/app/src/voyager'
+- name: resellerName
+  value: 'Voyager Internet'
 steps:
 - checkout: self
 
@@ -124,7 +127,7 @@ steps:
     sonarQubeRunAnalysis: false
     spotBugsAnalysis: false
   env:
-    SENTRY_AUTH_TOKEN: $(SentryAuthToken) # Map secret variable SentryAuthToken to an environment variable
+    SENTRY_AUTH_TOKEN: $(sentryAuthToken) # Secret from the Sentry-Symbol-Upload variable group
 
 - task: PublishBuildArtifacts@1
   condition: and(succeeded(), ne(variables['Build.Reason'], 'PullRequest'))

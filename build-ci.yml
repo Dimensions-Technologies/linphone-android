@@ -2,10 +2,13 @@ name: $(MAJOR).$(MINOR).$(YEAR:yy)$(DAYOFYEAR).$(REV:r)
 pool:
   vmImage: 'ubuntu-latest'
 variables:
-  appVersionCode: $(MAJOR)$(MINOR)$(YEAR:yy)$(DAYOFYEAR)$(REV:r)
-  artifactName: 'apk-release'
-  resellerName: 'Dimensions Technologies'
-
+- group: Sentry-Symbol-Upload
+- name: appVersionCode
+  value: $(MAJOR)$(MINOR)$(YEAR:yy)$(DAYOFYEAR)$(REV:r)
+- name: artifactName
+  value: 'apk-release'
+- name: resellerName
+  value: 'Dimensions Technologies'
 stages:
 - stage: Build
 
@@ -79,9 +82,9 @@ stages:
           publishJUnitResults: false
           javaHomeOption: 'JDKVersion'
           sonarQubeRunAnalysis: false
-          spotBugsAnalysis: false#
+          spotBugsAnalysis: false
         env:
-          SENTRY_AUTH_TOKEN: $(SentryAuthToken) # Map secret variable SentryAuthToken to an environment variable
+          SENTRY_AUTH_TOKEN: $(sentryAuthToken) # Secret from the Sentry-Symbol-Upload variable group
 
       - task: PublishBuildArtifacts@1
         condition: and(succeeded(), ne(variables['Build.Reason'], 'PullRequest'))
