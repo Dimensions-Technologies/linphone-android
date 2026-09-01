@@ -12,14 +12,29 @@ def reseller = System.getenv("RESELLERNAME")
 println "Reseller name: ${reseller}"
 
 def sentryToken =  System.getenv("SENTRY_AUTH_TOKEN")
-println "Sentry auth token: ${sentryToken?.length()}"
+def sentryUploadEnabled = sentryToken != null && !sentryToken.trim().isEmpty()
+println "Sentry auth token: ${sentryToken?.length()}, symbol upload enabled: ${sentryUploadEnabled}"
 
 
 sentry {
-    includeSourceContext = true
     org = "dimensions-technologies"
     projectName = "connect-android"
     authToken = sentryToken
+
+    // Upload the R8/ProGuard mapping file so minified Kotlin/Java stack traces are deobfuscated.
+    includeProguardMapping = true
+    autoUploadProguardMapping = sentryUploadEnabled
+
+    // Bundle and upload source files so Sentry can show source context around each frame.
+    includeSourceContext = sentryUploadEnabled
+
+    // Upload the native (.so) debug symbols for the linphone-sdk so NDK crashes are symbolicated.
+    uploadNativeSymbols = sentryUploadEnabled
+    autoUploadNativeSymbols = sentryUploadEnabled
+    includeNativeSources = sentryUploadEnabled
+
+    // Debug builds are never shipped, so don't spend build time uploading their symbols.
+    ignoredBuildTypes = ["debug"]
 }
 
 def appVersionName = "5.3.0"

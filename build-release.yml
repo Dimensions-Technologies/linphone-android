@@ -2,9 +2,11 @@ name: $(Build.SourceBranchName)
 pool:
   vmImage: 'ubuntu-latest'
 variables:
-  appVersionCode: $(MAJOR)$(MINOR)$(YEAR:yy)$(DAYOFYEAR)$(REV:r)
-  resellerName: 'Dimensions Technologies'
-          
+- group: Sentry-Symbol-Upload
+- name: appVersionCode
+  value: $(MAJOR)$(MINOR)$(YEAR:yy)$(DAYOFYEAR)$(REV:r)
+- name: resellerName
+  value: 'Dimensions Technologies'
 steps:
 - checkout: self
 
@@ -107,7 +109,7 @@ steps:
     sonarQubeRunAnalysis: false
     spotBugsAnalysis: false
   env:
-    SENTRY_AUTH_TOKEN: $(SentryAuthToken) # Map secret variable SentryAuthToken to an environment variable
+    SENTRY_AUTH_TOKEN: $(sentryAuthToken) # Secret from the Sentry-Symbol-Upload variable group
 
 - task: PublishBuildArtifacts@1
   condition: and(succeeded(), ne(variables['Build.Reason'], 'PullRequest'))
