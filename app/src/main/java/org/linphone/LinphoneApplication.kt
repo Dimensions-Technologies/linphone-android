@@ -31,9 +31,11 @@ import coil.decode.VideoFrameDecoder
 import coil.disk.DiskCache
 import coil.memory.MemoryCache
 import com.jakewharton.threetenabp.AndroidThreeTen
+import io.sentry.android.core.SentryAndroid
 import org.linphone.core.*
 import org.linphone.mediastream.Version
 import org.linphone.middleware.FileTree
+import org.linphone.middleware.SentryEventProcessor
 import org.linphone.utils.Log
 import timber.log.Timber
 
@@ -115,6 +117,14 @@ class LinphoneApplication : Application(), ImageLoaderFactory {
     override fun onCreate() {
         super.onCreate()
         val appName = getString(R.string.app_name)
+
+        // Initialised here rather than in an activity so that crashes during startup are
+        // reported, and so the event processor is registered before any event can be sent.
+        // Auto-init is disabled in the manifest to keep this the only initialisation.
+        // Scope (crashes and errors only) is configured via manifest meta-data.
+        SentryAndroid.init(this) { options ->
+            options.addEventProcessor(SentryEventProcessor(this))
+        }
 
         Timber.plant(Timber.DebugTree(), FileTree(applicationContext))
         Timber.tag("cloud.dimensions.uconnect")

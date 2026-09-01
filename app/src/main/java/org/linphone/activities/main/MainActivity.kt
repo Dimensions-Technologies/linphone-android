@@ -52,7 +52,6 @@ import coil.imageLoader
 import com.google.android.material.snackbar.Snackbar
 import com.google.gson.Gson
 import io.reactivex.rxjava3.subjects.PublishSubject
-import io.sentry.android.core.SentryAndroid
 import java.io.UnsupportedEncodingException
 import java.net.URLDecoder
 import kotlin.math.abs
@@ -91,7 +90,6 @@ import org.linphone.core.Core
 import org.linphone.core.CoreListenerStub
 import org.linphone.core.CorePreferences
 import org.linphone.databinding.MainActivityBinding
-import org.linphone.middleware.SentryEventProcessor
 import org.linphone.models.AuthenticatedUser
 import org.linphone.services.UserService
 import org.linphone.utils.AppUtils
@@ -177,11 +175,6 @@ class MainActivity : GenericActivity(), SnackBarActivity, NavController.OnDestin
         super.onCreate(savedInstanceState)
 
         Log.i("Auth: onCreate MainActivity")
-
-        SentryAndroid.init(this, {
-                options ->
-            options.addEventProcessor(SentryEventProcessor(this))
-        })
 
         enableEdgeToEdge(
             SystemBarStyle.dark(Color.TRANSPARENT),
