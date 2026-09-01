@@ -74,27 +74,56 @@
         android:allowNativeHeapPointerTagging="false">
 
         <!-- Sentry.io config -->
+        <!--
+            Scope is deliberately limited to crashes and errors. Performance tracing,
+            profiling, session replay and release health are all off by explicit choice,
+            not by oversight - this is a softphone, so screen and network telemetry
+            carries contact names, phone numbers and SIP signalling. Do not re-enable
+            any of these without a decision about what that data contains.
+        -->
         <meta-data android:name="io.sentry.dsn"
             android:value="https://540d9cdc3bf9045bb7b414ea2fed683b@o4509371926446080.ingest.de.sentry.io/4509412243079248" />
-        <!-- Add data like request headers, user ip address and device name, see https://docs.sentry.io/platforms/android/data-management/data-collected/ for more info -->
-        <meta-data android:name="io.sentry.send-default-pii" android:value="true" />
-        <!-- enable automatic breadcrumbs for user interactions (clicks, swipes, scrolls) -->
-        <meta-data android:name="io.sentry.traces.user-interaction.enable" android:value="true" />
-        <!-- enable screenshot for crashes -->
+
+        <!-- Sentry is initialised explicitly in LinphoneApplication.onCreate so the
+             event processor is registered before any activity starts. -->
+        <meta-data android:name="io.sentry.auto-init" android:value="false" />
+
+        <!-- Do not send user IP, device name or request headers. -->
+        <meta-data android:name="io.sentry.send-default-pii" android:value="false" />
+
+        <!-- Visual context on crash events. Kept deliberately; these fire on errors only. -->
         <meta-data android:name="io.sentry.attach-screenshot" android:value="true" />
-        <!-- enable view hierarchy for crashes -->
         <meta-data android:name="io.sentry.attach-view-hierarchy" android:value="true" />
-        <!-- enable the performance API by setting a sample-rate, adjust in production env -->
-        <meta-data android:name="io.sentry.traces.sample-rate" android:value="1.0" />
-        <!-- Enable UI profiling, adjust in production env. This is evaluated only once per session -->
-        <meta-data android:name="io.sentry.traces.profiling.session-sample-rate" android:value="1.0" />
-        <!-- Set profiling mode. For more info see https://docs.sentry.io/platforms/android/profiling/#enabling-ui-profiling -->
-        <meta-data android:name="io.sentry.traces.profiling.lifecycle" android:value="trace" />
-        <!-- Enable profiling on app start. The app start profile will be stopped automatically when the app start root span finishes -->
-        <meta-data android:name="io.sentry.traces.profiling.start-on-app-start" android:value="true" />
-        <!-- record session replays for 100% of errors and 10% of sessions -->
-        <meta-data android:name="io.sentry.session-replay.on-error-sample-rate" android:value="1.0" />
-        <meta-data android:name="io.sentry.session-replay.session-sample-rate" android:value="0.1" />
+
+        <!-- Performance tracing and profiling: off. Not a crash signal. -->
+        <meta-data android:name="io.sentry.traces.sample-rate" android:value="0.0" />
+        <meta-data android:name="io.sentry.traces.activity.enable" android:value="false" />
+        <meta-data android:name="io.sentry.traces.user-interaction.enable" android:value="false" />
+        <meta-data android:name="io.sentry.traces.frames-tracking" android:value="false" />
+        <meta-data android:name="io.sentry.traces.profiling.session-sample-rate" android:value="0.0" />
+        <meta-data android:name="io.sentry.traces.profiling.start-on-app-start" android:value="false" />
+        <meta-data android:name="io.sentry.profiling.enable-app-start" android:value="false" />
+
+        <!-- Session Replay records the screen. Off, not sampled down. -->
+        <meta-data android:name="io.sentry.session-replay.session-sample-rate" android:value="0.0" />
+        <meta-data android:name="io.sentry.session-replay.on-error-sample-rate" android:value="0.0" />
+
+        <!-- Release health / session tracking: off. Not a crash signal. -->
+        <meta-data android:name="io.sentry.auto-session-tracking.enable" android:value="false" />
+
+        <!-- ANR reports "application not responding" - a latency signal, not a crash. -->
+        <meta-data android:name="io.sentry.anr.enable" android:value="false" />
+
+        <!--
+            Automatic breadcrumbs sit below wherever this app redacts sensitive strings,
+            so they can capture SIP data the logging layer would have scrubbed. Off.
+        -->
+        <meta-data android:name="io.sentry.breadcrumbs.app-lifecycle" android:value="false" />
+        <meta-data android:name="io.sentry.breadcrumbs.activity-lifecycle" android:value="false" />
+        <meta-data android:name="io.sentry.breadcrumbs.system-events" android:value="false" />
+        <meta-data android:name="io.sentry.breadcrumbs.network-events" android:value="false" />
+        <meta-data android:name="io.sentry.breadcrumbs.app-components" android:value="false" />
+        <meta-data android:name="io.sentry.breadcrumbs.user-interaction" android:value="false" />
 
         <!-- ENTRY POINT -->
         <activity

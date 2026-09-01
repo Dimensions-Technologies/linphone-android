@@ -25,13 +25,20 @@ sentry {
     includeProguardMapping = true
     autoUploadProguardMapping = sentryUploadEnabled
 
-    // Bundle and upload source files so Sentry can show source context around each frame.
-    includeSourceContext = sentryUploadEnabled
-
     // Upload the native (.so) debug symbols for the linphone-sdk so NDK crashes are symbolicated.
     uploadNativeSymbols = sentryUploadEnabled
     autoUploadNativeSymbols = sentryUploadEnabled
-    includeNativeSources = sentryUploadEnabled
+
+    // Do not upload source. The mapping file alone gives file, line and method names;
+    // source context would put this repository's code in Sentry for no extra readability.
+    includeSourceContext = false
+    includeNativeSources = false
+
+    // The plugin adds performance instrumentation by default, rewriting bytecode to add
+    // tracing spans. Scope here is crashes and errors only, so it stays off.
+    tracingInstrumentation {
+        enabled = false
+    }
 
     // Debug builds are never shipped, so don't spend build time uploading their symbols.
     ignoredBuildTypes = ["debug"]
