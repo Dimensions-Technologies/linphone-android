@@ -159,6 +159,7 @@
     <string name="contacts_favoritesGroup">Favorites</string>
     <string name="contacts_androidContactsGroup">Android Contacts</string>
     <string name="contacts_searchResultsGroup">Search Results</string>
+    <string name="contacts_searching">Searching…</string>
     <string name="content_description_is_favourite">This is one of your favorite contacts</string>
     <string name="contacts_failedToAddContactToFavorites">Failed to add contact to favourites</string>
     <string name="contacts_successfullyAddedContactToFavorites">Successfully added contact to favourites</string>

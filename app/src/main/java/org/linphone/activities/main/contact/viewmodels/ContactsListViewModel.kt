@@ -37,6 +37,11 @@ import org.linphone.services.DirectoriesService
 import org.linphone.utils.Event
 import org.linphone.utils.Log
 class ContactsListViewModel : ViewModel() {
+    companion object {
+        // Longer than a normal directory search, which queries each directory one after another.
+        private const val DIRECTORY_SEARCH_TIMEOUT_MS = 30_000L
+    }
+
     val sipContactsSelected = MutableLiveData<Boolean>()
 
     val contactsList = MutableLiveData<ArrayList<ContactViewModel>>()
@@ -52,6 +57,11 @@ class ContactsListViewModel : ViewModel() {
     val fetchInProgress = MutableLiveData<Boolean>()
     private var searchResultsPending: Boolean = false
     private var fastFetchJob: Job? = null
+
+    // True while the gateway directory search for the current filter hasn't returned yet, so the
+    // list can show "Searching…" rather than an empty-list message.
+    val directorySearchInProgress = MutableLiveData<Boolean>()
+    private var directorySearchTimeoutJob: Job? = null
 
     val filter = MutableLiveData<String>()
 
@@ -142,7 +152,8 @@ class ContactsListViewModel : ViewModel() {
             DirectoriesService.getInstance(coreContext.context).searchResults.subscribe { r ->
                 try {
                     processContactSearchResults(
-                        r
+                        r.results,
+                        r.searchText
                     )
                 } catch (e: Exception) {
                     Log.e("searchSubscription", e)
@@ -180,6 +191,21 @@ class ContactsListViewModel : ViewModel() {
             coreContext.contactsManager.magicSearch.resetSearchCache()
         }
         previousFilter = filterValue
+
+        // Same rule as the combined search below: directory results are only used from 3 characters
+        val directorySearchNeeded = filterValue.isNotBlank() && filterValue.length >= 3
+        directorySearchInProgress.value = directorySearchNeeded
+        directorySearchTimeoutJob?.cancel()
+        if (directorySearchNeeded) {
+            // Safety net: if the search never returns (e.g. directories failed to load), fall back
+            // to the empty-list message rather than showing "Searching…" forever.
+            directorySearchTimeoutJob = viewModelScope.launch {
+                delay(DIRECTORY_SEARCH_TIMEOUT_MS)
+                if (filter.value.orEmpty() == filterValue) {
+                    directorySearchInProgress.value = false
+                }
+            }
+        }
 
         val selectedUserGroup = userGroup.value
         if (filterValue.isBlank() && selectedUserGroup != null) {
@@ -269,7 +295,7 @@ class ContactsListViewModel : ViewModel() {
         }
     }
 
-    private fun processContactSearchResults(results: UserGroupViewModel) {
+    private fun processContactSearchResults(results: UserGroupViewModel, searchText: String) {
         CoroutineScope(Dispatchers.Main).launch {
             Log.i("processContactSearchResults Processing ${results.count()} results")
 
@@ -282,6 +308,14 @@ class ContactsListViewModel : ViewModel() {
             list.sortBy { contactViewModel -> contactViewModel.fullName }
 
             contactSearchResultsSubject.onNext(list)
+
+            // Ignore results for older search text; they don't end the current search.
+            if (searchText == filter.value.orEmpty()) {
+                directorySearchTimeoutJob?.cancel()
+                // postValue, so this lands after the contactsList.postValue triggered above and the
+                // empty-list message can't flash up for a frame before the results appear.
+                directorySearchInProgress.postValue(false)
+            }
 
             Log.i("processUserGroupResults Processed ${results.count()} results")
         }
