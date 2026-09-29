@@ -19,6 +19,7 @@
  */
 package org.linphone.activities.main
 
+import android.Manifest
 import android.app.Dialog
 import android.content.ComponentCallbacks2
 import android.content.Context
@@ -33,10 +34,10 @@ import android.view.View
 import android.view.inputmethod.InputMethodManager
 import androidx.activity.SystemBarStyle
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.MainThread
 import androidx.annotation.StringRes
 import androidx.annotation.WorkerThread
-import androidx.core.app.ActivityCompat
 import androidx.core.view.GravityCompat
 import androidx.core.view.doOnAttach
 import androidx.databinding.DataBindingUtil
@@ -108,6 +109,10 @@ class MainActivity : GenericActivity(), SnackBarActivity, NavController.OnDestin
     private lateinit var binding: MainActivityBinding
     private lateinit var sharedViewModel: SharedMainViewModel
     private lateinit var callOverlayViewModel: CallOverlayViewModel
+
+    private val essentialPermissionsLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { results -> onEssentialPermissionsResult(results) }
 
     private val listener = object : ContactsUpdatedListenerStub() {
         override fun onContactsUpdated() {
@@ -285,16 +290,26 @@ class MainActivity : GenericActivity(), SnackBarActivity, NavController.OnDestin
         Log.i("onStart MainActivity")
 
         try {
-            ActivityCompat.requestPermissions(
-                this,
-                PermissionHelper.get().getEssentialPermissions(),
-                0
-            )
+            essentialPermissionsLauncher.launch(PermissionHelper.get().getEssentialPermissions())
         } catch (ex: Exception) {
             Log.e(ex)
         }
 
         handleAuthIntent(intent)
+    }
+
+    private fun onEssentialPermissionsResult(results: Map<String, Boolean>) {
+        // Contacts are fetched when the Core starts, which on first launch is before the user has
+        // answered the permission prompt, so fetch them again once READ_CONTACTS is granted.
+        // Only do it when there are no contacts yet, as this result is also delivered straight
+        // away on every onStart when the permissions were already granted.
+        if (results[Manifest.permission.READ_CONTACTS] == true &&
+            coreContext.contactsManager.latestContactFetch.isEmpty() &&
+            coreContext.contactsManager.fetchInProgress.value != true
+        ) {
+            Log.i("[Main Activity] READ_CONTACTS permission granted, fetching contacts")
+            coreContext.fetchContacts()
+        }
     }
 
     private fun handleAuthIntent(intent: Intent) {
