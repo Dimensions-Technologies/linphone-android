@@ -45,22 +45,32 @@ class DirectoriesService(val context: Context) : DefaultLifecycleObserver {
     val dialSearchText = dialSearchTextSubject
         .map { x -> x }
 
-    val searchResults: Observable<UserGroupViewModel>
+    // Directory search results, tagged with the search text they were made for so callers can tell
+    // whether the results belong to the text currently being searched.
+    data class DirectorySearchResult(val searchText: String, val results: UserGroupViewModel)
+
+    val searchResults: Observable<DirectorySearchResult>
         get() = dialSearchText
             .debounce(500, TimeUnit.MILLISECONDS)
-            .map { formatSearchText(it) }
-            .switchMap { text ->
+            .switchMap { searchText ->
+                val text = formatSearchText(searchText)
                 if (text.length >= 3) {
                     Log.i("searchResults($text)")
                     search(PhoneFormatterService.getInstance(context).getSearchNumber(text))
+                        .map { DirectorySearchResult(searchText, it) }
                 } else {
-                    Observable.just(UserGroupViewModel.empty())
+                    Observable.just(DirectorySearchResult(searchText, UserGroupViewModel.empty()))
                 }
             }
             .share()
             .onErrorResumeNext { e: Throwable ->
                 Log.e(e, "Error searching directories.")
-                Observable.just(UserGroupViewModel.empty())
+                Observable.just(
+                    DirectorySearchResult(
+                        dialSearchTextSubject.value.orEmpty(),
+                        UserGroupViewModel.empty()
+                    )
+                )
             }
 
     override fun onDestroy(owner: LifecycleOwner) {
