@@ -495,8 +495,14 @@ class CallHistoryService(val context: Context) : DefaultLifecycleObserver {
         localDateTime: LocalDateTime
     ): List<CallHistoryItemViewModel> {
         val start = Date()
-        val formatted = callHistoryData.map { call ->
-            CallHistoryItemViewModel(call, localDateTime)
+        // Skip any item that fails to format, rather than erroring the formattedHistory stream.
+        val formatted = callHistoryData.mapNotNull { call ->
+            try {
+                CallHistoryItemViewModel(call, localDateTime)
+            } catch (e: Exception) {
+                Log.e(e, "$TAG: failed to format call history item ${call.documentId}")
+                null
+            }
         }
         val end = Date()
         val dt = end.time - start.time

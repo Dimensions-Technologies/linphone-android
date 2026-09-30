@@ -168,7 +168,7 @@ class CallLogsListViewModel : ViewModel() {
 
     @SuppressLint("CheckResult")
     private fun updateCallLogs() {
-        callHistoryService.formattedHistory.subscribe { formattedHistory ->
+        callHistoryService.formattedHistory.subscribe({ formattedHistory ->
             callLogs.value.orEmpty().forEach(GroupedCallLogData::destroy)
 
             val updatedCallLogs = when (filter.value) {
@@ -186,7 +186,7 @@ class CallLogsListViewModel : ViewModel() {
             }
 
             callLogs.postValue(updatedCallLogs)
-        }.dispose()
+        }, { error -> Log.e(error, "Failed to update call logs.") }).dispose()
     }
 
     val contextMenuTranslateY = MutableLiveData<Float>()
