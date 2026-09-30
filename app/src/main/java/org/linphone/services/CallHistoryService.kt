@@ -159,13 +159,11 @@ class CallHistoryService(val context: Context) : DefaultLifecycleObserver {
         }
     )
 
-    val formattedHistory: Observable<List<CallHistoryItemViewModel>> = Observable.combineLatest(
+    val formattedHistory: Observable<List<CallHistoryItemViewModel>> = formatHistory(
         history,
         DateUtils.todaysDate,
-        { history, date -> transformData(history, date) }
+        ::CallHistoryItemViewModel
     )
-        .replay(1)
-        .autoConnect()
 
     val historyMessage: Observable<String> = Observable.combineLatest(
         reportQuery,
@@ -213,6 +211,42 @@ class CallHistoryService(val context: Context) : DefaultLifecycleObserver {
                 instance.set(svc)
             }
             return svc
+        }
+
+        /**
+         * Formats the history against today's date, replaying the latest list to new subscribers.
+         * An item that fails to format is skipped, so one bad record can't error the stream.
+         */
+        internal fun <T : Any> formatHistory(
+            history: Observable<List<CallHistoryItem>>,
+            todaysDate: Observable<LocalDateTime>,
+            format: (CallHistoryItem, LocalDateTime) -> T
+        ): Observable<List<T>> = Observable.combineLatest(
+            history,
+            todaysDate,
+            { items, date -> transformData(items, date, format) }
+        )
+            .replay(1)
+            .autoConnect()
+
+        private fun <T : Any> transformData(
+            callHistoryData: List<CallHistoryItem>,
+            localDateTime: LocalDateTime,
+            format: (CallHistoryItem, LocalDateTime) -> T
+        ): List<T> {
+            val start = Date()
+            val formatted = callHistoryData.mapNotNull { call ->
+                try {
+                    format(call, localDateTime)
+                } catch (e: Exception) {
+                    Log.e(e, "$TAG: failed to format call history item ${call.documentId}")
+                    null
+                }
+            }
+            val end = Date()
+            val dt = end.time - start.time
+            Log.i("$TAG: formatting took ${dt}ms")
+            return formatted
         }
     }
 
@@ -488,20 +522,6 @@ class CallHistoryService(val context: Context) : DefaultLifecycleObserver {
                     }
                 }
             })
-    }
-
-    private fun transformData(
-        callHistoryData: List<CallHistoryItem>,
-        localDateTime: LocalDateTime
-    ): List<CallHistoryItemViewModel> {
-        val start = Date()
-        val formatted = callHistoryData.map { call ->
-            CallHistoryItemViewModel(call, localDateTime)
-        }
-        val end = Date()
-        val dt = end.time - start.time
-        Log.i("$TAG: formatting took ${dt}ms")
-        return formatted
     }
 
     private fun compressString(data: String): String {
