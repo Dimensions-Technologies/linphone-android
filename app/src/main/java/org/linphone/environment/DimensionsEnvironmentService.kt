@@ -42,8 +42,12 @@ class DimensionsEnvironmentService(context: Context) {
     )
     private var mResources = context.resources
     private var mPrefsLock: ReentrantLock = ReentrantLock()
-    private var isListInitialised: Boolean = false
+
+    @Volatile private var isListInitialised: Boolean = false
     private var isDevModeEnabled: Boolean = false
+
+    // The environment a brand marks isDefault in environment_overrides.json, if any.
+    private var brandDefaultId: String? = null
 
     private val currentEnvironmentSubject = BehaviorSubject.create<DimensionsEnvironment>()
     val currentEnvironmentObservable = currentEnvironmentSubject.map { x -> x }
@@ -78,16 +82,17 @@ class DimensionsEnvironmentService(context: Context) {
 
     @AnyThread
     fun getEnvironmentList(): List<DimensionsEnvironment> {
-        if (!isListInitialised) {
-            addEnvironmentOverrides()
-        }
-
-        isListInitialised = true
+        addEnvironmentOverrides()
 
         return environments.filter { e -> !e.isHidden || isDevModeEnabled }
     }
 
+    // The environment list loads on a background thread while LoginActivity reads the current
+    // environment on the main thread, so both paths call this and it only runs once.
+    @Synchronized
     private fun addEnvironmentOverrides() {
+        if (isListInitialised) return
+
         // Read any environment overrides for the current build variant:
         var overrideList: Array<EnvironmentOverride>
 
@@ -114,6 +119,9 @@ class DimensionsEnvironmentService(context: Context) {
         if (defaultId != null) {
             environments.forEach { env -> env.isDefault = env.id == defaultId }
         }
+
+        brandDefaultId = defaultId
+        isListInitialised = true
     }
 
     @AnyThread
@@ -155,14 +163,13 @@ class DimensionsEnvironmentService(context: Context) {
     }
 
     private fun getDefaultEnvironment(): DimensionsEnvironment? {
-        // Get the first environment that matches the current UI culture.
-        val localeCode = Locale.getDefault().toLanguageTag()
-        val cultureMatch = environments.firstOrNull { x -> x.locales.contains(localeCode) }
-        if (cultureMatch != null) {
-            return cultureMatch
-        }
-        // If not found, return the overall default environment.
-        return environments.firstOrNull { x -> x.isDefault }
+        addEnvironmentOverrides()
+
+        return resolveDefaultEnvironment(
+            environments,
+            brandDefaultId,
+            Locale.getDefault().toLanguageTag()
+        )
     }
 
     fun toggleDevMode() {
@@ -176,4 +183,22 @@ class DimensionsEnvironmentService(context: Context) {
             mPrefsLock.unlock()
         }
     }
+}
+
+/**
+ * Picks the environment to use before the user has chosen one. A brand that names a default in
+ * environment_overrides.json always starts there. Otherwise the first environment matching the
+ * device locale wins, falling back to the environment marked isDefault.
+ */
+internal fun resolveDefaultEnvironment(
+    environments: List<DimensionsEnvironment>,
+    brandDefaultId: String?,
+    localeTag: String
+): DimensionsEnvironment? {
+    if (brandDefaultId != null) {
+        environments.firstOrNull { x -> x.id == brandDefaultId }?.let { return it }
+    }
+
+    return environments.firstOrNull { x -> x.locales.contains(localeTag) }
+        ?: environments.firstOrNull { x -> x.isDefault }
 }
