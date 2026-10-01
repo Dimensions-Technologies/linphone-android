@@ -5,6 +5,7 @@ import android.annotation.TargetApi
 import android.app.PendingIntent
 import android.content.Intent
 import android.database.DataSetObserver
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.view.View
@@ -50,6 +51,7 @@ import org.linphone.environment.DimensionsEnvironmentService.Companion.getInstan
 import org.linphone.environment.EnvironmentSelectionAdapter
 import org.linphone.services.DiagnosticsService
 import org.linphone.services.UserService
+import org.linphone.utils.CallUriIntents
 import org.linphone.utils.Log
 
 /**
@@ -81,8 +83,21 @@ class LoginActivity : AppCompatActivity() {
     private var isEnvironmentSelected = false
     private val destroy = PublishSubject.create<Unit>()
 
+    // A tel: or sip: link to call once the user is signed in. It arrives either as the intent's
+    // data, or as an extra when the sign-in flow was cancelled and brought back here
+    private var pendingCallUri: String? = null
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        pendingCallUri = CallUriIntents.callUriToHold(
+            intent.action,
+            intent.data?.toString(),
+            intent.getStringExtra(CallUriIntents.EXTRA_CALL_URI)
+        )
+        if (pendingCallUri != null) {
+            Log.i("[LoginActivity] Holding call link [$pendingCallUri] until signed in")
+        }
 
         // Must be done before the setContentView
         installSplashScreen()
@@ -216,6 +231,11 @@ class LoginActivity : AppCompatActivity() {
     private fun redirectToMain() {
         Log.i("User is authenticated, proceeding to main activity")
         val intent = Intent(this, MainActivity::class.java)
+        pendingCallUri?.let {
+            // MainActivity handles this as if the link had been opened in it directly
+            intent.action = Intent.ACTION_VIEW
+            intent.data = Uri.parse(it)
+        }
         startActivity(intent)
         finish()
     }
@@ -252,6 +272,7 @@ class LoginActivity : AppCompatActivity() {
             }
             val intent = Intent(this, MainActivity::class.java)
             intent.putExtras(data!!.extras!!)
+            pendingCallUri?.let { intent.putExtra(CallUriIntents.EXTRA_CALL_URI, it) }
             startActivity(intent)
         }
     }
@@ -545,7 +566,16 @@ class LoginActivity : AppCompatActivity() {
             cancelIntent.putExtra(EXTRA_FAILED, true)
             cancelIntent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
 
-            var flags = 0
+            // The system holds these intents, so the link survives the app being killed while
+            // the user signs in
+            pendingCallUri?.let {
+                completionIntent.putExtra(CallUriIntents.EXTRA_CALL_URI, it)
+                cancelIntent.putExtra(CallUriIntents.EXTRA_CALL_URI, it)
+            }
+
+            // Without FLAG_UPDATE_CURRENT a PendingIntent from an earlier sign-in attempt would be
+            // reused with its old extras
+            var flags = PendingIntent.FLAG_UPDATE_CURRENT
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                 flags = flags or PendingIntent.FLAG_MUTABLE
             }

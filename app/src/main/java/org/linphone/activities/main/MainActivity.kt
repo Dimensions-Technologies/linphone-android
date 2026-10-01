@@ -161,6 +161,8 @@ class MainActivity : GenericActivity(), SnackBarActivity, NavController.OnDestin
     }
     private var authenticationRequiredDialog: Dialog? = null
 
+    private var pendingCallUri: String? = null
+
     private val coreListener: CoreListenerStub = object : CoreListenerStub() {
         override fun onAuthenticationRequested(core: Core, authInfo: AuthInfo, method: AuthMethod) {
             if (authInfo.username == null || authInfo.domain == null || authInfo.realm == null) {
@@ -331,6 +333,9 @@ class MainActivity : GenericActivity(), SnackBarActivity, NavController.OnDestin
             }
 
             if (response?.authorizationCode != null) {
+                // A call link that LoginActivity carried through sign-in, dialled once signed in
+                pendingCallUri = intent.getStringExtra(CallUriIntents.EXTRA_CALL_URI)
+
                 // authorization code exchange is required
                 exchangeAuthorizationCode(response)
             }
@@ -960,10 +965,17 @@ class MainActivity : GenericActivity(), SnackBarActivity, NavController.OnDestin
                 )
 
             Log.i(message)
+            pendingCallUri = null
             // WrongThread inference is incorrect for lambdas
             // TODO: runOnUiThread { displayNotAuthorized(message) }
         } else {
             // TODO: runOnUiThread(this::displayAuthorized)
+            runOnUiThread {
+                val callUri = pendingCallUri ?: return@runOnUiThread
+                pendingCallUri = null
+                Log.i("[Main Activity] Signed in, handling call link [$callUri]")
+                handleTelOrSipUri(Uri.parse(callUri))
+            }
         }
     }
 }
