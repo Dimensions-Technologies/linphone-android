@@ -135,6 +135,20 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+
+            <!-- Call links. CALL and CALL_BUTTON are left out on purpose, as they make the app
+                 act like the default phone app on some models -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <action android:name="android.intent.action.DIAL" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="tel" />
+                <data android:scheme="sip" />
+                <data android:scheme="sips" />
+                <data android:scheme="linphone" />
+                <data android:scheme="sip-linphone" />
+            </intent-filter>
         </activity>
 
         <activity android:name=".activities.main.MainActivity"
@@ -182,16 +196,11 @@
                 <data android:mimeType="${linphone_address_mime_type}" />
             </intent-filter>
 
+            <!-- Call links go to LoginActivity, which signs the user in first if needed -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
-                <action android:name="android.intent.action.DIAL" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="tel" />
-                <data android:scheme="sip" />
-                <data android:scheme="sips" />
-                <data android:scheme="linphone" />
-                <data android:scheme="sip-linphone" />
                 <data android:scheme="linphone-config" />
             </intent-filter>
 

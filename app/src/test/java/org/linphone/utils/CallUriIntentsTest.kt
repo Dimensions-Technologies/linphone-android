@@ -1,6 +1,8 @@
 package org.linphone.utils
 
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -40,6 +42,41 @@ class CallUriIntentsTest {
     fun `intents without a link are not call links`() {
         assertFalse(CallUriIntents.isCallUri(view, null))
         assertFalse(CallUriIntents.isCallUri(dial, null))
+    }
+
+    @Test
+    fun `LoginActivity holds the link it was opened with`() {
+        assertEquals("tel:03332420042", CallUriIntents.callUriToHold(view, "tel:03332420042", null))
+        assertEquals(
+            "sip:1040@example.com",
+            CallUriIntents.callUriToHold(dial, "sip:1040@example.com", null)
+        )
+    }
+
+    @Test
+    fun `the link it was opened with wins over a carried one`() {
+        assertEquals(
+            "tel:0111",
+            CallUriIntents.callUriToHold(view, "tel:0111", "tel:0222")
+        )
+    }
+
+    @Test
+    fun `LoginActivity holds a link carried back from a cancelled sign-in`() {
+        // The cancel intent targets LoginActivity directly, with no action or data
+        assertEquals("tel:0222", CallUriIntents.callUriToHold(null, null, "tel:0222"))
+    }
+
+    @Test
+    fun `a non-call link isn't held as one`() {
+        assertNull(CallUriIntents.callUriToHold(view, "plum.oauth2:/oauth2redirect?code=x", null))
+        assertNull(CallUriIntents.callUriToHold(view, "https://example.com", null))
+        assertNull(CallUriIntents.callUriToHold(view, "03332420042", null))
+    }
+
+    @Test
+    fun `a launcher start holds nothing`() {
+        assertNull(CallUriIntents.callUriToHold("android.intent.action.MAIN", null, null))
     }
 
     @Test
