@@ -52,6 +52,7 @@ import javax.crypto.Cipher
 import javax.crypto.KeyGenerator
 import javax.crypto.SecretKey
 import javax.crypto.spec.GCMParameterSpec
+import kotlin.coroutines.resume
 import kotlin.math.abs
 import kotlinx.coroutines.*
 import kotlinx.coroutines.rx3.await
@@ -453,6 +454,80 @@ class CoreContext(
         core.clearProxyConfig()
 
         Log.i("[Context] Cleared SIP registrations")
+    }
+
+    private fun haveDevicesBeenReceived(): Boolean {
+        return DimensionsAccountsManager.getInstance(context).devicesSubject.value?.hasValue == true
+    }
+
+    // True once the gateway's device list has arrived and the default account rebuilt from it
+    // has registered
+    fun isDefaultAccountReady(): Boolean {
+        return DefaultAccountReadiness.isReady(
+            haveDevicesBeenReceived(),
+            core.defaultAccount?.state
+        )
+    }
+
+    // Suspends until the default account is ready, returning false if its registration fails,
+    // the user has no SIP devices, or the timeout passes first
+    suspend fun awaitDefaultAccountReady(timeoutMillis: Long): Boolean {
+        val devicesSubject = DimensionsAccountsManager.getInstance(context).devicesSubject
+        var registrationListener: CoreListenerStub? = null
+        var devicesSubscription: Disposable? = null
+
+        try {
+            return withTimeoutOrNull(timeoutMillis) {
+                suspendCancellableCoroutine { continuation ->
+                    fun finish(ready: Boolean) {
+                        if (continuation.isActive) continuation.resume(ready)
+                    }
+
+                    registrationListener = object : CoreListenerStub() {
+                        override fun onAccountRegistrationStateChanged(
+                            core: Core,
+                            account: Account,
+                            state: RegistrationState?,
+                            message: String
+                        ) {
+                            if (isDefaultAccountReady()) {
+                                finish(true)
+                            } else if (DefaultAccountReadiness.isDefaultAccountFailure(
+                                    haveDevicesBeenReceived(),
+                                    account == core.defaultAccount,
+                                    state
+                                )
+                            ) {
+                                Log.w("[Context] Default account registration failed: $message")
+                                finish(false)
+                            }
+                        }
+                    }
+                    core.addListener(registrationListener)
+
+                    // Subscribed after the one in start(), so the accounts have been rebuilt by
+                    // the time this runs
+                    devicesSubscription = devicesSubject.subscribe(
+                        { devices ->
+                            if (DefaultAccountReadiness.hasNoAccounts(
+                                    devices.hasValue,
+                                    core.accountList.isNotEmpty()
+                                )
+                            ) {
+                                Log.w("[Context] User has no SIP devices to register")
+                                finish(false)
+                            }
+                        },
+                        { error -> Log.e(error) }
+                    )
+
+                    if (isDefaultAccountReady()) finish(true)
+                }
+            } ?: false
+        } finally {
+            registrationListener?.let { core.removeListener(it) }
+            devicesSubscription?.dispose()
+        }
     }
 
     private fun registerSipEndpoints(userDeviceList: List<UserDevice>?) {

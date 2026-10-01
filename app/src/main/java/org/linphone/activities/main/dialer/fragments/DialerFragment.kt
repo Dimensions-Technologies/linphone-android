@@ -157,6 +157,14 @@ class DialerFragment : SecureFragment<DialerFragmentBinding>() {
             }
         }
 
+        sharedViewModel.pendingCallStartedEvent.observe(
+            viewLifecycleOwner
+        ) {
+            it.consume { address ->
+                if (viewModel.enteredUri.value == address) viewModel.eraseAll()
+            }
+        }
+
         viewModel.onMessageToNotifyEvent.observe(
             viewLifecycleOwner
         ) {
@@ -169,6 +177,8 @@ class DialerFragment : SecureFragment<DialerFragmentBinding>() {
             val address = arguments?.getString("URI") ?: ""
             Log.i("[Dialer] Found URI to call: $address")
             val skipAutoCall = arguments?.getBoolean("SkipAutoCallStart") ?: false
+            // Set when the number came from a tel: or sip: link, which should always dial
+            val startCall = arguments?.getBoolean("StartCall") ?: false
 
             if (corePreferences.skipDialerForNewCallAndTransfer) {
                 if (sharedViewModel.pendingCallTransfer) {
@@ -182,6 +192,9 @@ class DialerFragment : SecureFragment<DialerFragmentBinding>() {
                     )
                     viewModel.directCall(address)
                 }
+            } else if (startCall) {
+                Log.i("[Dialer] URI came from a call link, start the call to [$address]")
+                sharedViewModel.callWhenRegistered(address)
             } else if (corePreferences.callRightAway && !skipAutoCall) {
                 Log.i("[Dialer] Call right away setting is enabled, start the call to [$address]")
                 viewModel.directCall(address)

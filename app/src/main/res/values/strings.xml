@@ -192,6 +192,7 @@
     </string-array>
     <string name="dialer_transfer_succeded">Call is being transferred</string>
     <string name="dialer_transfer_failed">Can\'t transfer call</string>
+    <string name="dialer_call_link_not_registered">Couldn\'t connect to start the call. Tap call to try again.</string>
 
     <!-- Chat -->
     <string name="no_chat_history">No conversations</string>

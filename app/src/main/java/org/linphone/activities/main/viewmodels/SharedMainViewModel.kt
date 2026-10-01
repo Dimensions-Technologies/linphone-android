@@ -22,13 +22,26 @@ package org.linphone.activities.main.viewmodels
 import android.net.Uri
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.job
+import kotlinx.coroutines.launch
+import org.linphone.LinphoneApplication.Companion.coreContext
 import org.linphone.LinphoneApplication.Companion.corePreferences
+import org.linphone.R
 import org.linphone.activities.main.history.data.GroupedCallLogData
 import org.linphone.core.*
 import org.linphone.models.callhistory.CallHistoryItemViewModel
+import org.linphone.utils.AppUtils
 import org.linphone.utils.Event
+import org.linphone.utils.Log
 
 class SharedMainViewModel : ViewModel() {
+    companion object {
+        // Long enough for a cold start to refresh its token, fetch devices and register
+        private const val PENDING_CALL_TIMEOUT_MILLIS = 20_000L
+    }
+
     val toggleDrawerEvent = MutableLiveData<Event<Boolean>>()
     val togglePresenceDrawerEvent = MutableLiveData<Event<Boolean>>()
 
@@ -116,6 +129,77 @@ class SharedMainViewModel : ViewModel() {
     /* Dialer */
 
     var dialerUri: String = ""
+
+    // Fired with the address when a call that was waiting for registration starts, so a visible
+    // dialer can clear it from the dial pad
+    val pendingCallStartedEvent: MutableLiveData<Event<String>> by lazy {
+        MutableLiveData<Event<String>>()
+    }
+
+    private var pendingCallJob: Job? = null
+
+    // Any outgoing call started while waiting means the user has dialled by hand
+    private val pendingCallListener = object : CoreListenerStub() {
+        override fun onCallStateChanged(
+            core: Core,
+            call: Call,
+            state: Call.State?,
+            message: String
+        ) {
+            if (state == Call.State.OutgoingInit && pendingCallJob != null) {
+                Log.i("[Shared Main] Outgoing call started while waiting, dropping pending call")
+                cancelPendingCall()
+            }
+        }
+    }
+
+    // Calls straight away if the account is registered. Otherwise puts the number in the dial pad
+    // and calls once registration completes, as long as MainActivity is still alive
+    fun callWhenRegistered(to: String) {
+        cancelPendingCall()
+
+        if (coreContext.isDefaultAccountReady()) {
+            coreContext.startCall(to)
+            return
+        }
+
+        Log.i("[Shared Main] Account isn't registered yet, waiting to call [$to]")
+        dialerUri = to
+        coreContext.core.addListener(pendingCallListener)
+        pendingCallJob = viewModelScope.launch {
+            try {
+                if (coreContext.awaitDefaultAccountReady(PENDING_CALL_TIMEOUT_MILLIS)) {
+                    Log.i("[Shared Main] Account is registered, calling [$to]")
+                    // Remove the listener first so our own call doesn't cancel this job
+                    coreContext.core.removeListener(pendingCallListener)
+                    if (dialerUri == to) dialerUri = ""
+                    pendingCallStartedEvent.value = Event(to)
+                    coreContext.startCall(to)
+                } else {
+                    Log.w("[Shared Main] Account didn't register, leaving [$to] in the dial pad")
+                    coreContext.callErrorMessageResourceId.value =
+                        Event(AppUtils.getString(R.string.dialer_call_link_not_registered))
+                }
+            } finally {
+                // A cancelled job finishes after its replacement has started, so leave that alone
+                if (pendingCallJob == coroutineContext.job) {
+                    coreContext.core.removeListener(pendingCallListener)
+                    pendingCallJob = null
+                }
+            }
+        }
+    }
+
+    fun cancelPendingCall() {
+        pendingCallJob?.cancel()
+        pendingCallJob = null
+        coreContext.core.removeListener(pendingCallListener)
+    }
+
+    override fun onCleared() {
+        cancelPendingCall()
+        super.onCleared()
+    }
 
     // For correct animations directions
     val updateDialerAnimationsBasedOnDestination: MutableLiveData<Event<Int>> by lazy {

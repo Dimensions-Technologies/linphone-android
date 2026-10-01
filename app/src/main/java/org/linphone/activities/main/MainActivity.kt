@@ -94,6 +94,7 @@ import org.linphone.databinding.MainActivityBinding
 import org.linphone.models.AuthenticatedUser
 import org.linphone.services.UserService
 import org.linphone.utils.AppUtils
+import org.linphone.utils.CallUriIntents
 import org.linphone.utils.DialogUtils
 import org.linphone.utils.Event
 import org.linphone.utils.FileUtils
@@ -105,7 +106,6 @@ import org.linphone.utils.hideKeyboard
 import org.linphone.utils.setKeyboardInsetListener
 
 class MainActivity : GenericActivity(), SnackBarActivity, NavController.OnDestinationChangedListener {
-
     private lateinit var binding: MainActivityBinding
     private lateinit var sharedViewModel: SharedMainViewModel
     private lateinit var callOverlayViewModel: CallOverlayViewModel
@@ -275,11 +275,10 @@ class MainActivity : GenericActivity(), SnackBarActivity, NavController.OnDestin
         super.onNewIntent(intent)
 
         if (intent != null) {
-            when (intent.action) {
-                Intent.ACTION_DIAL, Intent.ACTION_CALL ->
-                    handleIntentParams(intent)
-                else ->
-                    handleAuthIntent(intent)
+            if (CallUriIntents.isCallUri(intent.action, intent.data?.scheme)) {
+                handleIntentParams(intent)
+            } else {
+                handleAuthIntent(intent)
             }
         }
     }
@@ -427,7 +426,11 @@ class MainActivity : GenericActivity(), SnackBarActivity, NavController.OnDestin
 
         initOverlay()
 
-        if (intent != null) {
+        // When the activity is recreated or reopened from recents it gets the intent it was first
+        // launched with, so skip it or a tel: link would be dialled again
+        val launchedFromHistory =
+            intent != null && (intent.flags and Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY) != 0
+        if (intent != null && savedInstanceState == null && !launchedFromHistory) {
             Log.d("[Main Activity] Found post create intent")
             handleIntentParams(intent)
         }
@@ -657,6 +660,7 @@ class MainActivity : GenericActivity(), SnackBarActivity, NavController.OnDestin
         Log.i("[Main Activity] Starting dialer with pre-filled URI $addressToCall")
         val args = Bundle()
         args.putString("URI", addressToCall)
+        args.putBoolean("StartCall", true)
         navigateToDialer(args)
     }
 
