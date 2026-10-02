@@ -9,7 +9,10 @@ import androidx.lifecycle.LifecycleOwner
 import io.reactivex.rxjava3.core.Observable
 import io.reactivex.rxjava3.subjects.PublishSubject
 import java.util.concurrent.atomic.AtomicReference
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 import org.linphone.LinphoneApplication.Companion.coreContext
 import org.linphone.R
 import org.linphone.authentication.AuthStateManager
@@ -29,6 +32,7 @@ class PresenceService(val context: Context) : DefaultLifecycleObserver {
     private val authStateManager = AuthStateManager.getInstance(context)
     private val apiClient = APIClientService(context)
     private val realtimeUserService = RealtimeUserService.getInstance(context)
+    private val unsubscribeScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     override fun onDestroy(owner: LifecycleOwner) {
         super.onDestroy(owner)
@@ -143,7 +147,9 @@ class PresenceService(val context: Context) : DefaultLifecycleObserver {
     private fun onObservableRemoved(userId: String) {
         println("onObservableRemoved: $userId")
 
-        runBlocking {
+        // The unsubscribe is delayed, and streams are disposed on the main thread (e.g. when
+        // ViewModels are cleared on logout), so it must not block the caller.
+        unsubscribeScope.launch {
             realtimeUserService.removeSubscription(RealtimeEventType.PresenceEvent, userId, 5000)
         }
     }

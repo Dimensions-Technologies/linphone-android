@@ -32,6 +32,7 @@ import java.util.concurrent.atomic.AtomicReference
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.rx3.awaitFirst
 import net.openid.appauth.AuthState
 import net.openid.appauth.AuthorizationException
@@ -111,6 +112,9 @@ class LoginActivity : AppCompatActivity() {
             mExecutor.submit(
                 Runnable {
                     if (mAuthStateManager.current.isAuthorized) {
+                        runBlocking {
+                            UserService.getInstance(applicationContext).removeUserSession()
+                        }
                         mAuthStateManager.logout(
                             applicationContext
                         )
