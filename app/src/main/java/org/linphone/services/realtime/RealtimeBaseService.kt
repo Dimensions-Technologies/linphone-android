@@ -19,6 +19,7 @@ import io.reactivex.rxjava3.disposables.Disposable
 import io.reactivex.rxjava3.schedulers.Schedulers
 import io.reactivex.rxjava3.subjects.BehaviorSubject
 import io.reactivex.rxjava3.subjects.PublishSubject
+import java.util.concurrent.ConcurrentHashMap
 import kotlin.math.pow
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -323,7 +324,8 @@ open class RealtimeBaseService(private val context: Context, private val hubSuff
         }
     }
 
-    private val subscriptions = mutableMapOf<String, EventSubscription>()
+    // Updated from the main thread, SignalR callbacks and background coroutines
+    private val subscriptions = ConcurrentHashMap<String, EventSubscription>()
 
     private suspend fun invokePendingHubRequests() = runBlocking {
         Log.d("RealtimeBaseService.invokePendingHubRequests Un/subscribe all pending.")

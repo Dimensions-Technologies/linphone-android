@@ -14,7 +14,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.rx3.rxSingle
 import org.linphone.authentication.AuthStateManager
 import org.linphone.environment.DimensionsEnvironmentService
@@ -172,29 +171,29 @@ class UserService(val context: Context) : DefaultLifecycleObserver {
         }
     }
 
-    fun removeUserSession() {
-        runBlocking {
-            try {
-                val userSessionToRemove = userSession
-                if (userSessionToRemove != null) {
-                    val deviceId = pushTokenService.getDeviceId()
+    suspend fun removeUserSession() {
+        try {
+            val userSessionToRemove = userSession
+            if (userSessionToRemove != null) {
+                val deviceId = pushTokenService.getDeviceId()
 
-                    val response = APIClientService(context).getUCGatewayService().deleteUserSession(
-                        deviceId,
-                        userSessionToRemove
+                val response = APIClientService(context).getUCGatewayService().deleteUserSession(
+                    deviceId,
+                    userSessionToRemove
+                )
+
+                if (!response.isSuccessful) {
+                    throw Exception(
+                        "Unable to delete session $deviceId: Error(${response.code()})"
                     )
-
-                    if (!response.isSuccessful) {
-                        throw Exception(
-                            "Unable to delete session $deviceId: Error(${response.code()})"
-                        )
-                    }
-
-                    userSession = null
                 }
-            } catch (e: Exception) {
-                Log.e("removeUserSession", e)
+
+                userSession = null
             }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Log.e("removeUserSession", e)
         }
     }
 

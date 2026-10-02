@@ -205,6 +205,11 @@ public class AuthStateManager {
         }
     }
 
+    /**
+     * Clears the auth state and ends the identity session. Callers must remove the user session
+     * first with {@link UserService#removeUserSession()}, off the main thread, while the access
+     * token is still valid.
+     */
     public void logout(Context context) {
         final var current = getCurrent();
         final var authService = new AuthorizationService(context);
@@ -215,8 +220,6 @@ public class AuthStateManager {
             return;
         }
         Log.Log.i("AuthStateManager.logout");
-
-        UserService.Companion.getInstance(context).removeUserSession();
 
         replace(new AuthState(), "logout");
 
