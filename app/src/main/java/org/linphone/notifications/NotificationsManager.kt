@@ -135,7 +135,10 @@ class NotificationsManager(private val context: Context) {
                         Log.w("[Notifications Manager] No service found, waiting for it to start")
                     }
                 }
-                Call.State.End, Call.State.Error -> dismissCallNotification(call)
+                Call.State.End, Call.State.Error -> {
+                    dismissCallNotification(call)
+                    PushWakeLock.get(context).release("call ended before it was shown")
+                }
                 Call.State.Released -> {
 //                    if (LinphoneUtils.isCallLogMissed(call.callLog)) {
 //                        displayMissedCallNotification(call.remoteAddress)
@@ -766,6 +769,7 @@ class NotificationsManager(private val context: Context) {
             Log.i(
                 "[Notifications Manager] There is already a Service foreground notification for this incoming call, skipping"
             )
+            PushWakeLock.get(context).release("incoming call notification already shown")
             return
         }
 
@@ -812,6 +816,11 @@ class NotificationsManager(private val context: Context) {
                 "[Notifications Manager] Notifying incoming call notification for foreground service [${notifiable.notificationId}]"
             )
             startForeground(notifiable.notificationId, notification, false)
+        }
+
+        // Once a foreground service is running it keeps the process alive, so the push lock can go
+        if (currentForegroundServiceNotificationId != 0) {
+            PushWakeLock.get(context).release("incoming call notification shown")
         }
     }
 
