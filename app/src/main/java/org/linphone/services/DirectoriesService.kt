@@ -207,11 +207,11 @@ class DirectoriesService(val context: Context) : DefaultLifecycleObserver {
 
         if (favourites != null) {
             contacts.forEach { c ->
-                c.isInFavourites = favourites.friends.any { fu -> fu.refKey == c.id }
+                c.isInFavourites = favourites.friends.any { fu -> UserGroupService.gatewayIdOf(fu) == c.id }
             }
 
             users.forEach { d ->
-                d.isInFavourites = favourites.friends.any { fu -> fu.refKey == d.id }
+                d.isInFavourites = favourites.friends.any { fu -> UserGroupService.gatewayIdOf(fu) == d.id }
             }
         }
 
