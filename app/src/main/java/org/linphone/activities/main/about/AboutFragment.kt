@@ -23,6 +23,8 @@ import android.content.*
 import android.net.Uri
 import android.os.Bundle
 import android.view.View
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.ViewModelProvider
 import io.reactivex.rxjava3.disposables.Disposable
 import kotlinx.coroutines.CoroutineScope
@@ -47,6 +49,13 @@ class AboutFragment : SecureFragment<AboutFragmentBinding>() {
         super.onViewCreated(view, savedInstanceState)
 
         binding.lifecycleOwner = viewLifecycleOwner
+
+        ViewCompat.setOnApplyWindowInsetsListener(view) { v, windowInsets ->
+            val insets = windowInsets.getInsets(WindowInsetsCompat.Type.navigationBars())
+            v.setPadding(0, 0, 0, insets.bottom)
+
+            windowInsets
+        }
 
         viewModel = ViewModelProvider(this)[AboutViewModel::class.java]
         binding.viewModel = viewModel
