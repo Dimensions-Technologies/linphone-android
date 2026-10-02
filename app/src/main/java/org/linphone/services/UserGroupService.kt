@@ -106,6 +106,13 @@ class UserGroupService(val context: Context) : DefaultLifecycleObserver {
             }
             return svc
         }
+
+        // Match friends on the gateway id, not Friend.refKey: setting a friend's name creates its
+        // vCard, which resets refKey to the vCard's empty UID, so every refKey is null.
+        fun gatewayIdOf(friend: Friend): String? {
+            val userData = friend.userData as? UserDataModel ?: return null
+            return userData.user?.id ?: userData.contact?.id
+        }
     }
 
     fun fetchUserGroups() {
@@ -197,7 +204,11 @@ class UserGroupService(val context: Context) : DefaultLifecycleObserver {
 
             tenantUserGroups.forEach { group ->
                 group.friends.forEach { f ->
-                    setIsFavorite(f, favorites.friends.any { fu -> fu.refKey == f.refKey })
+                    val id = gatewayIdOf(f)
+                    setIsFavorite(
+                        f,
+                        id != null && favorites.friends.any { fu -> gatewayIdOf(fu) == id }
+                    )
                 }
             }
         }
