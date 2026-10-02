@@ -34,6 +34,7 @@ import org.linphone.LinphoneApplication.Companion.coreContext
 import org.linphone.LinphoneApplication.Companion.corePreferences
 import org.linphone.R
 import org.linphone.core.*
+import org.linphone.notifications.MissedCallPolicy
 
 /**
  * Various utility methods for Linphone SDK
@@ -233,14 +234,7 @@ class LinphoneUtils {
         }
 
         fun isCallLogMissed(callLog: CallLog): Boolean {
-            return (
-                callLog.dir == Call.Dir.Incoming &&
-                    (
-                        callLog.status == Call.Status.Missed ||
-                            callLog.status == Call.Status.Aborted ||
-                            callLog.status == Call.Status.EarlyAborted
-                        )
-                )
+            return MissedCallPolicy.isMissed(callLog.dir, callLog.status)
         }
 
         fun getChatRoomId(room: ChatRoom): String {

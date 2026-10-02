@@ -140,9 +140,9 @@ class NotificationsManager(private val context: Context) {
                     PushWakeLock.get(context).release("call ended before it was shown")
                 }
                 Call.State.Released -> {
-//                    if (LinphoneUtils.isCallLogMissed(call.callLog)) {
-//                        displayMissedCallNotification(call.remoteAddress)
-//                    }
+                    if (LinphoneUtils.isCallLogMissed(call.callLog)) {
+                        displayMissedCallNotification(call.remoteAddress)
+                    }
                 }
                 Call.State.OutgoingInit, Call.State.OutgoingProgress, Call.State.OutgoingRinging -> {
                     displayCallNotification(call, false)
