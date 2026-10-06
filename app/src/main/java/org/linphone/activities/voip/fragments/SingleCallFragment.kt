@@ -26,6 +26,7 @@ import android.os.SystemClock
 import android.view.View
 import android.widget.Chronometer
 import androidx.constraintlayout.widget.ConstraintSet
+import androidx.fragment.app.activityViewModels
 import androidx.navigation.navGraphViewModels
 import androidx.window.layout.FoldingFeature
 import org.linphone.LinphoneApplication.Companion.coreContext
@@ -34,6 +35,7 @@ import org.linphone.R
 import org.linphone.activities.*
 import org.linphone.activities.main.MainActivity
 import org.linphone.activities.main.viewmodels.DialogViewModel
+import org.linphone.activities.voip.viewmodels.CallQualityViewModel
 import org.linphone.activities.voip.viewmodels.CallsViewModel
 import org.linphone.activities.voip.viewmodels.ConferenceViewModel
 import org.linphone.activities.voip.viewmodels.ControlsViewModel
@@ -46,6 +48,7 @@ import org.linphone.utils.Log
 
 class SingleCallFragment : GenericVideoPreviewFragment<VoipSingleCallFragmentBinding>() {
     private val controlsViewModel: ControlsViewModel by navGraphViewModels(R.id.call_nav_graph)
+    private val callQualityViewModel: CallQualityViewModel by activityViewModels()
     private val callsViewModel: CallsViewModel by navGraphViewModels(R.id.call_nav_graph)
     private val conferenceViewModel: ConferenceViewModel by navGraphViewModels(R.id.call_nav_graph)
     private val statsViewModel: StatisticsListViewModel by navGraphViewModels(R.id.call_nav_graph)
@@ -74,6 +77,8 @@ class SingleCallFragment : GenericVideoPreviewFragment<VoipSingleCallFragmentBin
         binding.conferenceViewModel = conferenceViewModel
 
         binding.statsViewModel = statsViewModel
+
+        binding.callQualityViewModel = callQualityViewModel
 
         callsViewModel.currentCallData.observe(
             viewLifecycleOwner

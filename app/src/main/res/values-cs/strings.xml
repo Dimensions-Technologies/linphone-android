@@ -81,10 +81,6 @@
     <string name="content_description_go_to_contact">Přejít na detail kontaktu</string>
     <string name="content_description_show_missed_calls">Zobrazit jen zmeškané hovory</string>
     <string name="content_description_create_group_chat_room">Vytvořit skupinovou konverzaci</string>
-    <string name="content_description_call_quality_0">Velmi nízká kvalita hovoru</string>
-    <string name="content_description_call_quality_1">Nízká kvalita hovoru</string>
-    <string name="content_description_call_quality_2">Střední kvalita hovoru</string>
-    <string name="content_description_call_quality_3">Dobrá kvalita hovoru</string>
     <string name="content_description_chat_message_meeting_attachment">Příloha schůzky</string>
     <string name="content_description_close_bubble">Zavřít bublinu oznámení</string>
     <string name="content_description_open_app">Otevřít konverzaci v aplikaci místo bubliny</string>
@@ -595,7 +591,6 @@
     <string name="content_description_security_level_unsafe">Nebezpečné</string>
     <string name="content_description_security_level_safe">Bezpečné</string>
     <string name="content_description_security_level_encrypted">Šifrováno</string>
-    <string name="content_description_call_quality_4">Nejlepší kvalita hovoru</string>
     <string name="content_description_call_not_secured">Hovor není zabezpečený</string>
     <string name="content_description_call_secured">Hovor je zabezpečený</string>
     <string name="content_description_call_security_pending">Zabezpečení hovoru se zjišťuje</string>

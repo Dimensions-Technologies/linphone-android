@@ -1017,11 +1017,10 @@
     <string name="content_description_security_level_unsafe">Unsafe</string>
     <string name="content_description_security_level_safe">Safe</string>
     <string name="content_description_security_level_encrypted">Encrypted</string>
-    <string name="content_description_call_quality_0">Very low call quality</string>
-    <string name="content_description_call_quality_1">Low call quality</string>
-    <string name="content_description_call_quality_2">Medium call quality</string>
-    <string name="content_description_call_quality_3">Good call quality</string>
-    <string name="content_description_call_quality_4">Maximum call quality</string>
+    <string name="call_quality_none">Call Quality</string>
+    <string name="call_quality_good">Call Quality - Good</string>
+    <string name="call_quality_ok">Call Quality - OK (%s)</string>
+    <string name="call_quality_poor">Call Quality - Poor (%s)</string>
     <string name="content_description_call_not_secured">Call is not secured</string>
     <string name="content_description_call_secured">Call is secured</string>
     <string name="content_description_call_security_pending">Call security is pending</string>

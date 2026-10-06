@@ -186,10 +186,6 @@
     <string name="chat_room_ephemeral_messages_desc">Este mensaje se borrará por ambos extremos una vez que haya sido leído y después del tiempo de espera seleccionado.</string>
     <string name="content_description_add_phone_number_field">Añadir un campo de número telefónico</string>
     <string name="content_description_security_level_encrypted">Encriptado</string>
-    <string name="content_description_call_quality_0">Muy baja calidad de llamada</string>
-    <string name="content_description_call_quality_2">Calidad de llamada media</string>
-    <string name="content_description_call_quality_3">Buena calidad de llamada</string>
-    <string name="content_description_call_quality_4">Calidad de llamada máxima</string>
     <string name="content_description_call_not_secured">La llamada no está asegurada</string>
     <string name="content_description_call_secured">La llamada está asegurada</string>
     <string name="content_description_chat_message_video_attachment">Video adjunto</string>
@@ -231,7 +227,6 @@
     <string name="video_settings_initiate_call_summary">Siempre envía solicitudes de video</string>
     <string name="video_settings_bandwidth_limit_title">Límite de ancho de banda</string>
     <string name="video_settings_bandwidth_limit_summary">en kbits/s</string>
-    <string name="content_description_call_quality_1">Baja calidad de llamada</string>
     <string name="call_settings_vibrate_title">Vibrar mientras la llamada entrante está sonando</string>
     <string name="call_settings_sipinfo_dtmf_title">Enviar DTMF de banda ancha (SIP INFO)</string>
     <string name="content_description_call_security_pending">La seguridad de la llamada está pendiente</string>

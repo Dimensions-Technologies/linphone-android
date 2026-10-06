@@ -14,7 +14,6 @@
     <string name="content_description_missed_call">Пропуснато обаждане</string>
     <string name="content_description_outgoing_call">Изходящо обаждане</string>
     <string name="content_description_security_level_safe">Сигурно</string>
-    <string name="content_description_call_quality_1">Ниско качество на обаждането</string>
     <string name="content_description_call_not_secured">Обаждането не е сигурно</string>
     <string name="content_description_chat_message_meeting_attachment">Приложение към среща</string>
     <string name="content_description_open_app">Отваряне на разговора в приложението</string>
@@ -561,10 +560,6 @@
     <string name="content_description_create_group_chat_room">Създаване на нов групов разговор</string>
     <string name="content_description_security_level_unsafe">Несигурно</string>
     <string name="content_description_security_level_encrypted">Шифровано</string>
-    <string name="content_description_call_quality_0">Много ниско качество на обаждането</string>
-    <string name="content_description_call_quality_2">Средно качество на обаждането</string>
-    <string name="content_description_call_quality_3">Добро качество на обаждането</string>
-    <string name="content_description_call_quality_4">Максимално качество на обаждането</string>
     <string name="content_description_call_secured">Обаждането е сигурно</string>
     <string name="content_description_call_security_pending">Сигурността на обаждането се определя</string>
     <string name="content_description_chat_message_video_attachment">Приложение към видео</string>

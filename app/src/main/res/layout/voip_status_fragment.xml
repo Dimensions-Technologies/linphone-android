@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<layout xmlns:android="http://schemas.android.com/apk/res/android">
+<layout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
 
     <data>
         <import type="android.view.View"/>
@@ -9,6 +10,9 @@
         <variable
             name="viewModel"
             type="org.linphone.activities.voip.viewmodels.StatusViewModel" />
+        <variable
+            name="callQualityViewModel"
+            type="org.linphone.activities.voip.viewmodels.CallQualityViewModel" />
     </data>
 
     <RelativeLayout
@@ -24,9 +28,10 @@
             android:layout_height="wrap_content"
             android:layout_alignParentStart="true"
             android:layout_centerInParent="true"
-            android:contentDescription="@{viewModel.callQualityContentDescription}"
+            android:contentDescription="@{callQualityViewModel.callQualityContentDescription}"
             android:padding="10dp"
-            android:src="@{viewModel.callQualityIcon, default=@drawable/call_quality_indicator_0}" />
+            android:src="@{callQualityViewModel.callQualityIcon, default=@drawable/call_quality_none}"
+            app:tooltip="@{callQualityViewModel.callQualityContentDescription}" />
 
         <ImageView
             android:id="@+id/status_led"

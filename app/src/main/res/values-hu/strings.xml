@@ -417,7 +417,6 @@
     <string name="content_description_recording_toggle_play">A felvétel lejátszása vagy szüneteltetése</string>
     <string name="content_description_add_contact">Névjegy létrehozása</string>
     <string name="content_description_show_missed_calls">Csak a nem fogadott hívások megjelenítése</string>
-    <string name="content_description_call_quality_2">Közepes hívásminőség</string>
     <string name="content_description_export">Nyissa meg a fájlt külső alkalmazásokban</string>
     <string name="assistant_validate_account_1">Fiókja létrejött. Kérjük, ellenőrizze e-mailjeit fiókja érvényesítéséhez:</string>
     <string name="assistant_create_account_part_3">A telefonszám hitelesítésének befejezéséhez kérjük, hogy adja meg a négyjegyű kódot lent:\n</string>
@@ -507,10 +506,6 @@
     <string name="content_description_create_group_chat_room">Csoportos beszélgetés létrehozása</string>
     <string name="content_description_security_level_unsafe">Nem biztonságos</string>
     <string name="content_description_security_level_safe">Biztonságos</string>
-    <string name="content_description_call_quality_0">Nagyon alacsony hívásminőség</string>
-    <string name="content_description_call_quality_1">Alacsony hívásminőség</string>
-    <string name="content_description_call_quality_3">Jó hívásminőség</string>
-    <string name="content_description_call_quality_4">Maximális hívásminőség</string>
     <string name="content_description_call_secured">A hívás biztosítva</string>
     <string name="content_description_call_security_pending">A hívásbiztonság függőben van</string>
     <string name="content_description_chat_message_video_attachment">Videómelléklet</string>

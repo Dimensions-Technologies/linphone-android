@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Signal bars, matching the web client's Material signal_cellular_alt call quality icon -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="28dp"
+    android:height="28dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:fillColor="@color/call_quality_poor_color"
+        android:pathData="M5,14h3v6H5z" />
+    <path
+        android:fillColor="@color/call_quality_inactive_color"
+        android:pathData="M11,9h3v11h-3z" />
+    <path
+        android:fillColor="@color/call_quality_inactive_color"
+        android:pathData="M17,4h3v16h-3z" />
+</vector>

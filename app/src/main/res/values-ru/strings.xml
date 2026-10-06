@@ -447,10 +447,6 @@
     <string name="content_description_security_level_unsafe">Небезопасно</string>
     <string name="content_description_security_level_safe">Безопасно</string>
     <string name="content_description_security_level_encrypted">Зашифрованно</string>
-    <string name="content_description_call_quality_1">Низкое качество связи</string>
-    <string name="content_description_call_quality_2">Среднее качество связи</string>
-    <string name="content_description_call_quality_3">Хорошее качество связи</string>
-    <string name="content_description_call_quality_4">Максимальное качество звонка</string>
     <string name="content_description_call_secured">Звонок защищён</string>
     <string name="content_description_call_security_pending">Ожидание безопасности звонка</string>
     <string name="content_description_close_bubble">Закрывать всплывающее окно уведомлений</string>
@@ -575,7 +571,6 @@
     <string name="content_description_menu_dialer">Номеронабиратель</string>
     <string name="content_description_menu_chat">Разговоры</string>
     <string name="content_description_show_missed_calls">Показывать только пропущенные звонки</string>
-    <string name="content_description_call_quality_0">Очень низкое качество связи</string>
     <string name="content_description_call_not_secured">Звонок не защищён</string>
     <string name="content_description_chat_message_video_attachment">Вложение видео</string>
     <string name="content_description_export">Открыть файл в стороннем приложении</string>

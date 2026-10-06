@@ -635,7 +635,6 @@
     <string name="content_description_toggle_side_menu">サイドメニュー表示の切り替え</string>
     <string name="content_description_missed_call">不在着信</string>
     <string name="content_description_create_one_to_one_chat_room">1対1の会話を作成する</string>
-    <string name="content_description_call_quality_2">そこそこ</string>
     <string name="content_description_call_secured">通話は保護されています</string>
     <string name="contacts_settings_ldap_name_attribute_title">名前要素</string>
     <string name="content_description_numpad_5">5</string>
@@ -701,12 +700,8 @@
     <string name="content_description_show_missed_calls">不在着信のみ表示</string>
     <string name="content_description_create_group_chat_room">グループでの会話を作成する</string>
     <string name="content_description_security_level_encrypted">暗号化済み</string>
-    <string name="content_description_call_quality_0">とても低い</string>
-    <string name="content_description_call_quality_1">低い</string>
     <string name="content_description_incoming_call">着信</string>
     <string name="content_description_outgoing_call">発信</string>
-    <string name="content_description_call_quality_3">良い</string>
-    <string name="content_description_call_quality_4">とても良い</string>
     <string name="content_description_call_not_secured">通話は保護されていません</string>
     <string name="content_description_call_security_pending">通話のセキュリティは保留されています</string>
     <string name="content_description_contact_can_do_encryption">連絡先は暗号化された会話で招待できます</string>

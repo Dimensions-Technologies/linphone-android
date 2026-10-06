@@ -272,11 +272,6 @@
     <string name="content_description_create_group_chat_room">创建群组对话</string>
     <string name="content_description_security_level_unsafe">不安全</string>
     <string name="content_description_security_level_safe">安全</string>
-    <string name="content_description_call_quality_0">通话质量很差</string>
-    <string name="content_description_call_quality_1">通话质量欠佳</string>
-    <string name="content_description_call_quality_2">中等通话质量</string>
-    <string name="content_description_call_quality_3">通话质量佳</string>
-    <string name="content_description_call_quality_4">最佳通话质量</string>
     <string name="content_description_call_not_secured">通话不安全</string>
     <string name="content_description_call_secured">安全通话</string>
     <string name="content_description_chat_message_video_attachment">视频附件</string>
