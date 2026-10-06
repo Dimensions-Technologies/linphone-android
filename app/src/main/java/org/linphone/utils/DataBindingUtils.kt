@@ -31,6 +31,7 @@ import android.view.inputmethod.InputMethodManager
 import android.widget.*
 import android.widget.SeekBar.OnSeekBarChangeListener
 import androidx.appcompat.content.res.AppCompatResources
+import androidx.appcompat.widget.TooltipCompat
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.constraintlayout.widget.Guideline
 import androidx.core.view.ViewCompat
@@ -109,6 +110,12 @@ fun ImageView.setContentDescription(resource: Int) {
         return
     }
     this.contentDescription = context.getString(resource)
+}
+
+/** Long-press tooltip, the Android counterpart of a web hover title. Works below API 26. */
+@BindingAdapter("tooltip")
+fun View.setTooltip(text: String?) {
+    TooltipCompat.setTooltipText(this, text)
 }
 
 @BindingAdapter("android:textStyle")

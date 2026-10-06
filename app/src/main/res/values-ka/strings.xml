@@ -649,9 +649,6 @@
     <string name="content_description_security_level_unsafe">სახიფათო</string>
     <string name="content_description_security_level_safe">უსაფრთხო</string>
     <string name="content_description_security_level_encrypted">დაშიფრული</string>
-    <string name="content_description_call_quality_1">დაბალი ზარის ხარისხი</string>
-    <string name="content_description_call_quality_3">კარგი ზარის ხარისხი</string>
-    <string name="content_description_call_quality_4">მაქსიმალური ზარის ხარისხი</string>
     <string name="content_description_call_secured">ზარი დაცულია</string>
     <string name="content_description_call_security_pending">ზარის უსაფრთხოება მოლოდინშია</string>
     <string name="content_description_chat_message_meeting_attachment">მიბმული შეხვედრის მოსაწვევი</string>
@@ -737,8 +734,6 @@
     <string name="content_description_show_all_calls">ყველა ზარის ჩვენება</string>
     <string name="content_description_outgoing_call">გამავალი ზარი</string>
     <string name="content_description_create_one_to_one_chat_room">ერთი ერთზე საუბრის შექმნა</string>
-    <string name="content_description_call_quality_0">ძალიან დაბალი ზარის ხარისხი</string>
-    <string name="content_description_call_quality_2">საშუალო ზარის ხარისხი</string>
     <string name="content_description_call_not_secured">ზარი არ არის დაცული</string>
     <string name="content_description_chat_message_video_attachment">მიბმული ვიდეო</string>
     <string name="content_description_take_screenshot">მიღებული ვიდეოს ეკრანის ანაბეჭდის გადაღება</string>

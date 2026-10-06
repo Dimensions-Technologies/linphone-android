@@ -192,10 +192,6 @@
     <string name="content_description_security_level_unsafe">Unsicher</string>
     <string name="content_description_security_level_safe">Sicher</string>
     <string name="content_description_security_level_encrypted">Verschlüsselt</string>
-    <string name="content_description_call_quality_0">Sehr niedrige Gesprächsqualität</string>
-    <string name="content_description_call_quality_2">Mittelmäßige Gesprächsqualität</string>
-    <string name="content_description_call_quality_3">Gute Gesprächsqualität</string>
-    <string name="content_description_call_quality_4">Maximale Gesprächsqualität</string>
     <string name="assistant_remote_provisioning_title">Fernkonfiguration holen</string>
     <string name="settings_accounts_title">SIP Konten</string>
     <string name="settings_chat_title">Unterhaltung</string>
@@ -217,7 +213,6 @@
     <string name="content_description_confirm_contact_edit">Änderungen sichern</string>
     <string name="content_description_add_contact">Kontakt anlegen</string>
     <string name="content_description_create_one_to_one_chat_room">Eins-zu-eins-Unterhaltung beginnen</string>
-    <string name="content_description_call_quality_1">Niedrige Gesprächsqualität</string>
     <string name="no_conference_call_history">Kein Konferenzruf im Verlauf</string>
     <string name="contact_cant_be_deleted">Der Kontakt kann nicht gelöscht werden</string>
     <string name="dialer_transfer_succeded">Anruf wird weitergeleitet</string>

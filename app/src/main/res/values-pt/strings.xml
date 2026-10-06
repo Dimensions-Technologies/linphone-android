@@ -576,11 +576,6 @@
     <string name="content_description_security_level_unsafe">Inseguro</string>
     <string name="content_description_security_level_safe">Seguro</string>
     <string name="content_description_security_level_encrypted">Criptografado</string>
-    <string name="content_description_call_quality_0">Qualidade de chamada muito baixa</string>
-    <string name="content_description_call_quality_1">Qualidade de chamada baixa</string>
-    <string name="content_description_call_quality_2">Qualidade de chamada média</string>
-    <string name="content_description_call_quality_3">Boa qualidade de chamada</string>
-    <string name="content_description_call_quality_4">Qualidade máxima da chamada</string>
     <string name="content_description_call_secured">A chamada é segura</string>
     <string name="content_description_chat_message_video_attachment">Vídeo anexo</string>
     <string name="content_description_close_bubble">Fechar a bolha de notificação</string>

@@ -27,9 +27,6 @@ import org.linphone.core.*
 import org.linphone.utils.Event
 
 class StatusViewModel : StatusViewModel() {
-    val callQualityIcon = MutableLiveData<Int>()
-    val callQualityContentDescription = MutableLiveData<Int>()
-
     val encryptionIcon = MutableLiveData<Int>()
     val encryptionContentDescription = MutableLiveData<Int>()
     val encryptionIconVisible = MutableLiveData<Boolean>()
@@ -45,10 +42,6 @@ class StatusViewModel : StatusViewModel() {
     var previouslyDeclineToken = false
 
     private val listener = object : CoreListenerStub() {
-        override fun onCallStatsUpdated(core: Core, call: Call, stats: CallStats) {
-            updateCallQualityIcon()
-        }
-
         override fun onCallEncryptionChanged(
             core: Core,
             call: Call,
@@ -78,8 +71,6 @@ class StatusViewModel : StatusViewModel() {
 
     init {
         coreContext.core.addListener(listener)
-
-        updateCallQualityIcon()
 
         val currentCall = coreContext.core.currentCall
         if (currentCall != null) {
@@ -151,25 +142,6 @@ class StatusViewModel : StatusViewModel() {
             (!call.authenticationTokenVerified || force)
         ) {
             showZrtpDialogEvent.value = Event(call)
-        }
-    }
-
-    private fun updateCallQualityIcon() {
-        val call = coreContext.core.currentCall ?: coreContext.core.calls.firstOrNull()
-        val quality = call?.currentQuality ?: 0f
-        callQualityIcon.value = when {
-            quality >= 4 -> R.drawable.call_quality_indicator_4
-            quality >= 3 -> R.drawable.call_quality_indicator_3
-            quality >= 2 -> R.drawable.call_quality_indicator_2
-            quality >= 1 -> R.drawable.call_quality_indicator_1
-            else -> R.drawable.call_quality_indicator_0
-        }
-        callQualityContentDescription.value = when {
-            quality >= 4 -> R.string.content_description_call_quality_4
-            quality >= 3 -> R.string.content_description_call_quality_3
-            quality >= 2 -> R.string.content_description_call_quality_2
-            quality >= 1 -> R.string.content_description_call_quality_1
-            else -> R.string.content_description_call_quality_0
         }
     }
 }

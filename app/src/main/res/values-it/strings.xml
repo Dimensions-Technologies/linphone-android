@@ -624,7 +624,6 @@
     <string name="content_description_create_one_to_one_chat_room">Crea una conversazione one-to-one</string>
     <string name="content_description_create_group_chat_room">Crea una conversazione di gruppo</string>
     <string name="content_description_security_level_unsafe">Non sicura</string>
-    <string name="content_description_call_quality_0">Qualità chiamata molto bassa</string>
     <string name="content_description_chat_message_video_attachment">Allegato video</string>
     <string name="content_description_chat_message_meeting_attachment">Allegato meeting</string>
     <string name="content_description_take_screenshot">Fai uno screenshot del video ricevuto</string>
@@ -696,7 +695,6 @@
     <string name="content_description_ephemeral_message">Messaggio effimero</string>
     <string name="content_description_contact_is_not_admin">Il contatto non è un admin in questa conversazione</string>
     <string name="content_description_delete_contact">Elimina contatto</string>
-    <string name="content_description_call_quality_3">Qualità chiamata alta</string>
     <string name="contacts_settings_ldap_delete_title">Elimina</string>
     <string name="contacts_settings_ldap_server_title">Server URL</string>
     <string name="assistant_alternative_way_create_account">Per creare il tuo account utilizzando la tua email:</string>
@@ -764,9 +762,6 @@
     <string name="content_description_continue_chat_room_creation">Vai alla fase finale della creazione di una chat room</string>
     <string name="content_description_remove_contact_from_selection">Rimuovi contatto dalla selezione</string>
     <string name="content_description_start_call">Avvia una chiamata</string>
-    <string name="content_description_call_quality_1">Qualità chiamata bassa</string>
-    <string name="content_description_call_quality_2">Qualità chiamata media</string>
-    <string name="content_description_call_quality_4">Qualità chiamata massima</string>
     <string name="content_description_call_not_secured">La chiamata non è sicura</string>
     <string name="content_description_call_secured">La chiamata è sicura</string>
     <string name="content_description_hide_statistics">Nascondi statistiche chiamata</string>

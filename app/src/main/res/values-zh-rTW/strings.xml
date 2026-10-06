@@ -313,7 +313,6 @@
     <string name="content_description_unselect_all">取消選擇清單中的所有項目</string>
     <string name="content_description_recording_toggle_play">播放或暫停錄音</string>
     <string name="content_description_show_missed_calls">只顯示未接來電</string>
-    <string name="content_description_call_quality_0">通話品質極差</string>
     <string name="chat_settings_file_sharing_url_title">共享伺服器網址</string>
     <string name="chat_settings_file_sharing_url_summary">除非你知道要修改什麼，請勿隨意編輯！</string>
     <string name="chat_settings_auto_download_title">自動下載收到的檔案政策</string>
@@ -506,10 +505,6 @@
     <string name="content_description_security_level_unsafe">不安全</string>
     <string name="content_description_security_level_safe">安全</string>
     <string name="content_description_security_level_encrypted">已加密</string>
-    <string name="content_description_call_quality_1">通話品質差</string>
-    <string name="content_description_call_quality_2">通話品質一般</string>
-    <string name="content_description_call_quality_3">通話品質佳</string>
-    <string name="content_description_call_quality_4">通話品質極佳</string>
     <string name="content_description_call_not_secured">通話未加密</string>
     <string name="content_description_call_secured">通話已加密</string>
     <string name="content_description_call_security_pending">無法確定通話安全性</string>

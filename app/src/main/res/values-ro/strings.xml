@@ -790,9 +790,6 @@
     <string name="content_description_security_level_unsafe">Nesiguranță</string>
     <string name="content_description_security_level_safe">Siguranță</string>
     <string name="content_description_security_level_encrypted">Criptat</string>
-    <string name="content_description_call_quality_1">Calitatea scăzută a apelurilor</string>
-    <string name="content_description_call_quality_2">Calitate medie a apelurilor</string>
-    <string name="content_description_call_quality_4">Calitate maximă a apelurilor</string>
     <string name="content_description_call_not_secured">Apelul nu este securizat</string>
     <string name="content_description_call_secured">Apelul este securizat</string>
     <string name="content_description_call_security_pending">Garanția apelului este în așteptare</string>
@@ -839,8 +836,6 @@
     <string name="content_description_toggle_side_menu">Afișați sau ascundeți meniul lateral</string>
     <string name="content_description_dialer_erase">Eliminați ultimul caracter</string>
     <string name="content_description_show_missed_calls">Afișați numai apelurile ratate</string>
-    <string name="content_description_call_quality_0">Calitate foarte scăzută a apelurilor</string>
-    <string name="content_description_call_quality_3">Calitate bună a apelurilor</string>
     <string name="content_description_take_screenshot">Faceți o captură de ecran a videoclipului primit</string>
     <string name="content_description_voice_recording">Înregistrați un mesaj vocal</string>
     <string name="content_description_stop_voice_recording">Opriți înregistrarea vocală</string>

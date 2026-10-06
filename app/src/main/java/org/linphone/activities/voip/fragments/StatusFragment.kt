@@ -22,12 +22,14 @@ package org.linphone.activities.voip.fragments
 import android.app.Dialog
 import android.os.Bundle
 import android.view.View
+import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.ViewModelProvider
 import androidx.navigation.navGraphViewModels
 import java.util.*
 import org.linphone.R
 import org.linphone.activities.GenericFragment
 import org.linphone.activities.main.viewmodels.DialogViewModel
+import org.linphone.activities.voip.viewmodels.CallQualityViewModel
 import org.linphone.activities.voip.viewmodels.ControlsViewModel
 import org.linphone.activities.voip.viewmodels.StatusViewModel
 import org.linphone.core.Call
@@ -38,6 +40,7 @@ import org.linphone.utils.Log
 class StatusFragment : GenericFragment<VoipStatusFragmentBinding>() {
     private lateinit var viewModel: StatusViewModel
     private val controlsViewModel: ControlsViewModel by navGraphViewModels(R.id.call_nav_graph)
+    private val callQualityViewModel: CallQualityViewModel by activityViewModels()
 
     private var zrtpDialog: Dialog? = null
 
@@ -51,6 +54,7 @@ class StatusFragment : GenericFragment<VoipStatusFragmentBinding>() {
 
         viewModel = ViewModelProvider(this)[StatusViewModel::class.java]
         binding.viewModel = viewModel
+        binding.callQualityViewModel = callQualityViewModel
 
         binding.setRefreshClickListener {
             viewModel.refreshRegister()

@@ -281,8 +281,6 @@
     <string name="call_settings_media_encryption_dtls">DTLS-SRTP</string>
     <string name="content_description_menu_history">Historique</string>
     <string name="content_description_go_to_contact">Afficher les détails du contact</string>
-    <string name="content_description_call_quality_0">La qualité est très mauvaise</string>
-    <string name="content_description_call_quality_3">La qualité d\'appel est bonne</string>
     <string name="content_description_call_secured">L\'appel est chiffré</string>
     <string name="call_settings_sipinfo_dtmf_title">Envoyer les DTMFs hors flux (SIP INFO)</string>
     <string name="call_settings_rfc2833_dtmf_title">Envoyer les DTMFs dans le flux (RFC2833)</string>
@@ -457,9 +455,6 @@
     <string name="content_description_security_level_unsafe">Non sécurisé</string>
     <string name="content_description_security_level_safe">Sécurisé</string>
     <string name="content_description_security_level_encrypted">Chiffré</string>
-    <string name="content_description_call_quality_2">La qualité d\'appel est moyenne</string>
-    <string name="content_description_call_quality_1">La qualité d\'appel est mauvaise</string>
-    <string name="content_description_call_quality_4">La qualité d\'appel est très bonne</string>
     <string name="share_uploaded_logs_link">Partager le fichier de traces avec…</string>
     <string name="content_description_call_not_secured">L\'appel n\'est pas chiffré</string>
     <string name="history_delete_one_dialog">Voulez-vous supprimer cet enregistrement \?</string>
