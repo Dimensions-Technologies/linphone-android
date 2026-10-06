@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <layout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools">
 
     <data>
@@ -10,6 +11,9 @@
         <variable
             name="callOverlayViewModel"
             type="org.linphone.activities.main.viewmodels.CallOverlayViewModel" />
+        <variable
+            name="pullCallViewModel"
+            type="org.linphone.activities.main.viewmodels.PullCallViewModel" />
     </data>
 
     <androidx.coordinatorlayout.widget.CoordinatorLayout
@@ -38,11 +42,19 @@
                 android:layout_below="@id/status_fragment"
                 tools:visibility="@{callOverlayViewModel.displayCallOverlay, default=visible}" />
 
+            <include
+                android:id="@+id/pull_call_banner"
+                layout="@layout/pull_call_banner"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_below="@id/call_overlay"
+                app:viewModel="@{pullCallViewModel}" />
+
             <androidx.drawerlayout.widget.DrawerLayout
                 android:id="@+id/side_menu"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
-                android:layout_below="@id/call_overlay">
+                android:layout_below="@id/pull_call_banner">
 
                 <include
                     android:id="@+id/content"

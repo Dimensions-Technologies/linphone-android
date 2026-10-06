@@ -261,6 +261,18 @@ class CTGatewayServiceContractTest {
     }
 
     @Test
+    fun `getAllUserDevices lists every device, PBX handsets included`() = runBlocking {
+        enqueueFixture("users-me-devices.json")
+
+        val devices = gateway.getAllUserDevices().body()!!
+
+        assertRequest("GET", "/api/v1.0/users/me/devices?includePbxDevices=true")
+        assertEquals(listOf("dev-mobile", "dev-desk"), devices.map { it.deviceId })
+        assertEquals("UCM", devices[0].model)
+        assertEquals("Reception desk phone", devices[1].deviceName)
+    }
+
+    @Test
     fun `getUserFeatureCodes treats an empty body as no codes`() = runBlocking {
         server.enqueue(MockResponse().setResponseCode(204))
 

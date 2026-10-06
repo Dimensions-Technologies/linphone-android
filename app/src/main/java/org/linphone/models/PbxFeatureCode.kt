@@ -12,6 +12,7 @@ data class PbxFeatureCode(
 ) {
     companion object {
         const val PARK_AND_RETRIEVE = "park_and_retrieve"
+        const val MOVE_CALL = "move"
         const val DIMENSIONS_DND_TOGGLE = "DimensionsFeatureCode_DndToggle"
     }
 }

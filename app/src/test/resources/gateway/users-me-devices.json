@@ -1,0 +1,16 @@
+[
+  {
+    "id": "a1",
+    "deviceId": "dev-mobile",
+    "deviceName": "Mobile",
+    "model": "UCM",
+    "sipUsername": "user_mobile",
+    "callWaitingEnabled": true
+  },
+  {
+    "id": "a2",
+    "deviceId": "dev-desk",
+    "deviceName": "Reception desk phone",
+    "model": "T54W"
+  }
+]

@@ -70,6 +70,7 @@ import org.linphone.mediastream.Version
 import org.linphone.models.UserDevice
 import org.linphone.notifications.NotificationsManager
 import org.linphone.services.CallContactMatchService
+import org.linphone.services.PullCallService
 import org.linphone.services.PushTokenService
 import org.linphone.services.TransferService
 import org.linphone.services.UserService
@@ -410,6 +411,9 @@ class CoreContext(
 
         // Names calls after the directory or CRM contacts they match
         CallContactMatchService.start(context)
+
+        // Offers to pull a call the user is on at another device
+        PullCallService.start(context)
 
         _lifecycleRegistry.currentState = Lifecycle.State.STARTED
 

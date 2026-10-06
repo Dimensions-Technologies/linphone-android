@@ -4,6 +4,7 @@ import ReportResult
 import okhttp3.MultipartBody
 import okhttp3.RequestBody
 import okhttp3.ResponseBody
+import org.linphone.models.DeviceSummary
 import org.linphone.models.PbxFeatureCode
 import org.linphone.models.TenantBrandingDefinition
 import org.linphone.models.UserDevice
@@ -36,6 +37,10 @@ interface CTGatewayService {
     fun doGetUserDevices(
         @Path("userID") userID: String?
     ): Call<List<UserDevice>>
+
+    // Every device the user has, PBX handsets included
+    @GET("api/v1.0/users/me/devices?includePbxDevices=true")
+    suspend fun getAllUserDevices(): Response<List<DeviceSummary>>
 
     @GET("api/v1.0/users/me")
     suspend fun getUserInfo(): Response<UserInfo>

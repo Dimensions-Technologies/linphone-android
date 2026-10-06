@@ -33,6 +33,7 @@ import org.linphone.environment.DimensionsEnvironmentService
 import org.linphone.models.AuthenticatedUser
 import org.linphone.models.DimensionsEnvironment
 import org.linphone.models.realtime.EventSubscription
+import org.linphone.models.realtime.RealtimeEventCall
 import org.linphone.models.realtime.RealtimeEventCallMatch
 import org.linphone.models.realtime.RealtimeEventPresence
 import org.linphone.models.realtime.RealtimeEventType
@@ -120,6 +121,7 @@ open class RealtimeBaseService(private val context: Context, private val hubSuff
 
     // Not LiveData: every event matters, and postValue would drop all but the last of a burst
     val callMatchEvent: PublishSubject<RealtimeEventCallMatch> = PublishSubject.create()
+    val callEvent: PublishSubject<RealtimeEventCall> = PublishSubject.create()
 
     init {
         Log.i("RealtimeBaseService: Monitor network...")
@@ -230,6 +232,15 @@ open class RealtimeBaseService(private val context: Context, private val hubSuff
                 callMatchEvent.onNext(data)
             },
             RealtimeEventCallMatch::class.java
+        )
+
+        connection.on(
+            RealtimeEventType.CallEvent.eventName,
+            { data: RealtimeEventCall ->
+                Log.d("RealtimeBaseService.callEvent: ${data.data?.calls?.size} call(s)")
+                callEvent.onNext(data)
+            },
+            RealtimeEventCall::class.java
         )
 
         hubConnection = connection

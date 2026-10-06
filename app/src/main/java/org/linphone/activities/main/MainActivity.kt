@@ -76,6 +76,7 @@ import org.linphone.activities.GenericActivity
 import org.linphone.activities.SnackBarActivity
 import org.linphone.activities.main.viewmodels.CallOverlayViewModel
 import org.linphone.activities.main.viewmodels.DialogViewModel
+import org.linphone.activities.main.viewmodels.PullCallViewModel
 import org.linphone.activities.main.viewmodels.SharedMainViewModel
 import org.linphone.activities.navigateToChatRoom
 import org.linphone.activities.navigateToChatRooms
@@ -109,6 +110,7 @@ class MainActivity : GenericActivity(), SnackBarActivity, NavController.OnDestin
     private lateinit var binding: MainActivityBinding
     private lateinit var sharedViewModel: SharedMainViewModel
     private lateinit var callOverlayViewModel: CallOverlayViewModel
+    private lateinit var pullCallViewModel: PullCallViewModel
 
     private val essentialPermissionsLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -204,6 +206,12 @@ class MainActivity : GenericActivity(), SnackBarActivity, NavController.OnDestin
 
         callOverlayViewModel = ViewModelProvider(this)[CallOverlayViewModel::class.java]
         binding.callOverlayViewModel = callOverlayViewModel
+
+        pullCallViewModel = ViewModelProvider(this)[PullCallViewModel::class.java]
+        binding.pullCallViewModel = pullCallViewModel
+        pullCallViewModel.noFeatureCodeEvent.observe(this) {
+            it.consume { showSnackBar(R.string.pull_call_no_feature_code) }
+        }
 
         sharedViewModel.toggleDrawerEvent.observe(
             this
