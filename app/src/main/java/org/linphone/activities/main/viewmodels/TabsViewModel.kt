@@ -23,6 +23,7 @@ import android.animation.ValueAnimator
 import android.view.animation.LinearInterpolator
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
+import io.reactivex.rxjava3.core.Observable
 import io.reactivex.rxjava3.disposables.Disposable
 import java.util.Locale
 import org.linphone.LinphoneApplication.Companion.coreContext
@@ -30,6 +31,7 @@ import org.linphone.LinphoneApplication.Companion.corePreferences
 import org.linphone.R
 import org.linphone.core.*
 import org.linphone.services.CallHistoryService
+import org.linphone.services.ParkingSlotService
 import org.linphone.utils.AppUtils
 import org.linphone.utils.Log
 
@@ -40,11 +42,18 @@ class TabsViewModel : ViewModel() {
     val unreadVoicemailsCount = MutableLiveData<Int>()
     val missedCallsCount = MutableLiveData<Int>()
 
-    // Boundaries between the five tabs
+    // Boundaries between the tabs: five, or six with Parking (between anchor4 and anchor5)
     val anchor1 = MutableLiveData<Float>()
     val anchor2 = MutableLiveData<Float>()
     val anchor3 = MutableLiveData<Float>()
     val anchor4 = MutableLiveData<Float>()
+    val anchor5 = MutableLiveData<Float>()
+
+    // The Parking tab is shown only when the user has parking slots. It's hidden by giving it no
+    // width rather than by visibility, which the tabs' MotionLayout would reset; TabsFragment moves
+    // the boundaries (see tabAnchors).
+    val showParking = MutableLiveData(false)
+    val parkingOccupiedCount = MutableLiveData(0)
 
     val historyMissedCountTranslateY = MutableLiveData<Float>()
     val chatUnreadCountTranslateY = MutableLiveData<Float>()
@@ -52,9 +61,31 @@ class TabsViewModel : ViewModel() {
 
     private var missedCallCountSubscription: Disposable? = null
 
+    private val parkingSubscription: Disposable = Observable.combineLatest(
+        ParkingSlotService.hasSlots,
+        ParkingSlotService.occupiedCount.startWithItem(0)
+    ) { hasSlots, occupied -> Pair(hasSlots, occupied) }
+        .subscribe(
+            { (hasSlots, occupied) ->
+                showParking.postValue(hasSlots)
+                parkingOccupiedCount.postValue(if (hasSlots) occupied else 0)
+            },
+            { e -> Log.e("[Tabs] Parking slots failed", e) }
+        )
+
     init {
         missedCallCountSubscription = callHistoryService.missedCallCount.subscribe { c ->
             missedCallsCount.postValue(c)
+        }
+    }
+
+    companion object {
+        // The boundaries between the tabs, anchor1 to anchor5. Without Parking, its tab (between
+        // anchor4 and anchor5) has no width.
+        fun tabAnchors(withParking: Boolean): List<Float> = if (withParking) {
+            listOf(1 / 6F, 2 / 6F, 3 / 6F, 4 / 6F, 5 / 6F)
+        } else {
+            listOf(0.2F, 0.4F, 0.6F, 0.8F, 0.8F)
         }
     }
 
@@ -135,6 +166,7 @@ class TabsViewModel : ViewModel() {
         anchor2.value = 0.4F
         anchor3.value = 0.6F
         anchor4.value = 0.8F
+        anchor5.value = 0.8F
 
         updateUnreadChatCount()
         updateMissedCallCount()
@@ -143,6 +175,7 @@ class TabsViewModel : ViewModel() {
     }
 
     override fun onCleared() {
+        parkingSubscription.dispose()
         coreContext.core.removeListener(listener)
         super.onCleared()
     }

@@ -230,6 +230,15 @@
     <action
         android:id="@+id/action_global_favouritesFragment"
         app:destination="@id/favouritesFragment" />
+    <!-- The Parking tab -->
+    <fragment
+        android:id="@+id/parkingSlotsFragment"
+        android:name="org.linphone.activities.main.parking.fragments.ParkingSlotsFragment"
+        android:label="ParkingSlotsFragment"
+        tools:layout="@layout/parking_slots_fragment" />
+    <action
+        android:id="@+id/action_global_parkingSlotsFragment"
+        app:destination="@id/parkingSlotsFragment" />
     <fragment
         android:id="@+id/directoryContactEditorFragment"
         android:name="org.linphone.activities.main.contact.fragments.DirectoryContactEditorFragment"

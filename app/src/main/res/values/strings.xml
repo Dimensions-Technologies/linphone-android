@@ -1101,4 +1101,19 @@
     <string name="pull_call_banner_text">You\'re in a call on another device. Do you want to pull it to this one?</string>
     <string name="pull_call_banner_action">Pull call</string>
     <string name="pull_call_no_feature_code">Unable to retrieve the feature code for pulling calls.</string>
+    <string name="parking_title">Parking</string>
+    <string name="parking_personal_slot">Personal Slot</string>
+    <string name="parking_slot_occupied">Occupied</string>
+    <string name="parking_slot_caller">%1$s (%2$s)</string>
+    <string name="parking_slot_label">%1$s: %2$s</string>
+    <string name="parking_slots_hint">Tap an occupied slot to pick up the call parked there. During a call, tap a free slot to park it.</string>
+    <string name="parking_no_slots">No parking slots</string>
+    <string name="parking_choose_slot">Park call in</string>
+    <string name="parking_no_free_slots">All parking slots are occupied.</string>
+    <string name="parking_no_feature_code">Unable to retrieve the feature code for parking calls.</string>
+    <string name="parking_banner_text">%s is parked on your extension.</string>
+    <string name="parking_banner_action">Pick up</string>
+    <string name="call_action_park">Park</string>
+    <string name="content_description_menu_parking">Parking</string>
+    <string name="content_description_park_call">Park the current call on this user\'s extension</string>
 </resources>

@@ -24,11 +24,14 @@
             name="voicemailClickListener"
             type="android.view.View.OnClickListener"/>
         <variable
+            name="parkingClickListener"
+            type="android.view.View.OnClickListener"/>
+        <variable
             name="viewModel"
             type="org.linphone.activities.main.viewmodels.TabsViewModel" />
     </data>
 
-    <!-- Same tabs as portrait, top to bottom: Favourites, Contacts, History, Dialer, Voicemail -->
+    <!-- Same tabs as portrait, top to bottom: Favourites, Contacts, History, Dialer, Parking, Voicemail -->
     <androidx.constraintlayout.motion.widget.MotionLayout
         android:id="@+id/motion_layout"
         android:layout_width="@dimen/main_activity_tabs_fragment_size"
@@ -62,6 +65,14 @@
             android:layout_height="wrap_content"
             android:orientation="horizontal"
             layout_constraintGuide_percent="@{viewModel.anchor4, default=0.8}" />
+
+        <!-- Same as guideline4 while the Parking tab is hidden -->
+        <androidx.constraintlayout.widget.Guideline
+            android:id="@+id/guideline5"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            layout_constraintGuide_percent="@{viewModel.anchor5, default=0.8}" />
 
         <ImageView
             android:id="@+id/favourites"
@@ -130,6 +141,32 @@
             app:layout_constraintBottom_toTopOf="@id/guideline4" />
 
         <ImageView
+            android:id="@+id/parking"
+            android:onClick="@{parkingClickListener}"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:contentDescription="@string/content_description_menu_parking"
+            android:padding="15dp"
+            android:background="@drawable/footer_button"
+            android:src="@drawable/icon_parking"
+            app:tint="@color/tab_icon_color"
+            app:layout_constraintTop_toTopOf="@id/guideline4"
+            app:layout_constraintBottom_toTopOf="@id/guideline5" />
+
+        <TextView
+            android:id="@+id/parking_occupied_count"
+            style="@style/unread_count_font"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="5dp"
+            android:layout_marginTop="5dp"
+            android:gravity="center"
+            android:background="@{viewModel.parkingOccupiedCount == 0 ? @drawable/hidden_unread_message_count_bg : @drawable/unread_message_count_bg}"
+            android:text="@{viewModel.parkingOccupiedCount == 0 ? `` : String.valueOf(viewModel.parkingOccupiedCount)}"
+            app:layout_constraintRight_toRightOf="parent"
+            app:layout_constraintTop_toTopOf="@id/guideline4" />
+
+        <ImageView
             android:id="@+id/voicemail"
             android:onClick="@{voicemailClickListener}"
             android:layout_width="match_parent"
@@ -139,7 +176,7 @@
             android:background="@drawable/footer_button"
             android:src="@drawable/footer_voicemail"
             app:tint="@color/tab_icon_color"
-            app:layout_constraintTop_toTopOf="@id/guideline4"
+            app:layout_constraintTop_toTopOf="@id/guideline5"
             app:layout_constraintBottom_toBottomOf="parent" />
 
         <TextView
@@ -154,7 +191,7 @@
             android:background="@{viewModel.unreadVoicemailsCount == 0 ? @drawable/hidden_unread_message_count_bg : @drawable/unread_message_count_bg}"
             android:text="@{viewModel.unreadVoicemailsCount == 0 ? `` : String.valueOf(viewModel.unreadVoicemailsCount)}"
             app:layout_constraintRight_toRightOf="parent"
-            app:layout_constraintTop_toTopOf="@id/guideline4" />
+            app:layout_constraintTop_toTopOf="@id/guideline5" />
 
         <View
             android:id="@+id/selector"

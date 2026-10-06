@@ -115,13 +115,37 @@ object CallContactMatchService {
 
     /**
      * The name to show for the call, if contact matching gives one: "Voicemail" for the user's own
-     * voicemail, else the first match's name. Null to fall back to the SIP or device contact name.
+     * voicemail, else the first match's name, else the other party when it isn't the call's own
+     * remote address (see otherParty). Null to fall back to the SIP or device contact name.
      */
     fun displayName(call: Call): String? {
         lookUp(call)
         if (isVoicemail(call)) return context.getString(R.string.contact_match_voicemail)
         return entryFor(call)?.matches?.value?.firstOrNull()?.displayName
+            ?: otherParty(call)?.let { (number, name) -> name ?: formatNumber(number) }
     }
+
+    /**
+     * The number to show for the call when the other party isn't its remote address (see
+     * otherParty), else null.
+     */
+    fun displayNumber(call: Call): String? = otherParty(call)?.let { formatNumber(it.first) }
+
+    /**
+     * The other party's number and name, when the call's remote address isn't them: the
+     * P-Asserted-Identity the PBX sent if it names someone else (e.g. the caller retrieved from a
+     * parking slot, or after a transfer). The web client shows the PAI's number in place of the
+     * remote identity the same way.
+     */
+    private fun otherParty(call: Call): Pair<String, String?>? {
+        val header = call.remoteParams?.getCustomHeader("P-Asserted-Identity")
+        val number = SipIdentity.userPart(header) ?: return null
+        if (number == call.remoteAddress.username) return null
+        return number to SipIdentity.displayName(header)
+    }
+
+    private fun formatNumber(number: String) =
+        PhoneFormatterService.getInstance(context).formatDisplayNumber(number)
 
     /** As displayName, for a call that has ended (only its address is left, e.g. for a missed call). */
     fun displayName(address: Address): String? {
@@ -161,7 +185,10 @@ object CallContactMatchService {
     private fun lookUp(call: Call) {
         val entry = entryFor(call) ?: return
         val number = phoneNumber(call)
+        val changed = entry.number.isNotEmpty() && entry.number != number
         entry.number = number
+        // The PBX said who the other party is now: renamed even if they're no contact
+        if (changed) refreshCallerName(call)
         if (number.isEmpty() || !entry.lookedUpNumbers.add(number)) return
 
         val match = ContactDirectoryRules.findContactAndDirectoryByPhone(

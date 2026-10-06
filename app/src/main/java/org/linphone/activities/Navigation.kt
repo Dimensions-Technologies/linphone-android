@@ -130,6 +130,14 @@ internal fun TabsFragment.navigateToFavourites() {
     )
 }
 
+internal fun TabsFragment.navigateToParking() {
+    findNavController().navigate(
+        R.id.action_global_parkingSlotsFragment,
+        null,
+        popupTo(R.id.parkingSlotsFragment, true)
+    )
+}
+
 /**
  * Opens the gateway contact editor full screen, from any fragment (including ones in a nested nav
  * host such as the contact details pane). See DirectoryContactEditorFragment for the arguments.

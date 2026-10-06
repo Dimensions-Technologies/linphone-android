@@ -20,6 +20,10 @@
             name="conferenceViewModel"
             type="org.linphone.activities.voip.viewmodels.ConferenceViewModel" />
 
+        <variable
+            name="callParkViewModel"
+            type="org.linphone.activities.voip.viewmodels.CallParkViewModel" />
+
     </data>
 
     <LinearLayout
@@ -169,6 +173,18 @@
                 android:text="@string/call_action_transfer"
                 app:drawableTopCompat="@drawable/call_actions_transfer"
                 android:visibility="@{controlsViewModel.transferState == org.linphone.activities.voip.TransferState.NONE &amp;&amp; !callsViewModel.currentCallData.isPaused &amp;&amp; !callsViewModel.currentCallData.isConferenceCall() ? View.VISIBLE : View.GONE, default=visible}"/>
+
+            <TextView
+                android:id="@+id/park_call"
+                style="@style/call_options_font"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:gravity="center"
+                android:onClick="@{() -> callParkViewModel.chooseSlot()}"
+                android:text="@string/call_action_park"
+                app:drawableTopCompat="@drawable/call_actions_park"
+                android:visibility="@{callParkViewModel.canPark &amp;&amp; controlsViewModel.transferState == org.linphone.activities.voip.TransferState.NONE &amp;&amp; !callsViewModel.currentCallData.isPaused &amp;&amp; !callsViewModel.currentCallData.isConferenceCall() ? View.VISIBLE : View.GONE, default=gone}"/>
 
             <LinearLayout
                 android:id="@+id/hangup"
