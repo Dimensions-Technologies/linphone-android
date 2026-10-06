@@ -24,6 +24,8 @@ import android.util.TypedValue
 import android.view.View
 import android.widget.ImageView
 import android.widget.RelativeLayout
+import androidx.constraintlayout.widget.ConstraintLayout
+import androidx.constraintlayout.widget.Guideline
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.ViewModelProvider
@@ -39,6 +41,7 @@ import org.linphone.activities.navigateToChatRooms
 import org.linphone.activities.navigateToContacts
 import org.linphone.activities.navigateToDialer
 import org.linphone.activities.navigateToFavourites
+import org.linphone.activities.navigateToParking
 import org.linphone.databinding.TabsFragmentBinding
 import org.linphone.utils.Event
 
@@ -57,6 +60,10 @@ class TabsFragment : GenericFragment<TabsFragmentBinding>(), NavController.OnDes
             ViewModelProvider(this)[TabsViewModel::class.java]
         }
         binding.viewModel = viewModel
+
+        viewModel.showParking.observe(viewLifecycleOwner) { showParking ->
+            setTabAnchors(TabsViewModel.tabAnchors(showParking))
+        }
 
         val tabsContainer = view.findViewById<RelativeLayout>(R.id.tabs_container)
         ViewCompat.setOnApplyWindowInsetsListener(tabsContainer) { v, windowInsets ->
@@ -135,6 +142,53 @@ class TabsFragment : GenericFragment<TabsFragmentBinding>(), NavController.OnDes
         binding.setVoicemailClickListener {
             viewModel.dialVoicemail()
         }
+
+        binding.setParkingClickListener {
+            when (findNavController().currentDestination?.id) {
+                R.id.dimensionsContactsFragment, R.id.favouritesFragment -> sharedViewModel.updateContactsAnimationsBasedOnDestination.value = Event(
+                    R.id.parkingSlotsFragment
+                )
+                R.id.dialerFragment -> sharedViewModel.updateDialerAnimationsBasedOnDestination.value = Event(
+                    R.id.parkingSlotsFragment
+                )
+            }
+            navigateToParking()
+        }
+    }
+
+    /**
+     * Moves the boundaries between the tabs. The MotionLayout keeps its own copy of every view's
+     * constraints for each selector state and reapplies it on each tab change, so the guidelines are
+     * changed in every state as well as on the views themselves.
+     */
+    private fun setTabAnchors(anchors: List<Float>) {
+        val guidelines = listOf(
+            R.id.guideline1,
+            R.id.guideline2,
+            R.id.guideline3,
+            R.id.guideline4,
+            R.id.guideline5
+        )
+        val motionLayout = binding.motionLayout
+        // Vertical in portrait, horizontal in landscape
+        val orientation = (
+            motionLayout.findViewById<Guideline>(R.id.guideline1)
+                ?.layoutParams as? ConstraintLayout.LayoutParams
+            )?.orientation ?: return
+        for (stateId in motionLayout.constraintSetIds) {
+            val set = motionLayout.getConstraintSet(stateId) ?: continue
+            guidelines.forEachIndexed { i, id ->
+                // A state that doesn't have the guideline yet would otherwise get a blank
+                // constraint for it (no orientation), which collapses every tab
+                set.create(id, orientation)
+                set.setGuidelinePercent(id, anchors[i])
+            }
+            motionLayout.updateState(stateId, set)
+        }
+        guidelines.forEachIndexed { i, id ->
+            motionLayout.findViewById<Guideline>(id)?.setGuidelinePercent(anchors[i])
+        }
+        motionLayout.requestLayout()
     }
 
     override fun onStart() {
@@ -158,6 +212,7 @@ class TabsFragment : GenericFragment<TabsFragmentBinding>(), NavController.OnDes
             R.id.dimensionsContactsFragment -> R.id.contacts
             R.id.masterCallLogsFragment -> R.id.call_history
             R.id.dialerFragment -> R.id.dialer
+            R.id.parkingSlotsFragment -> R.id.parking_slots
             else -> null
         }
         if (state != null) {
@@ -175,6 +230,8 @@ class TabsFragment : GenericFragment<TabsFragmentBinding>(), NavController.OnDes
         val tabContacts = view?.findViewById<ImageView>(R.id.contacts)
         val tabDialpad = view?.findViewById<ImageView>(R.id.dialer)
         val tabHistory = view?.findViewById<ImageView>(R.id.history)
+        val tabParking = view?.findViewById<ImageView>(R.id.parking)
+        if (tabParking != null) tabParking.isSelected = false
         if (tabChat != null) tabChat.isSelected = false
         if (tabFavourites != null) tabFavourites.isSelected = false
         if (tabContacts != null) tabContacts.isSelected = false
@@ -187,6 +244,7 @@ class TabsFragment : GenericFragment<TabsFragmentBinding>(), NavController.OnDes
             R.id.dimensionsContactsFragment -> if (tabContacts != null) tabContacts.isSelected = true
             R.id.masterCallLogsFragment -> if (tabHistory != null) tabHistory.isSelected = true
             R.id.masterChatRoomsFragment -> if (tabChat != null) tabChat.isSelected = true
+            R.id.parkingSlotsFragment -> if (tabParking != null) tabParking.isSelected = true
         }
     }
 }

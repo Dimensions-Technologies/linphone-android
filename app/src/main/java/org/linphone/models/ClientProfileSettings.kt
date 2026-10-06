@@ -13,5 +13,13 @@ data class ClientProfileSettings(
     var queueControlEnabled: Boolean = false,
 
     @SerializedName("agentControlDisplayed")
-    var agentControlDisplayed: Boolean = false
+    var agentControlDisplayed: Boolean = false,
+
+    // Offer the user's own parking slot (park code + their extension)
+    @SerializedName("exposePersonalParkingSlotsEnabled")
+    var exposePersonalParkingSlotsEnabled: Boolean = false,
+
+    // Offer every PBX parking slot, not only the enabled ones
+    @SerializedName("exposeAllParkingSlotsEnabled")
+    var exposeAllParkingSlotsEnabled: Boolean = false
 )

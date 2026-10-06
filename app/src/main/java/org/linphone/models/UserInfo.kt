@@ -47,7 +47,10 @@ data class UserInfo(
     val deviceCount: Number = 0,
 
     @SerializedName("clientProfileSettings")
-    val clientProfileSettings: ClientProfileSettings = ClientProfileSettings()
+    val clientProfileSettings: ClientProfileSettings = ClientProfileSettings(),
+
+    @SerializedName("parkingSlotCollection")
+    val parkingSlotCollection: List<PbxParkingSlot>? = emptyList()
 ) {
     companion object {
         const val STORE_NAME: String = "user"

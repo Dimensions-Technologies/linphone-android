@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layout xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <data>
+        <import type="android.view.View" />
+        <variable
+            name="viewModel"
+            type="org.linphone.activities.main.viewmodels.ParkedCallViewModel" />
+    </data>
+
+    <!-- Styled as the pull call banner, as the web client styles both notifications alike -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="16dp"
+        android:layout_marginTop="8dp"
+        android:layout_marginEnd="16dp"
+        android:layout_marginBottom="8dp"
+        android:background="@drawable/pull_call_banner_background"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingStart="12dp"
+        android:paddingTop="6dp"
+        android:paddingEnd="4dp"
+        android:paddingBottom="6dp"
+        android:visibility="@{viewModel.showParkedCall ? View.VISIBLE : View.GONE, default=gone}">
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="@{viewModel.text}"
+            android:textColor="?attr/primaryTextColor"
+            android:textSize="14sp" />
+
+        <TextView
+            android:id="@+id/parked_call_action"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="?attr/selectableItemBackground"
+            android:minHeight="48dp"
+            android:gravity="center"
+            android:onClick="@{() -> viewModel.pickUp()}"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp"
+            android:text="@string/parking_banner_action"
+            android:textColor="@color/green_color"
+            android:textSize="14sp"
+            android:textStyle="bold" />
+
+    </LinearLayout>
+
+</layout>

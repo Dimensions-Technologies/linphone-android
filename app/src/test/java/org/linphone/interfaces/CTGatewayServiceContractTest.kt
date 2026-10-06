@@ -14,6 +14,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.linphone.models.PbxFeatureCode
+import org.linphone.models.PbxParkingSlot
 import org.linphone.models.callhistory.CallTypes
 import org.linphone.models.callhistory.PbxType
 import org.linphone.models.contact.ContactDirectoryRules
@@ -82,6 +83,15 @@ class CTGatewayServiceContractTest {
         assertTrue(user.clientProfileSettings.presenceSelectionEnabled)
         assertTrue(user.clientProfileSettings.queueControlEnabled)
         assertFalse(user.clientProfileSettings.agentControlDisplayed)
+        assertTrue(user.clientProfileSettings.exposePersonalParkingSlotsEnabled)
+        assertFalse(user.clientProfileSettings.exposeAllParkingSlotsEnabled)
+        assertEquals(
+            listOf(
+                PbxParkingSlot("Reception", "101", true),
+                PbxParkingSlot("Warehouse", "102", false)
+            ),
+            user.parkingSlotCollection
+        )
     }
 
     @Test

@@ -76,6 +76,7 @@ import org.linphone.activities.GenericActivity
 import org.linphone.activities.SnackBarActivity
 import org.linphone.activities.main.viewmodels.CallOverlayViewModel
 import org.linphone.activities.main.viewmodels.DialogViewModel
+import org.linphone.activities.main.viewmodels.ParkedCallViewModel
 import org.linphone.activities.main.viewmodels.PullCallViewModel
 import org.linphone.activities.main.viewmodels.SharedMainViewModel
 import org.linphone.activities.navigateToChatRoom
@@ -212,6 +213,8 @@ class MainActivity : GenericActivity(), SnackBarActivity, NavController.OnDestin
         pullCallViewModel.noFeatureCodeEvent.observe(this) {
             it.consume { showSnackBar(R.string.pull_call_no_feature_code) }
         }
+
+        binding.parkedCallViewModel = ViewModelProvider(this)[ParkedCallViewModel::class.java]
 
         sharedViewModel.toggleDrawerEvent.observe(
             this
@@ -466,7 +469,7 @@ class MainActivity : GenericActivity(), SnackBarActivity, NavController.OnDestin
         }
 
         shouldTabsBeVisibleDependingOnDestination = when (destination.id) {
-            R.id.favouritesFragment, R.id.masterCallLogsFragment, R.id.dimensionsContactsFragment, R.id.dialerFragment, R.id.masterChatRoomsFragment ->
+            R.id.favouritesFragment, R.id.masterCallLogsFragment, R.id.dimensionsContactsFragment, R.id.dialerFragment, R.id.masterChatRoomsFragment, R.id.parkingSlotsFragment ->
                 true
             else -> false
         }

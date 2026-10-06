@@ -24,6 +24,9 @@
             name="voicemailClickListener"
             type="android.view.View.OnClickListener"/>
         <variable
+            name="parkingClickListener"
+            type="android.view.View.OnClickListener"/>
+        <variable
             name="viewModel"
             type="org.linphone.activities.main.viewmodels.TabsViewModel" />
     </data>
@@ -67,6 +70,14 @@
             android:layout_height="wrap_content"
             android:orientation="vertical"
             layout_constraintGuide_percent="@{viewModel.anchor4, default=0.8}" />
+
+        <!-- Same as guideline4 while the Parking tab is hidden -->
+        <androidx.constraintlayout.widget.Guideline
+            android:id="@+id/guideline5"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            layout_constraintGuide_percent="@{viewModel.anchor5, default=0.8}" />
 
         <ImageView
             android:id="@+id/favourites"
@@ -167,6 +178,31 @@
             app:layout_constraintTop_toTopOf="parent"/>
 
         <ImageView
+            android:id="@+id/parking"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:onClick="@{parkingClickListener}"
+            android:padding="15dp"
+            android:contentDescription="@string/content_description_menu_parking"
+            android:src="@drawable/icon_parking"
+            app:tint="@color/tab_icon_color"
+            app:layout_constraintStart_toStartOf="@id/guideline4"
+            app:layout_constraintEnd_toEndOf="@id/guideline5" />
+
+        <TextView
+            android:id="@+id/parking_occupied_count"
+            style="@style/unread_count_font"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="15dp"
+            android:layout_marginTop="5dp"
+            android:gravity="center"
+            android:background="@{viewModel.parkingOccupiedCount == 0 ? @drawable/hidden_unread_message_count_bg : @drawable/unread_message_count_bg}"
+            android:text="@{viewModel.parkingOccupiedCount == 0 ? `` : String.valueOf(viewModel.parkingOccupiedCount)}"
+            app:layout_constraintRight_toLeftOf="@id/guideline5"
+            app:layout_constraintTop_toTopOf="parent" />
+
+        <ImageView
             android:id="@+id/voicemail"
             android:layout_width="0dp"
             android:layout_height="match_parent"
@@ -178,7 +214,7 @@
             android:src="@drawable/footer_voicemail"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintHorizontal_bias="0.0"
-            app:layout_constraintStart_toStartOf="@id/guideline4"
+            app:layout_constraintStart_toStartOf="@id/guideline5"
             tools:layout_editor_absoluteY="0dp" />
 
         <TextView

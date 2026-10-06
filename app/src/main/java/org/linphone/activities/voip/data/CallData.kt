@@ -127,7 +127,6 @@ open class CallData(val call: Call) : GenericContactData(call.remoteAddress) {
     init {
         call.addListener(listener)
         isRemotelyRecorded.value = call.remoteParams?.isRecording
-        displayableAddress.value = LinphoneUtils.getDisplayableAddress(call.remoteAddress)
 
         isConferenceCall.addSource(remoteConferenceSubject) {
             isConferenceCall.value = remoteConferenceSubject.value.orEmpty().isNotEmpty() || conferenceParticipants.value.orEmpty().isNotEmpty()
@@ -142,6 +141,17 @@ open class CallData(val call: Call) : GenericContactData(call.remoteAddress) {
             { matches -> scope.launch { applyContactMatches(matches) } },
             { e -> Log.e("[Call] Contact matches failed", e) }
         )
+    }
+
+    /**
+     * The number and name shown: the remote address's, unless the other party is someone else (a
+     * call retrieved from a parking slot, or one the PBX asserts a new identity for, e.g. after a
+     * transfer). Checked on every state change, as the identity can change during the call.
+     */
+    private fun updateOtherParty() {
+        displayableAddress.value = CallContactMatchService.displayNumber(call)
+            ?: LinphoneUtils.getDisplayableAddress(call.remoteAddress)
+        CallContactMatchService.displayName(call)?.let { displayName.value = it }
     }
 
     /**
@@ -250,6 +260,7 @@ open class CallData(val call: Call) : GenericContactData(call.remoteAddress) {
     }
 
     private fun update() {
+        updateOtherParty()
         isRecording.value = call.params.isRecording
         isPaused.value = isCallPaused()
         isRemotelyPaused.value = isCallRemotelyPaused()

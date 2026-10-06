@@ -51,6 +51,7 @@ import org.linphone.models.search.UserDataModel
 import org.linphone.services.BlfService
 import org.linphone.services.DirectoriesService
 import org.linphone.services.FeatureCodeService
+import org.linphone.services.ParkingSlotService
 import org.linphone.services.PhoneFormatterService
 import org.linphone.services.TransferService
 import org.linphone.utils.Event
@@ -100,6 +101,10 @@ class ContactViewModel(friend: Friend) : MessageNotifierViewModel(), ContactData
     private var blfSubscription: Disposable? = null
 
     val transferState = TransferService.getInstance().transferState
+
+    // A user's contact, during a call: the call can be parked on their extension (personal slot)
+    val canPark = MutableLiveData(false)
+    private var parkSubscription: Disposable? = null
 
     val sendSmsToEvent: MutableLiveData<Event<String>> by lazy {
         MutableLiveData<Event<String>>()
@@ -224,6 +229,31 @@ class ContactViewModel(friend: Friend) : MessageNotifierViewModel(), ContactData
 
     fun destroy() {
         blfSubscription?.dispose()
+        parkSubscription?.dispose()
+    }
+
+    private fun presenceId(): String? =
+        (contact.value?.userData as? UserDataModel)?.user?.presenceId?.takeIf { it.isNotEmpty() }
+
+    // As the web client's contact context menu Park item. Only the contact details screen offers
+    // it, so the list's contacts don't each watch for it.
+    fun watchCanPark() {
+        if (parkSubscription != null || presenceId() == null) return
+        parkSubscription = Observable.combineLatest(
+            ParkingSlotService.hasConnectedCall,
+            FeatureCodeService.getInstance(coreContext.context).featureCodes
+        ) { onCall, codes -> onCall && !codes[PbxFeatureCode.PARK_AND_RETRIEVE].isNullOrEmpty() }
+            .subscribe(
+                { canPark.postValue(it) },
+                { e -> Log.e("[Contact] Park availability failed", e) }
+            )
+    }
+
+    fun parkCall() {
+        val presenceId = presenceId() ?: return
+        ParkingSlotService.parkAtExtension(presenceId) {
+            onMessageToNotifyEvent.value = Event(R.string.parking_no_feature_code)
+        }
     }
 
     fun registerContactListener() {
@@ -352,16 +382,8 @@ class ContactViewModel(friend: Friend) : MessageNotifierViewModel(), ContactData
         BlfKeyStatus.UNKNOWN -> ConsolidatedPresence.Offline
     }
 
-    // Like the web client's formatPhoneNumber: short numbers and feature codes are shown as they are.
-    private fun formatNumber(number: String): String {
-        // Feature codes (e.g. park slots like *3101) would lose their * to the formatter
-        if (number.startsWith("*") || !Regex("^[+*#0-9]{5,}$").matches(number)) return number
-        return try {
-            PhoneFormatterService.getInstance(coreContext.context).formatPhoneNumber(number)
-        } catch (e: Exception) {
-            number
-        }
-    }
+    private fun formatNumber(number: String): String =
+        PhoneFormatterService.getInstance(coreContext.context).formatDisplayNumber(number)
 
     private fun updateIsFavourite() {
         val friend = contact.value ?: return

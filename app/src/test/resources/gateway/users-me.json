@@ -17,6 +17,12 @@
     "presenceSelectionEnabled": true,
     "presenceOverrideEnabled": false,
     "queueControlEnabled": true,
-    "agentControlDisplayed": false
-  }
+    "agentControlDisplayed": false,
+    "exposePersonalParkingSlotsEnabled": true,
+    "exposeAllParkingSlotsEnabled": false
+  },
+  "parkingSlotCollection": [
+    { "name": "Reception", "number": "101", "enabled": true },
+    { "name": "Warehouse", "number": "102", "enabled": false }
+  ]
 }

@@ -70,4 +70,15 @@ class PhoneFormatterService(val context: Context) : DefaultLifecycleObserver {
         return phoneUtil.format(numberProto, PhoneNumberUtil.PhoneNumberFormat.NATIONAL)
             .replace("/\\D/g", "")
     }
+
+    // Like the web client's formatPhoneNumber: short numbers and feature codes are shown as they are.
+    fun formatDisplayNumber(number: String): String {
+        // Feature codes (e.g. park slots like *3101) would lose their * to the formatter
+        if (number.startsWith("*") || !Regex("^[+*#0-9]{5,}$").matches(number)) return number
+        return try {
+            formatPhoneNumber(number)
+        } catch (e: Exception) {
+            number
+        }
+    }
 }

@@ -24,23 +24,30 @@ import android.content.Intent
 import android.os.Bundle
 import android.os.SystemClock
 import android.view.View
+import android.view.ViewGroup
+import android.widget.BaseAdapter
 import android.widget.Chronometer
 import androidx.constraintlayout.widget.ConstraintSet
 import androidx.fragment.app.activityViewModels
+import androidx.fragment.app.viewModels
 import androidx.navigation.navGraphViewModels
 import androidx.window.layout.FoldingFeature
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import org.linphone.LinphoneApplication.Companion.coreContext
 import org.linphone.LinphoneApplication.Companion.corePreferences
 import org.linphone.R
 import org.linphone.activities.*
 import org.linphone.activities.main.MainActivity
+import org.linphone.activities.main.parking.data.ParkingSlotData
 import org.linphone.activities.main.viewmodels.DialogViewModel
+import org.linphone.activities.voip.viewmodels.CallParkViewModel
 import org.linphone.activities.voip.viewmodels.CallQualityViewModel
 import org.linphone.activities.voip.viewmodels.CallsViewModel
 import org.linphone.activities.voip.viewmodels.ConferenceViewModel
 import org.linphone.activities.voip.viewmodels.ControlsViewModel
 import org.linphone.activities.voip.viewmodels.StatisticsListViewModel
 import org.linphone.core.*
+import org.linphone.databinding.ParkingSlotCellBinding
 import org.linphone.databinding.VoipSingleCallFragmentBinding
 import org.linphone.utils.AppUtils
 import org.linphone.utils.DialogUtils
@@ -52,8 +59,10 @@ class SingleCallFragment : GenericVideoPreviewFragment<VoipSingleCallFragmentBin
     private val callsViewModel: CallsViewModel by navGraphViewModels(R.id.call_nav_graph)
     private val conferenceViewModel: ConferenceViewModel by navGraphViewModels(R.id.call_nav_graph)
     private val statsViewModel: StatisticsListViewModel by navGraphViewModels(R.id.call_nav_graph)
+    private val callParkViewModel: CallParkViewModel by viewModels()
 
     private var dialog: Dialog? = null
+    private var parkDialog: Dialog? = null
 
     override fun getLayoutId(): Int = R.layout.voip_single_call_fragment
 
@@ -79,6 +88,16 @@ class SingleCallFragment : GenericVideoPreviewFragment<VoipSingleCallFragmentBin
         binding.statsViewModel = statsViewModel
 
         binding.callQualityViewModel = callQualityViewModel
+
+        binding.callParkViewModel = callParkViewModel
+
+        callParkViewModel.chooseSlotEvent.observe(viewLifecycleOwner) {
+            it.consume { slots -> showParkingSlots(slots) }
+        }
+        // E.g. the call was put on hold or ended while choosing
+        callParkViewModel.canPark.observe(viewLifecycleOwner) { canPark ->
+            if (!canPark) parkDialog?.dismiss()
+        }
 
         callsViewModel.currentCallData.observe(
             viewLifecycleOwner
@@ -213,6 +232,12 @@ class SingleCallFragment : GenericVideoPreviewFragment<VoipSingleCallFragmentBin
         // setupLocalVideoPreview(binding.localPreviewVideoSurface, binding.switchCamera)
     }
 
+    override fun onDestroyView() {
+        parkDialog?.dismiss()
+        parkDialog = null
+        super.onDestroyView()
+    }
+
     override fun onPause() {
         super.onPause()
 
@@ -243,6 +268,37 @@ class SingleCallFragment : GenericVideoPreviewFragment<VoipSingleCallFragmentBin
         )
 
         dialog?.show()
+    }
+
+    // The slots to park the call in, as the web client's parking slots popup
+    private fun showParkingSlots(slots: List<ParkingSlotData>) {
+        parkDialog?.dismiss()
+        val builder = MaterialAlertDialogBuilder(requireContext())
+            .setTitle(R.string.parking_choose_slot)
+            .setNegativeButton(R.string.dialog_cancel, null)
+        if (slots.isEmpty()) {
+            builder.setMessage(R.string.parking_no_free_slots)
+        } else {
+            val adapter = object : BaseAdapter() {
+                override fun getCount() = slots.size
+                override fun getItem(position: Int) = slots[position]
+                override fun getItemId(position: Int) = position.toLong()
+                override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
+                    val cell = ParkingSlotCellBinding.inflate(layoutInflater, parent, false)
+                    cell.data = slots[position]
+                    // The cell handles its own clicks (as in the Parking tab), so the dialog's
+                    // list item click would never fire
+                    cell.setClickListener {
+                        parkDialog?.dismiss()
+                        callParkViewModel.park(slots[position])
+                    }
+                    cell.executePendingBindings()
+                    return cell.root
+                }
+            }
+            builder.setAdapter(adapter, null)
+        }
+        parkDialog = builder.show()
     }
 
     private fun goToChat() {

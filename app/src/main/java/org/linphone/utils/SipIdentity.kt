@@ -10,4 +10,9 @@ object SipIdentity {
     /** The user part (usually the number) of a name-addr header value, or null if it isn't one. */
     fun userPart(header: String?): String? =
         header?.let { identityPattern.find(it.trim())?.groupValues?.get(2) }
+
+    /** The display name of a name-addr header value, or null if it has none. */
+    fun displayName(header: String?): String? =
+        header?.let { identityPattern.find(it.trim())?.groupValues?.get(1)?.trim() }
+            ?.takeIf { it.isNotEmpty() }
 }

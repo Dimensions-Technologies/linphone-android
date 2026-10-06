@@ -76,6 +76,7 @@ class DetailContactFragment : GenericFragment<ContactDetailFragmentBinding>() {
             ContactViewModelFactory(contact)
         )["contact-${System.identityHashCode(contact)}", ContactViewModel::class.java]
         binding.viewModel = viewModel
+        viewModel.watchCanPark()
 
         viewModel.sendSmsToEvent.observe(
             viewLifecycleOwner
