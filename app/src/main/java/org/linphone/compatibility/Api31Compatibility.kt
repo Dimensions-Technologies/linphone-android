@@ -32,6 +32,7 @@ import org.linphone.contact.getThumbnailUri
 import org.linphone.core.Call
 import org.linphone.notifications.Notifiable
 import org.linphone.notifications.NotificationsManager
+import org.linphone.services.CallContactMatchService
 import org.linphone.utils.ImageUtils
 import org.linphone.utils.LinphoneUtils
 import org.linphone.utils.Log
@@ -77,11 +78,17 @@ class Api31Compatibility {
             }
 
             val caller = if (conferenceInfo == null) {
-                val contact =
+                val matchedName = CallContactMatchService.displayName(call)
+                val contact = if (matchedName != null) {
+                    null
+                } else {
                     coreContext.contactsManager.findContactByAddress(call.remoteAddress)
+                }
                 val roundPicture =
                     ImageUtils.getRoundBitmapFromUri(context, contact?.getThumbnailUri())
-                val displayName = contact?.name ?: LinphoneUtils.getDisplayName(call.remoteAddress)
+                val displayName = matchedName ?: contact?.name ?: LinphoneUtils.getDisplayName(
+                    call.remoteAddress
+                )
 
                 val person = notificationsManager.getPerson(contact, displayName, roundPicture)
                 Person.Builder()
@@ -181,11 +188,17 @@ class Api31Compatibility {
             }
 
             val caller = if (conferenceInfo == null) {
-                val contact =
+                val matchedName = CallContactMatchService.displayName(call)
+                val contact = if (matchedName != null) {
+                    null
+                } else {
                     coreContext.contactsManager.findContactByAddress(call.remoteAddress)
+                }
                 val roundPicture =
                     ImageUtils.getRoundBitmapFromUri(context, contact?.getThumbnailUri())
-                val displayName = contact?.name ?: LinphoneUtils.getDisplayName(call.remoteAddress)
+                val displayName = matchedName ?: contact?.name ?: LinphoneUtils.getDisplayName(
+                    call.remoteAddress
+                )
 
                 val person = notificationsManager.getPerson(contact, displayName, roundPicture)
                 Person.Builder()

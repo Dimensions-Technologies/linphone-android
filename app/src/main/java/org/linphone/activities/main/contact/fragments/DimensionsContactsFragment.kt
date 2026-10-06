@@ -29,12 +29,15 @@ import android.widget.ArrayAdapter
 import android.widget.Spinner
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.NavHostFragment
+import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.transition.MaterialSharedAxis
 import io.reactivex.rxjava3.disposables.Disposable
+import kotlinx.coroutines.launch
 import org.linphone.LinphoneApplication.Companion.coreContext
 import org.linphone.LinphoneApplication.Companion.corePreferences
 import org.linphone.R
@@ -42,19 +45,28 @@ import org.linphone.activities.SnackBarActivity
 import org.linphone.activities.clearDisplayedContact
 import org.linphone.activities.main.MainActivity
 import org.linphone.activities.main.contact.adapters.ContactsListAdapter
+import org.linphone.activities.main.contact.viewmodels.ContactViewModel
 import org.linphone.activities.main.contact.viewmodels.ContactsListViewModel
 import org.linphone.activities.main.contact.viewmodels.UserGroupViewModel
 import org.linphone.activities.main.fragments.MasterFragment
 import org.linphone.activities.main.viewmodels.DialogViewModel
 import org.linphone.activities.navigateToContact
 import org.linphone.activities.navigateToContactEditor
+import org.linphone.activities.navigateToDirectoryContactEditor
 import org.linphone.core.Factory
 import org.linphone.core.Friend
 import org.linphone.databinding.ContactDimensionsFragmentBinding
+import org.linphone.models.contact.ContactDirectoryModel
+import org.linphone.models.search.UserDataModel
+import org.linphone.services.DirectoriesService
 import org.linphone.services.UserGroupService
 import org.linphone.utils.*
 import org.linphone.utils.Log
 
+/**
+ * The Contacts tab, and the Favourites tab (the favouritesFragment destination), which shows the
+ * Favourites group without the group drop-down.
+ */
 class DimensionsContactsFragment : MasterFragment<ContactDimensionsFragmentBinding, ContactsListAdapter>() {
     override val dialogConfirmationMessageBeforeRemoval = R.plurals.contact_delete_dialog
     private lateinit var listViewModel: ContactsListViewModel
@@ -65,6 +77,8 @@ class DimensionsContactsFragment : MasterFragment<ContactDimensionsFragmentBindi
 
     private var userGroupService: UserGroupService? = null
     private var usergroupSubscription: Disposable? = null
+
+    private var favouritesOnly = false
 
     override fun getLayoutId(): Int = R.layout.contact_dimensions_fragment
 
@@ -84,6 +98,9 @@ class DimensionsContactsFragment : MasterFragment<ContactDimensionsFragmentBindi
 
         listViewModel = ViewModelProvider(this)[ContactsListViewModel::class.java]
         binding.viewModel = listViewModel
+
+        favouritesOnly = findNavController().currentDestination?.id == R.id.favouritesFragment
+        binding.userGroupSpinner.visibility = if (favouritesOnly) View.GONE else View.VISIBLE
 
         /* Shared view model & sliding pane related */
         setUpSlidingPane(binding.slidingPane)
@@ -169,7 +186,15 @@ class DimensionsContactsFragment : MasterFragment<ContactDimensionsFragmentBindi
                     Log.e("[Contacts] Index is out of bound, can't delete contact")
                 } else {
                     val contactViewModel = adapter.currentList[index]
-                    if (contactViewModel.isNativeContact.value == false) {
+                    // Gateway directory contacts the user can edit are deleted from the directory
+                    if (contactViewModel.canEdit.value == true) {
+                        confirmDirectoryContactDeletion(index, contactViewModel)
+                        return
+                    }
+                    // Gateway users and contacts can look native (a Friend's refKey is reset, not
+                    // cleared, when its name is set), but only device contacts can be deleted here
+                    val isGatewayContact = contactViewModel.contact.value?.userData is UserDataModel
+                    if (contactViewModel.isNativeContact.value == false || isGatewayContact) {
                         adapter.notifyItemChanged(index)
                         val activity = requireActivity() as MainActivity
                         activity.showSnackBar(R.string.contact_cant_be_deleted)
@@ -183,6 +208,7 @@ class DimensionsContactsFragment : MasterFragment<ContactDimensionsFragmentBindi
 
                     viewModel.showDeleteButton(
                         {
+                            adapter.notifyItemChanged(index)
                             val deletedContact =
                                 adapter.currentList[index].contact.value
                             if (deletedContact != null) {
@@ -295,6 +321,12 @@ class DimensionsContactsFragment : MasterFragment<ContactDimensionsFragmentBindi
             viewLifecycleOwner
         ) {
             listViewModel.updateContactsList(false)
+            updateAddContactButton()
+        }
+
+        binding.setAddDirectoryContactClickListener {
+            val directory = addContactDirectory() ?: return@setAddDirectoryContactClickListener
+            navigateToDirectoryContactEditor(directory.id)
         }
 
         binding.setNewContactClickListener {
@@ -373,6 +405,52 @@ class DimensionsContactsFragment : MasterFragment<ContactDimensionsFragmentBindi
         )
     }
 
+    private fun confirmDirectoryContactDeletion(index: Int, contactViewModel: ContactViewModel) {
+        val friend = contactViewModel.contact.value
+        val contactItem = (friend?.userData as? UserDataModel)?.contact
+        if (contactItem == null) {
+            adapter.notifyItemChanged(index)
+            return
+        }
+
+        val dialogViewModel = DialogViewModel(getString(R.string.contact_directory_delete_dialog))
+        dialogViewModel.showIcon = true
+        dialogViewModel.iconResource = R.drawable.dialog_delete_icon
+        val dialog: Dialog = DialogUtils.getDialog(requireContext(), dialogViewModel)
+
+        dialogViewModel.showCancelButton {
+            adapter.notifyItemChanged(index)
+            dialog.dismiss()
+        }
+
+        dialogViewModel.showDeleteButton(
+            {
+                dialog.dismiss()
+                val restore = listViewModel.removeFromList(contactViewModel)
+                viewLifecycleOwner.lifecycleScope.launch {
+                    val deleted = DirectoriesService.getInstance(requireContext())
+                        .deleteContact(contactItem.directoryId, contactItem.id)
+                    if (!isAdded) return@launch
+                    if (!deleted) {
+                        restore()
+                        (requireActivity() as MainActivity).showSnackBar(
+                            R.string.contact_directory_delete_failed
+                        )
+                        return@launch
+                    }
+                    // The list refreshes from the gateway; close the details if they show this contact
+                    if (friend == sharedViewModel.selectedContact.value) {
+                        sharedViewModel.selectedContact.value = null
+                        if (!binding.slidingPane.isSlideable) clearDisplayedContact()
+                    }
+                }
+            },
+            getString(R.string.dialog_delete)
+        )
+
+        dialog.show()
+    }
+
     override fun deleteItems(indexesOfItemToDelete: ArrayList<Int>) {
         val list = ArrayList<Friend>()
         var closeSlidingPane = false
@@ -404,7 +482,14 @@ class DimensionsContactsFragment : MasterFragment<ContactDimensionsFragmentBindi
     private fun updateSpinnerAdapter(userGroups: List<UserGroupViewModel>) {
         if (view == null || !isAdded) return
 
+        if (favouritesOnly) {
+            showUserGroup(userGroups.firstOrNull { it.isFavorites } ?: UserGroupViewModel.empty())
+            return
+        }
+
         val spinner = binding.userGroupSpinner
+        // Groups are refetched after every change (e.g. a contact added), so keep the selected one
+        val selectedId = (spinner.selectedItem as? UserGroupViewModel)?.id
         val adapter = ArrayAdapter(
             requireContext(),
             android.R.layout.simple_spinner_dropdown_item,
@@ -412,6 +497,21 @@ class DimensionsContactsFragment : MasterFragment<ContactDimensionsFragmentBindi
         )
 
         spinner.adapter = adapter
+        val index = userGroups.indexOfFirst { it.id == selectedId }
+        if (index >= 0) spinner.setSelection(index)
+    }
+
+    // As on the web client: adding is offered only while the group shown is a contact directory the
+    // user can contribute to, and adds to that directory. User groups (Favourites included), the
+    // device contacts and read-only directories have no directory to add to.
+    private fun addContactDirectory(): ContactDirectoryModel? {
+        val directory = listViewModel.userGroup.value?.directory ?: return null
+        return directory.takeIf { DirectoriesService.getInstance(requireContext()).canContribute(it) }
+    }
+
+    private fun updateAddContactButton() {
+        if (view == null || !isAdded) return
+        binding.addDirectoryContact.visibility = if (addContactDirectory() != null) View.VISIBLE else View.GONE
     }
 
     private fun showUserGroup(userGroupModel: UserGroupViewModel) {

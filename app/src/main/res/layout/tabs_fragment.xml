@@ -6,6 +6,9 @@
     <data>
         <import type="android.view.View"/>
         <variable
+            name="favouritesClickListener"
+            type="android.view.View.OnClickListener"/>
+        <variable
             name="historyClickListener"
             type="android.view.View.OnClickListener"/>
         <variable
@@ -38,33 +41,52 @@
         app:layoutDescription="@xml/motion_main_activity_tabs_selector">
 
         <androidx.constraintlayout.widget.Guideline
-            android:id="@+id/guidelineLeft"
+            android:id="@+id/guideline1"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            layout_constraintGuide_percent="@{viewModel.leftAnchor, default=0.25}" />
+            layout_constraintGuide_percent="@{viewModel.anchor1, default=0.2}" />
 
         <androidx.constraintlayout.widget.Guideline
-            android:id="@+id/guidelineMiddle"
+            android:id="@+id/guideline2"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            layout_constraintGuide_percent="@{viewModel.middleAnchor, default=0.5}" />
+            layout_constraintGuide_percent="@{viewModel.anchor2, default=0.4}" />
 
         <androidx.constraintlayout.widget.Guideline
-            android:id="@+id/guidelineRight"
+            android:id="@+id/guideline3"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            layout_constraintGuide_percent="@{viewModel.rightAnchor, default=0.75}" />
+            layout_constraintGuide_percent="@{viewModel.anchor3, default=0.6}" />
+
+        <androidx.constraintlayout.widget.Guideline
+            android:id="@+id/guideline4"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            layout_constraintGuide_percent="@{viewModel.anchor4, default=0.8}" />
+
+        <ImageView
+            android:id="@+id/favourites"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:onClick="@{favouritesClickListener}"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="@id/guideline1"
+            android:padding="15dp"
+            android:contentDescription="@string/content_description_menu_favourites"
+            android:src="@drawable/icon_star_filled"
+            app:tint="@color/tab_icon_color" />
 
         <ImageView
             android:id="@+id/contacts"
             android:layout_width="0dp"
             android:layout_height="match_parent"
             android:onClick="@{contactsClickListener}"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintEnd_toEndOf="@id/guidelineLeft"
+            app:layout_constraintStart_toStartOf="@id/guideline1"
+            app:layout_constraintEnd_toEndOf="@id/guideline2"
             android:padding="15dp"
             android:contentDescription="@string/content_description_menu_contacts"
             android:src="@drawable/icon_users"
@@ -81,8 +103,8 @@
             android:contentDescription="@string/content_description_menu_history"
             android:src="@drawable/icon_history"
             app:tint="@color/tab_icon_color"
-            app:layout_constraintStart_toStartOf="@id/guidelineLeft"
-            app:layout_constraintEnd_toEndOf="@id/guidelineMiddle" />
+            app:layout_constraintStart_toStartOf="@id/guideline2"
+            app:layout_constraintEnd_toEndOf="@id/guideline3" />
 
         <TextView
             android:id="@+id/history_unread_count"
@@ -95,7 +117,7 @@
             android:translationY="@{viewModel.historyMissedCountTranslateY}"
             android:background="@{viewModel.missedCallsCount == 0 ? @drawable/hidden_unread_message_count_bg : @drawable/unread_message_count_bg}"
             android:text="@{viewModel.missedCallsCount == 0 ? `` : String.valueOf(viewModel.missedCallsCount)}"
-            app:layout_constraintRight_toLeftOf="@id/guidelineMiddle"
+            app:layout_constraintRight_toLeftOf="@id/guideline3"
             app:layout_constraintTop_toTopOf="parent" />
 
         <ImageView
@@ -103,8 +125,8 @@
             android:layout_width="0dp"
             android:layout_height="match_parent"
             android:onClick="@{dialerClickListener}"
-            app:layout_constraintStart_toStartOf="@id/guidelineMiddle"
-            app:layout_constraintEnd_toEndOf="@id/guidelineRight"
+            app:layout_constraintStart_toStartOf="@id/guideline3"
+            app:layout_constraintEnd_toEndOf="@id/guideline4"
                 android:layout_centerInParent="true"
                 android:padding="15dp"
                 android:contentDescription="@string/content_description_menu_dialer"
@@ -127,7 +149,7 @@
             android:padding="15dp"
             app:tint="@color/tab_icon_color"
             app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="@id/guidelineRight" />
+            app:layout_constraintStart_toStartOf="@id/guideline4" />
 
         <TextView
             android:visibility="gone"
@@ -156,7 +178,7 @@
             android:src="@drawable/footer_voicemail"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintHorizontal_bias="0.0"
-            app:layout_constraintStart_toStartOf="@id/guidelineRight"
+            app:layout_constraintStart_toStartOf="@id/guideline4"
             tools:layout_editor_absoluteY="0dp" />
 
         <TextView

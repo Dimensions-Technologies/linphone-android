@@ -38,6 +38,7 @@ import org.linphone.activities.navigateToCallHistory
 import org.linphone.activities.navigateToChatRooms
 import org.linphone.activities.navigateToContacts
 import org.linphone.activities.navigateToDialer
+import org.linphone.activities.navigateToFavourites
 import org.linphone.databinding.TabsFragmentBinding
 import org.linphone.utils.Event
 
@@ -74,9 +75,18 @@ class TabsFragment : GenericFragment<TabsFragmentBinding>(), NavController.OnDes
             windowInsets
         }
 
+        binding.setFavouritesClickListener {
+            when (findNavController().currentDestination?.id) {
+                R.id.dialerFragment -> sharedViewModel.updateDialerAnimationsBasedOnDestination.value = Event(
+                    R.id.favouritesFragment
+                )
+            }
+            navigateToFavourites()
+        }
+
         binding.setHistoryClickListener {
             when (findNavController().currentDestination?.id) {
-                R.id.dimensionsContactsFragment -> sharedViewModel.updateContactsAnimationsBasedOnDestination.value = Event(
+                R.id.dimensionsContactsFragment, R.id.favouritesFragment -> sharedViewModel.updateContactsAnimationsBasedOnDestination.value = Event(
                     R.id.masterCallLogsFragment
                 )
                 R.id.dialerFragment -> sharedViewModel.updateDialerAnimationsBasedOnDestination.value = Event(
@@ -100,7 +110,7 @@ class TabsFragment : GenericFragment<TabsFragmentBinding>(), NavController.OnDes
 
         binding.setDialerClickListener {
             when (findNavController().currentDestination?.id) {
-                R.id.dimensionsContactsFragment -> sharedViewModel.updateContactsAnimationsBasedOnDestination.value = Event(
+                R.id.dimensionsContactsFragment, R.id.favouritesFragment -> sharedViewModel.updateContactsAnimationsBasedOnDestination.value = Event(
                     R.id.dialerFragment
                 )
             }
@@ -112,7 +122,7 @@ class TabsFragment : GenericFragment<TabsFragmentBinding>(), NavController.OnDes
 
         binding.setChatClickListener {
             when (findNavController().currentDestination?.id) {
-                R.id.dimensionsContactsFragment -> sharedViewModel.updateContactsAnimationsBasedOnDestination.value = Event(
+                R.id.dimensionsContactsFragment, R.id.favouritesFragment -> sharedViewModel.updateContactsAnimationsBasedOnDestination.value = Event(
                     R.id.masterChatRoomsFragment
                 )
                 R.id.dialerFragment -> sharedViewModel.updateDialerAnimationsBasedOnDestination.value = Event(
@@ -142,50 +152,38 @@ class TabsFragment : GenericFragment<TabsFragmentBinding>(), NavController.OnDes
         destination: NavDestination,
         arguments: Bundle?
     ) {
-        if (corePreferences.enableAnimations) {
-            when (destination.id) {
-                R.id.masterCallLogsFragment -> binding.motionLayout.transitionToState(
-                    R.id.call_history
-                )
-                R.id.dimensionsContactsFragment -> binding.motionLayout.transitionToState(
-                    R.id.contacts
-                )
-                R.id.dialerFragment -> binding.motionLayout.transitionToState(R.id.dialer)
-                R.id.masterChatRoomsFragment -> binding.motionLayout.transitionToState(
-                    R.id.chat_rooms
-                )
-            }
-        } else {
-            when (destination.id) {
-                R.id.masterCallLogsFragment -> binding.motionLayout.setTransition(
-                    R.id.call_history,
-                    R.id.call_history
-                )
-                R.id.dimensionsContactsFragment -> binding.motionLayout.setTransition(
-                    R.id.contacts,
-                    R.id.contacts
-                )
-                R.id.dialerFragment -> binding.motionLayout.setTransition(R.id.dialer, R.id.dialer)
-                R.id.masterChatRoomsFragment -> binding.motionLayout.setTransition(
-                    R.id.chat_rooms,
-                    R.id.chat_rooms
-                )
+        // Selector position (a MotionLayout state) for each tab destination
+        val state = when (destination.id) {
+            R.id.favouritesFragment -> R.id.favourites_list
+            R.id.dimensionsContactsFragment -> R.id.contacts
+            R.id.masterCallLogsFragment -> R.id.call_history
+            R.id.dialerFragment -> R.id.dialer
+            else -> null
+        }
+        if (state != null) {
+            if (corePreferences.enableAnimations) {
+                binding.motionLayout.transitionToState(state)
+            } else {
+                binding.motionLayout.setTransition(state, state)
             }
         }
 
         // Highlight the appropriate tab
         // First reset all
         val tabChat = view?.findViewById<ImageView>(R.id.chat)
+        val tabFavourites = view?.findViewById<ImageView>(R.id.favourites)
         val tabContacts = view?.findViewById<ImageView>(R.id.contacts)
         val tabDialpad = view?.findViewById<ImageView>(R.id.dialer)
         val tabHistory = view?.findViewById<ImageView>(R.id.history)
         if (tabChat != null) tabChat.isSelected = false
+        if (tabFavourites != null) tabFavourites.isSelected = false
         if (tabContacts != null) tabContacts.isSelected = false
         if (tabDialpad != null) tabDialpad.isSelected = false
         if (tabHistory != null) tabHistory.isSelected = false
 
         when (destination.id) {
             R.id.dialerFragment -> if (tabDialpad != null) tabDialpad.isSelected = true
+            R.id.favouritesFragment -> if (tabFavourites != null) tabFavourites.isSelected = true
             R.id.dimensionsContactsFragment -> if (tabContacts != null) tabContacts.isSelected = true
             R.id.masterCallLogsFragment -> if (tabHistory != null) tabHistory.isSelected = true
             R.id.masterChatRoomsFragment -> if (tabChat != null) tabChat.isSelected = true

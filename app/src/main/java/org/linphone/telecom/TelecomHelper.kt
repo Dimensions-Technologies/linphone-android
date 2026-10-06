@@ -36,6 +36,7 @@ import org.linphone.R
 import org.linphone.core.Call
 import org.linphone.core.Core
 import org.linphone.core.CoreListenerStub
+import org.linphone.services.CallContactMatchService
 import org.linphone.utils.LinphoneUtils
 import org.linphone.utils.Log
 import org.linphone.utils.PermissionHelper
@@ -243,7 +244,9 @@ class TelecomHelper private constructor(context: Context) {
         extras.putString("Call-ID", call.callLog.callId)
 
         val contact = coreContext.contactsManager.findContactByAddress(call.remoteAddress)
-        val displayName = contact?.name ?: LinphoneUtils.getDisplayName(call.remoteAddress)
+        val displayName = CallContactMatchService.displayName(call)
+            ?: contact?.name
+            ?: LinphoneUtils.getDisplayName(call.remoteAddress)
         extras.putString("DisplayName", displayName)
 
         return extras

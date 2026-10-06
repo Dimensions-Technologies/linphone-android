@@ -221,4 +221,35 @@
     <action
         android:id="@+id/action_global_dimensionsContactsFragment"
         app:destination="@id/dimensionsContactsFragment" />
+    <!-- The Favourites tab: the contacts screen fixed to the Favourites group -->
+    <fragment
+        android:id="@+id/favouritesFragment"
+        android:name="org.linphone.activities.main.contact.fragments.DimensionsContactsFragment"
+        android:label="FavouritesFragment"
+        tools:layout="@layout/contact_dimensions_fragment" />
+    <action
+        android:id="@+id/action_global_favouritesFragment"
+        app:destination="@id/favouritesFragment" />
+    <fragment
+        android:id="@+id/directoryContactEditorFragment"
+        android:name="org.linphone.activities.main.contact.fragments.DirectoryContactEditorFragment"
+        android:label="DirectoryContactEditorFragment"
+        tools:layout="@layout/directory_contact_editor_fragment">
+        <argument
+            android:name="DirectoryId"
+            app:argType="string" />
+        <argument
+            android:name="ContactId"
+            app:argType="string"
+            android:defaultValue="@null"
+            app:nullable="true" />
+        <argument
+            android:name="PhoneNumber"
+            app:argType="string"
+            android:defaultValue="@null"
+            app:nullable="true" />
+    </fragment>
+    <action
+        android:id="@+id/action_global_directoryContactEditorFragment"
+        app:destination="@id/directoryContactEditorFragment" />
 </navigation>

@@ -15,6 +15,9 @@
         <variable
             name="toggleFavouriteListener"
             type="android.view.View.OnClickListener"/>
+        <variable
+            name="emailClickListener"
+            type="android.view.View.OnClickListener"/>
 
         <variable
             name="viewModel"
@@ -55,12 +58,69 @@
                 android:layout_centerInParent="true"
                 android:text="@string/contact_details" />
 
+            <!-- Same column as the favourite star below: 40dp wide, 20dp from the edge -->
+            <ImageView
+                android:id="@+id/edit"
+                android:visibility="@{viewModel.canEdit ? View.VISIBLE : View.GONE, default=gone}"
+                android:onClick="@{editClickListener}"
+                android:contentDescription="@string/content_description_edit_contact"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:layout_alignParentEnd="true"
+                android:layout_centerVertical="true"
+                android:layout_marginEnd="20dp"
+                android:background="?attr/button_background_drawable"
+                android:padding="8dp"
+                android:src="@drawable/icon_edit"
+                app:tint="?attr/accentColor" />
+
         </RelativeLayout>
+
+        <!-- Call and email, fixed at the bottom of the screen -->
+        <LinearLayout
+            android:id="@+id/actions"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_alignParentBottom="true"
+            android:gravity="center"
+            android:orientation="horizontal"
+            android:padding="10dp">
+
+            <ImageView
+                android:onClick="@{() -> viewModel.startCall()}"
+                android:enabled="@{viewModel.canStartCall()}"
+                android:contentDescription="@string/content_description_start_call"
+                android:layout_width="60dp"
+                android:layout_height="60dp"
+                android:layout_marginStart="15dp"
+                android:layout_marginEnd="15dp"
+                android:padding="15dp"
+                android:scaleType="fitCenter"
+                app:tint="@color/dark_primary_text_color"
+                android:background="@drawable/round_orange_button_background"
+                android:src="@{ viewModel.transferState == org.linphone.activities.voip.TransferState.PENDING_BLIND ? @drawable/call_actions_complete_transfer: @drawable/icon_call, default=@drawable/icon_call}" />
+
+            <ImageView
+                android:visibility="@{viewModel.email.empty ? View.GONE : View.VISIBLE, default=gone}"
+                android:onClick="@{emailClickListener}"
+                android:contentDescription="@string/contact_email"
+                android:layout_width="60dp"
+                android:layout_height="60dp"
+                android:layout_marginStart="15dp"
+                android:layout_marginEnd="15dp"
+                android:padding="15dp"
+                android:scaleType="fitCenter"
+                app:tint="@color/dark_primary_text_color"
+                android:background="@drawable/round_orange_button_background"
+                android:src="@drawable/icon_email" />
+
+        </LinearLayout>
 
         <androidx.core.widget.NestedScrollView
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:layout_below="@id/top_bar"
+            android:layout_above="@id/actions"
             android:layout_marginStart="20dp"
             android:layout_marginEnd="20dp"
             >
@@ -102,7 +162,7 @@
                             android:background="@drawable/led_background"
                             android:padding="@dimen/contact_presence_big_badge_padding"
                             app:presenceIcon="@{viewModel.presenceStatus}"
-                            android:visibility="@{viewModel.presenceStatus == ConsolidatedPresence.Offline ? View.GONE : View.VISIBLE, default=gone}"
+                            android:visibility="@{viewModel.presenceStatus == ConsolidatedPresence.Offline &amp;&amp; !viewModel.blfUnknown ? View.GONE : View.VISIBLE, default=gone}"
                             tools:ignore="ContentDescription" />
 
                     </RelativeLayout>
@@ -151,6 +211,31 @@
                 </RelativeLayout>
 
                 <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:paddingTop="10dp"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal"
+                    android:visibility="@{viewModel.isInternalNumber ? View.VISIBLE : View.GONE, default=gone}">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:paddingStart="10dp"
+                        android:paddingEnd="10dp"
+                        android:text="@string/contact_directory_internal_number"
+                        android:textColor="?attr/primarySubtextDarkColor" />
+
+                    <ImageView
+                        android:layout_width="20dp"
+                        android:layout_height="20dp"
+                        android:contentDescription="@null"
+                        android:src="@drawable/icon_tick"
+                        app:tint="?attr/accentColor" />
+
+                </LinearLayout>
+
+                <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:paddingTop="10dp"
@@ -165,19 +250,6 @@
                     android:orientation="vertical"
                     app:entries="@{viewModel.additionalData}"
                     app:layout="@{@layout/contact_additional_detail_cell}"/>
-
-                <ImageView
-                    android:onClick="@{() -> viewModel.startCall()}"
-                    android:enabled="@{viewModel.canStartCall()}"
-                    android:contentDescription="@string/content_description_start_call"
-                    android:layout_width="60dp"
-                    android:layout_height="60dp"
-                    android:layout_margin="10dp"
-                    android:padding="12dp"
-                    android:layout_gravity="center_horizontal"
-                    app:tint="@color/dark_primary_text_color"
-                    android:background="@drawable/round_orange_button_background"
-                    android:src="@{ viewModel.transferState == org.linphone.activities.voip.TransferState.PENDING_BLIND ? @drawable/call_actions_complete_transfer: @drawable/icon_call, default=@drawable/icon_call}" />
 
             </LinearLayout>
 

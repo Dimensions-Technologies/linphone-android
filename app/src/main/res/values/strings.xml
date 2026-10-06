@@ -169,6 +169,37 @@
     <string name="contacts_successfullyAddedUserToFavorites">Successfully added user to favourites</string>
     <string name="contacts_failedToRemoveUserFromFavorites">Failed to remove user from favourites</string>
     <string name="contacts_successfullyRemovedUserFromFavorites">Successfully removed user from favourites</string>
+    <string name="contact_directory_add_title">Add Contact</string>
+    <string name="contact_directory_edit_title">Edit Contact</string>
+    <string name="contact_directory_edit_avatar">Edit</string>
+    <string name="contact_directory_change_avatar">Change picture</string>
+    <string name="contact_directory_remove_avatar">Remove picture</string>
+    <string name="contact_directory_avatar_failed">The picture could not be loaded</string>
+    <string name="contact_directory_internal_number">Internal number</string>
+    <string name="contact_directory_additional_fields">Additional fields</string>
+    <string name="contact_directory_delete">Delete contact</string>
+    <string name="contact_directory_delete_dialog">Do you want to delete this contact?</string>
+    <string name="contact_directory_save">Save</string>
+    <string name="contact_directory_cancel">Cancel</string>
+    <string name="contact_directory_save_failed">Failed to save contact. Please try again.</string>
+    <string name="contact_directory_delete_failed">Failed to delete contact. Please try again.</string>
+    <string name="contact_directory_name_required">Name is required.</string>
+    <string name="contact_directory_name_or_company_required">Name or company name is required.</string>
+    <string name="contact_directory_phone_required">Phone number is required.</string>
+    <string name="contact_directory_choose_directory">Add to</string>
+    <string name="contact_add">Add contact</string>
+    <string name="contact_email">Email</string>
+    <string name="content_description_menu_favourites">Favourites</string>
+    <string name="contact_match_voicemail">Voicemail</string>
+    <string name="blf_available">Available</string>
+    <string name="blf_on_a_call">On a call</string>
+    <string name="blf_ringing">Ringing</string>
+    <string name="blf_do_not_disturb">Do not disturb</string>
+    <string name="blf_enabled">Enabled</string>
+    <string name="blf_disabled">Disabled</string>
+    <string name="blf_free">Free</string>
+    <string name="blf_call_parked">Call parked</string>
+    <string name="blf_call_parked_by">Call parked - %s</string>
     <string name="contacts_phoneType_work">Work</string>
 
 

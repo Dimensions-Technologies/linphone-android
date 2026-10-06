@@ -1,0 +1,19 @@
+[
+  {
+    "id": "dir-personal",
+    "tenantId": "tenant-1",
+    "name": "Personal",
+    "type": "PersonalContactDirectory",
+    "items": 1,
+    "fields": [
+      { "id": "fullName", "name": "Full Name", "definitionType": "ContactNameDefinition" },
+      { "id": "phone1", "name": "Phone number", "definitionType": "PhoneDefinition" },
+      { "id": "email", "name": "Email address", "definitionType": "EmailDefinition" },
+      { "id": "blf", "name": "BLF", "definitionType": "BlfDefinition" }
+    ],
+    "displayFields": ["fullName", "phone1"],
+    "tagFields": [],
+    "avatarDisplayFieldId": "avatar",
+    "userRoleAssociations": { "5b0c4f7e-1a2b-4c3d-8e9f-000000000001": "customer.directories.contributor" }
+  }
+]

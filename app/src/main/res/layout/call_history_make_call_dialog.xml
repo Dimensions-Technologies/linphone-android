@@ -51,5 +51,18 @@
             android:gravity="center"
             android:visibility="@{callViewModel.call.hasRecording &amp;&amp; historyViewModel.hasPlaybackPermission ? View.VISIBLE : View.GONE, default=visible }"
             />
+
+        <TextView
+            android:id="@+id/callHistoryDialog_AddContactButton"
+            android:onClick="@{() -> historyViewModel.addContact(callViewModel)}"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/contact_add"
+            android:textColor="@color/primary_color"
+            android:textSize="22sp"
+            android:padding="10dp"
+            android:gravity="center"
+            android:visibility="@{historyViewModel.canAddContact ? View.VISIBLE : View.GONE, default=gone}"
+            />
     </LinearLayout>
 </layout>

@@ -1,8 +1,10 @@
 package org.linphone.interfaces
 
 import ReportResult
+import okhttp3.MultipartBody
 import okhttp3.RequestBody
 import okhttp3.ResponseBody
+import org.linphone.models.PbxFeatureCode
 import org.linphone.models.TenantBrandingDefinition
 import org.linphone.models.UserDevice
 import org.linphone.models.UserInfo
@@ -22,8 +24,10 @@ import retrofit2.http.Body
 import retrofit2.http.DELETE
 import retrofit2.http.GET
 import retrofit2.http.HTTP
+import retrofit2.http.Multipart
 import retrofit2.http.POST
 import retrofit2.http.PUT
+import retrofit2.http.Part
 import retrofit2.http.Path
 import retrofit2.http.Query
 
@@ -61,6 +65,43 @@ interface CTGatewayService {
         @Query("maxItems") maxItems: Int = 100
     ): Call<List<ContactItemModel>>
 
+    @GET("api/v1.0/contactdirectories/{directoryId}/items")
+    suspend fun getDirectoryContacts(
+        @Path("directoryId") directoryId: String,
+        @Query("maxrecords") maxRecords: Int = 100
+    ): Response<List<ContactItemModel>>
+
+    @GET("api/v1.0/contactdirectories/{directoryId}/items/{contactId}")
+    suspend fun getDirectoryContact(
+        @Path("directoryId") directoryId: String,
+        @Path("contactId") contactId: String
+    ): Response<ContactItemModel>
+
+    // contactItem is a ContactItemRequest as JSON; file is an optional avatar image.
+    @Multipart
+    @POST("api/v1.0/contactdirectories/{directoryId}/items")
+    suspend fun createDirectoryContact(
+        @Path("directoryId") directoryId: String,
+        @Part("contactItem") contactItem: RequestBody,
+        @Part file: MultipartBody.Part?
+    ): Response<ContactItemModel>
+
+    @Multipart
+    @PUT("api/v1.0/contactdirectories/{directoryId}/items/{contactId}")
+    suspend fun updateDirectoryContact(
+        @Path("directoryId") directoryId: String,
+        @Path("contactId") contactId: String,
+        @Part("contactItem") contactItem: RequestBody,
+        @Part file: MultipartBody.Part?,
+        @Query("removeAvatar") removeAvatar: Boolean? = null
+    ): Response<ContactItemModel>
+
+    @DELETE("api/v1.0/contactdirectories/{directoryId}/items/{contactId}")
+    suspend fun deleteDirectoryContact(
+        @Path("directoryId") directoryId: String,
+        @Path("contactId") contactId: String
+    ): Response<Void>
+
     @GET("api/v1.0/personalusergroups?includeContacts=true")
     fun doGetPersonalUserGroups(): Call<List<UserGroupModel>>
 
@@ -90,6 +131,10 @@ interface CTGatewayService {
         @Path("id") directoryId: String,
         @Path("contactId") contactId: String
     ): Call<Void>
+
+    // 204 (no body) when the user has no feature codes
+    @GET("api/v1.0/userfeaturecodes")
+    suspend fun getUserFeatureCodes(): Response<List<PbxFeatureCode>>
 
     @GET("api/v1.0/users/{userId}/presenceprofiles")
     fun doGetPresenceProfiles(

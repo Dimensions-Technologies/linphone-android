@@ -31,6 +31,7 @@ import kotlinx.coroutines.withContext
 import org.linphone.authentication.AuthStateManager
 import org.linphone.models.AuthenticatedUser
 import org.linphone.models.callhistory.CallHistoryCache
+import org.linphone.models.callhistory.CallHistoryContactMatcher
 import org.linphone.models.callhistory.CallHistoryItem
 import org.linphone.models.callhistory.CallHistoryItemViewModel
 import org.linphone.models.callhistory.ReportRequest
@@ -159,8 +160,26 @@ class CallHistoryService(val context: Context) : DefaultLifecycleObserver {
         }
     )
 
-    val formattedHistory: Observable<List<CallHistoryItemViewModel>> = formatHistory(
+    // External calls named after the matching directory contact, as on the web client
+    private val enrichedHistory: Observable<List<CallHistoryItem>> = Observable.combineLatest(
         history,
+        Observable.defer { UserGroupService.getInstance(context).directoryContacts }
+    ) { items, directories ->
+        // Matching must never take the history down with it
+        try {
+            CallHistoryContactMatcher.enrich(
+                items,
+                directories,
+                PhoneFormatterService.getInstance(context).getPbxCountryCode()
+            )
+        } catch (e: Exception) {
+            Log.e(e, "$TAG: failed to match call history to contacts")
+            items
+        }
+    }
+
+    val formattedHistory: Observable<List<CallHistoryItemViewModel>> = formatHistory(
+        enrichedHistory,
         DateUtils.todaysDate,
         ::CallHistoryItemViewModel
     )

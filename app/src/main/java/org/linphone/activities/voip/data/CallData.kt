@@ -23,14 +23,19 @@ import android.view.View
 import android.widget.Toast
 import androidx.lifecycle.MediatorLiveData
 import androidx.lifecycle.MutableLiveData
+import io.reactivex.rxjava3.disposables.Disposable
 import java.util.*
 import kotlinx.coroutines.*
 import org.linphone.LinphoneApplication.Companion.coreContext
 import org.linphone.R
+import org.linphone.activities.main.contact.viewmodels.UserGroupViewModel
 import org.linphone.activities.voip.TransferState
 import org.linphone.compatibility.Compatibility
 import org.linphone.contact.GenericContactData
 import org.linphone.core.*
+import org.linphone.models.realtime.ContactMatch
+import org.linphone.services.CallContactMatchService
+import org.linphone.services.DirectoriesService
 import org.linphone.services.TransferService
 import org.linphone.utils.AppUtils
 import org.linphone.utils.LinphoneUtils
@@ -64,6 +69,8 @@ open class CallData(val call: Call) : GenericContactData(call.remoteAddress) {
     var contextMenuClickListener: CallContextMenuClickListener? = null
 
     private var timer: Timer? = null
+
+    private var matchSubscription: Disposable? = null
 
     private val listener = object : CallListenerStub() {
         override fun onStateChanged(call: Call, state: Call.State, message: String) {
@@ -130,9 +137,38 @@ open class CallData(val call: Call) : GenericContactData(call.remoteAddress) {
         }
 
         update()
+
+        matchSubscription = CallContactMatchService.matches(call).subscribe(
+            { matches -> scope.launch { applyContactMatches(matches) } },
+            { e -> Log.e("[Call] Contact matches failed", e) }
+        )
+    }
+
+    /**
+     * Names the call after its contact matches, as the web client's call view does: the first match's
+     * name, and its full contact (e.g. for the avatar) when exactly one contact matches.
+     */
+    private suspend fun applyContactMatches(matches: List<ContactMatch>) {
+        CallContactMatchService.displayName(call)?.let { displayName.value = it }
+        if (matches.isEmpty()) return
+
+        if (matches.size == 1) {
+            val match = matches.single()
+            val directoryId = match.directoryId ?: return
+            val contactId = match.contactId ?: return
+            val item = DirectoriesService.getInstance(coreContext.context).getContact(
+                directoryId,
+                contactId
+            )
+            // A device contact for the number would otherwise name the call instead
+            contact.value = item?.let { UserGroupViewModel.createFriendFromContactItemModel(it) }
+        } else {
+            contact.value = null
+        }
     }
 
     override fun destroy() {
+        matchSubscription?.dispose()
         call.removeListener(listener)
         timer?.cancel()
         scope.cancel()

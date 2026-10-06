@@ -1,6 +1,9 @@
 package org.linphone.interfaces
 
 import kotlinx.coroutines.runBlocking
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.MultipartBody
+import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
 import org.junit.After
@@ -10,8 +13,12 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
+import org.linphone.models.PbxFeatureCode
 import org.linphone.models.callhistory.CallTypes
 import org.linphone.models.callhistory.PbxType
+import org.linphone.models.contact.ContactDirectoryRules
+import org.linphone.models.contact.ContactItemRequest
+import org.linphone.models.contact.ContactItemRequestField
 import org.linphone.utils.GsonUtils
 import org.threeten.bp.ZoneOffset
 import org.threeten.bp.ZonedDateTime
@@ -129,5 +136,152 @@ class CTGatewayServiceContractTest {
         assertEquals("callType sent as a number", CallTypes.Internal, missed.callType)
         assertEquals(PbxType.Kazoo, missed.pbxType)
         assertTrue(missed.interactionTags.isEmpty())
+    }
+
+    @Test
+    fun `doGetContactDirectories maps the Personal directory`() {
+        enqueueFixture("contactdirectories-users-me.json")
+
+        val directories = gateway.doGetContactDirectories().execute().body()!!
+
+        assertRequest("GET", "/api/v1.0/contactdirectories/users/me")
+        val personal = ContactDirectoryRules.findPersonalDirectory(directories)!!
+        assertEquals("PersonalContactDirectory", personal.type)
+        assertEquals("BlfDefinition", ContactDirectoryRules.blfField(personal)!!.definitionType)
+        assertTrue(
+            ContactDirectoryRules.canContribute(personal, "5b0c4f7e-1a2b-4c3d-8e9f-000000000001")
+        )
+    }
+
+    @Test
+    fun `getDirectoryContacts maps contact fields`() = runBlocking {
+        enqueueFixture("contactdirectories-items.json")
+
+        val contacts = gateway.getDirectoryContacts("dir-personal").body()!!
+
+        assertRequest("GET", "/api/v1.0/contactdirectories/dir-personal/items?maxrecords=100")
+        val contact = contacts.single()
+        assertEquals("contact-1", contact.id)
+        assertEquals("Chris Rawlinson", contact.fields.first { it.id == "fullName" }.value)
+    }
+
+    private val request = ContactItemRequest(
+        id = "",
+        tenantId = "tenant-1",
+        directoryId = "dir-personal",
+        fields = listOf(ContactItemRequestField("fullName", "Chris"))
+    )
+
+    private fun contactItemPart() = GsonUtils.create().toJson(request).toRequestBody()
+
+    @Test
+    fun `createDirectoryContact posts the contact as multipart form data`() = runBlocking {
+        // Create/update responses echo the fields as "val"
+        server.enqueue(
+            MockResponse()
+                .setBody("""{"id":"contact-2","fields":[{"id":"fullName","val":"Chris"}]}""")
+                .setHeader("Content-Type", "application/json")
+        )
+        val avatar = MultipartBody.Part.createFormData(
+            "file",
+            "avatar.png",
+            byteArrayOf(1, 2, 3).toRequestBody("image/png".toMediaType())
+        )
+
+        val created = gateway.createDirectoryContact("dir-personal", contactItemPart(), avatar).body()!!
+
+        val recorded = server.takeRequest()
+        assertEquals("POST", recorded.method)
+        assertEquals("/api/v1.0/contactdirectories/dir-personal/items", recorded.path)
+        assertTrue(recorded.getHeader("Content-Type")!!.startsWith("multipart/form-data"))
+        val body = recorded.body.readUtf8()
+        assertTrue(body.contains("name=\"contactItem\""))
+        assertTrue(body.contains("\"dtype\":\"IContactItem\""))
+        assertTrue(body.contains("\"_type\":\"ContactItem\""))
+        assertTrue(body.contains("\"dId\":\"dir-personal\""))
+        assertTrue(body.contains("{\"id\":\"fullName\",\"val\":\"Chris\"}"))
+        assertTrue(body.contains("name=\"file\"; filename=\"avatar.png\""))
+
+        assertEquals("contact-2", created.id)
+        assertEquals("Chris", created.fields.single().value)
+    }
+
+    @Test
+    fun `updateDirectoryContact puts to the contact and can remove the avatar`() = runBlocking {
+        server.enqueue(MockResponse().setBody("""{"id":"contact-1","fields":[]}"""))
+
+        gateway.updateDirectoryContact("dir-personal", "contact-1", contactItemPart(), null, true)
+
+        val recorded = server.takeRequest()
+        assertEquals("PUT", recorded.method)
+        assertEquals(
+            "/api/v1.0/contactdirectories/dir-personal/items/contact-1?removeAvatar=true",
+            recorded.path
+        )
+        assertFalse(recorded.body.readUtf8().contains("name=\"file\""))
+    }
+
+    @Test
+    fun `updateDirectoryContact leaves out removeAvatar unless asked`() = runBlocking {
+        server.enqueue(MockResponse().setBody("""{"id":"contact-1","fields":[]}"""))
+
+        gateway.updateDirectoryContact("dir-personal", "contact-1", contactItemPart(), null)
+
+        assertEquals(
+            "/api/v1.0/contactdirectories/dir-personal/items/contact-1",
+            server.takeRequest().path
+        )
+    }
+
+    @Test
+    fun `deleteDirectoryContact deletes the contact`() = runBlocking {
+        server.enqueue(MockResponse().setResponseCode(204))
+
+        val response = gateway.deleteDirectoryContact("dir-personal", "contact-1")
+
+        assertTrue(response.isSuccessful)
+        assertRequest("DELETE", "/api/v1.0/contactdirectories/dir-personal/items/contact-1")
+    }
+
+    @Test
+    fun `getUserFeatureCodes maps feature names to numbers`() = runBlocking {
+        server.enqueue(
+            MockResponse()
+                .setBody(
+                    """[{"number":"*3","name":"park_and_retrieve"},{"number":"*76","name":"DimensionsFeatureCode_DndToggle"}]"""
+                )
+                .setHeader("Content-Type", "application/json")
+        )
+
+        val codes = gateway.getUserFeatureCodes().body()!!
+
+        assertRequest("GET", "/api/v1.0/userfeaturecodes")
+        assertEquals("*3", codes.single { it.name == PbxFeatureCode.PARK_AND_RETRIEVE }.number)
+        assertEquals("*76", codes.single { it.name == PbxFeatureCode.DIMENSIONS_DND_TOGGLE }.number)
+    }
+
+    @Test
+    fun `getUserFeatureCodes treats an empty body as no codes`() = runBlocking {
+        server.enqueue(MockResponse().setResponseCode(204))
+
+        val response = gateway.getUserFeatureCodes()
+
+        assertTrue(response.isSuccessful)
+        assertNull(response.body())
+    }
+
+    @Test
+    fun `getDirectoryContact fetches one contact`() = runBlocking {
+        server.enqueue(
+            MockResponse()
+                .setBody("""{"id":"k1","fields":[{"id":"fullName","value":"Chris"}]}""")
+                .setHeader("Content-Type", "application/json")
+        )
+
+        val contact = gateway.getDirectoryContact("d1", "k1").body()!!
+
+        assertRequest("GET", "/api/v1.0/contactdirectories/d1/items/k1")
+        assertEquals("k1", contact.id)
+        assertEquals("Chris", contact.fields.single().value)
     }
 }

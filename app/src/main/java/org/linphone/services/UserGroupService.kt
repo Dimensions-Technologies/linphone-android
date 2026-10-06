@@ -5,16 +5,26 @@ import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
 import io.reactivex.rxjava3.core.Observable
 import io.reactivex.rxjava3.disposables.Disposable
-import io.reactivex.rxjava3.functions.Function3
+import io.reactivex.rxjava3.functions.Function4
 import io.reactivex.rxjava3.subjects.BehaviorSubject
 import io.reactivex.rxjava3.subjects.PublishSubject
+import java.text.Collator
 import java.util.concurrent.atomic.AtomicReference
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.launch
 import org.linphone.R
 import org.linphone.activities.main.contact.viewmodels.UserGroupViewModel
 import org.linphone.activities.main.contact.viewmodels.UserGroupViewModelSubjectWrapper
 import org.linphone.authentication.AuthStateManager
 import org.linphone.core.Friend
 import org.linphone.models.AuthenticatedUser
+import org.linphone.models.contact.ContactDirectoryModel
+import org.linphone.models.contact.ContactDirectoryRules
 import org.linphone.models.contact.ContactItemModel
 import org.linphone.models.search.UserDataModel
 import org.linphone.models.usergroup.GroupUserSummaryModel
@@ -34,6 +44,15 @@ class UserGroupService(val context: Context) : DefaultLifecycleObserver {
     private val personalUserGroupsSubject = BehaviorSubject.create<List<UserGroupViewModel>>()
     val localContactsSubject = BehaviorSubject.create<UserGroupViewModelSubjectWrapper>()
 
+    // Contact directories shown as groups: the Personal directory and the other listed ones
+    private val directoryGroupsSubject = BehaviorSubject.createDefault(
+        emptyList<UserGroupViewModel>()
+    )
+
+    // Main dispatcher: Friends are created from the fetched contacts, and the core isn't thread safe.
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+    private var directoryGroupsJob: Job? = null
+
     var favouritesGroup: UserGroupViewModel? = null
 
     private var userSubscription: Disposable? = null
@@ -42,12 +61,14 @@ class UserGroupService(val context: Context) : DefaultLifecycleObserver {
     val userGroups: Observable<List<UserGroupViewModel>> = Observable.combineLatest(
         tenantUserGroupsSubject,
         personalUserGroupsSubject,
+        directoryGroupsSubject,
         localContactsSubject,
-        Function3 {
-                tenantUserGroups, personalUserGroups, localContactsSubject ->
-            return@Function3 mergeUserGroups(
+        Function4 {
+                tenantUserGroups, personalUserGroups, directoryGroups, localContactsSubject ->
+            return@Function4 mergeUserGroups(
                 tenantUserGroups,
                 personalUserGroups,
+                directoryGroups,
                 localContactsSubject
             )
         }
@@ -68,6 +89,9 @@ class UserGroupService(val context: Context) : DefaultLifecycleObserver {
 
         localContactsSubject.onNext(UserGroupViewModelSubjectWrapper(null))
 
+        // Watch the line status (BLF) of favourite internal-number contacts
+        ContactBlfManager.start(context, this)
+
         contactDirectoriesSubscription = DirectoriesService.getInstance(context).contactDirectories
             .takeUntil(destroy)
             .subscribe {
@@ -83,6 +107,8 @@ class UserGroupService(val context: Context) : DefaultLifecycleObserver {
                         personalUserGroupsSubject.onNext(
                             listOf()
                         )
+
+                        directoryGroupsSubject.onNext(emptyList())
                     } else {
                         fetchUserGroups()
                     }
@@ -115,9 +141,57 @@ class UserGroupService(val context: Context) : DefaultLifecycleObserver {
         }
     }
 
+    // The directories listed as groups, with their contacts as last fetched
+    fun currentDirectoryContacts(): List<Pair<ContactDirectoryModel, List<ContactItemModel>>> =
+        toDirectoryContacts(directoryGroupsSubject.value.orEmpty())
+
+    private fun toDirectoryContacts(groups: List<UserGroupViewModel>) =
+        groups.mapNotNull { group ->
+            val directory = group.directory ?: return@mapNotNull null
+            directory to group.friends.mapNotNull { (it.userData as? UserDataModel)?.contact }
+        }
+
+    // The directories listed as groups, with their contacts, each time they're fetched
+    val directoryContacts: Observable<List<Pair<ContactDirectoryModel, List<ContactItemModel>>>> =
+        directoryGroupsSubject.map { toDirectoryContacts(it) }
+
     fun fetchUserGroups() {
         fetchTenantUserGroups()
         fetchPersonalUserGroups()
+        fetchDirectoryGroups()
+    }
+
+    // Contact directories are listed as groups alongside the user groups, as on the web client.
+    private fun fetchDirectoryGroups() {
+        val directoriesService = DirectoriesService.getInstance(context)
+        val directories = directoriesService.contactDirectoriesSubject.value.orEmpty()
+        val listed = listOfNotNull(ContactDirectoryRules.findPersonalDirectory(directories)) +
+            ContactDirectoryRules.otherListedDirectories(directories)
+        if (listed.isEmpty()) {
+            directoryGroupsSubject.onNext(emptyList())
+            return
+        }
+
+        Log.d("Fetch contacts for ${listed.size} directories...")
+        directoryGroupsJob?.cancel()
+        directoryGroupsJob = scope.launch {
+            val contactLists = listed
+                .map { directory -> async { directoriesService.getDirectoryContacts(directory) } }
+                .awaitAll()
+            val groups = listed.zip(contactLists)
+                // A directory that failed to load is left out rather than shown empty
+                .filter { (_, contacts) -> contacts != null }
+                .map { (directory, contacts) -> directoryGroup(directory, contacts!!) }
+            directoryGroupsSubject.onNext(groups)
+        }
+    }
+
+    private fun directoryGroup(directory: ContactDirectoryModel, contacts: List<ContactItemModel>): UserGroupViewModel {
+        val group = UserGroupViewModel(
+            UserGroupModel(directory.id, directory.name, emptyList(), contacts)
+        )
+        group.directory = directory
+        return group
     }
 
     private fun fetchTenantUserGroups() {
@@ -192,8 +266,13 @@ class UserGroupService(val context: Context) : DefaultLifecycleObserver {
     private fun mergeUserGroups(
         tenantUserGroups: List<UserGroupViewModel>,
         personalUserGroups: List<UserGroupViewModel>,
+        directoryGroups: List<UserGroupViewModel>,
         localContactsUserGroup: UserGroupViewModelSubjectWrapper
     ): List<UserGroupViewModel> {
+        val personalDirectoryGroup = directoryGroups.firstOrNull {
+            it.name == ContactDirectoryRules.PERSONAL_DIRECTORY_NAME
+        }
+
         val favorites = personalUserGroups.firstOrNull { x ->
             x.name == context.resources.getString(
                 R.string.contacts_favoritesGroup
@@ -202,7 +281,7 @@ class UserGroupService(val context: Context) : DefaultLifecycleObserver {
         if (favorites != null) {
             favorites.friends.forEach { f -> setIsFavorite(f, true) }
 
-            tenantUserGroups.forEach { group ->
+            (tenantUserGroups + directoryGroups).forEach { group ->
                 group.friends.forEach { f ->
                     val id = gatewayIdOf(f)
                     setIsFavorite(
@@ -215,12 +294,13 @@ class UserGroupService(val context: Context) : DefaultLifecycleObserver {
 
         favouritesGroup = favorites
 
-        // Put favourites at the top, then order the rest alpha ascending with contacts at the end
-        val sortedUserGroups = (personalUserGroups + tenantUserGroups).sortedWith(
-            compareBy<UserGroupViewModel> {
-                !it.isFavorites
-            }.thenBy { it.name }
-        )
+        // Favourites at the top, then the Personal directory, then the other user groups and
+        // directories by name, with the device contacts at the end
+        val collator = Collator.getInstance()
+        val others = (personalUserGroups + tenantUserGroups + directoryGroups)
+            .filter { it !== favorites && it !== personalDirectoryGroup }
+            .sortedWith { a, b -> collator.compare(a.name, b.name) }
+        val sortedUserGroups = listOfNotNull(favorites, personalDirectoryGroup) + others
 
         if (localContactsUserGroup.userGroupViewModel == null) return sortedUserGroups
 

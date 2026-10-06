@@ -56,7 +56,7 @@
             android:background="@drawable/led_background"
             android:padding="@dimen/contact_presence_badge_padding"
             app:presenceIcon="@{viewModel.presenceStatus}"
-            android:visibility="@{viewModel.presenceStatus == ConsolidatedPresence.Offline ? View.GONE : View.VISIBLE, default=gone}"
+            android:visibility="@{viewModel.presenceStatus == ConsolidatedPresence.Offline &amp;&amp; !viewModel.blfUnknown ? View.GONE : View.VISIBLE, default=gone}"
             tools:ignore="ContentDescription"
             />
 

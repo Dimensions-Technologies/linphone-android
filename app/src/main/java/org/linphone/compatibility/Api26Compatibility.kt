@@ -48,6 +48,7 @@ import org.linphone.core.Call
 import org.linphone.core.Friend
 import org.linphone.notifications.Notifiable
 import org.linphone.notifications.NotificationsManager
+import org.linphone.services.CallContactMatchService
 import org.linphone.telecom.NativeCallWrapper
 import org.linphone.utils.ImageUtils
 import org.linphone.utils.LinphoneUtils
@@ -188,10 +189,17 @@ class Api26Compatibility {
                 Log.i(
                     "[Notifications Manager] No conference info found for remote contact address $remoteContact"
                 )
-                contact = coreContext.contactsManager.findContactByAddress(call.remoteAddress)
+                val matchedName = CallContactMatchService.displayName(call)
+                contact = if (matchedName != null) {
+                    null
+                } else {
+                    coreContext.contactsManager.findContactByAddress(call.remoteAddress)
+                }
                 roundPicture =
                     ImageUtils.getRoundBitmapFromUri(context, contact?.getThumbnailUri())
-                displayName = contact?.name ?: LinphoneUtils.getDisplayName(call.remoteAddress)
+                displayName = matchedName ?: contact?.name ?: LinphoneUtils.getDisplayName(
+                    call.remoteAddress
+                )
                 address = LinphoneUtils.getDisplayableAddress(call.remoteAddress)
                 info = context.getString(R.string.incoming_call_notification_title)
             } else {
@@ -279,10 +287,16 @@ class Api26Compatibility {
             }
 
             if (conferenceInfo == null) {
-                val contact: Friend? =
+                val matchedName = CallContactMatchService.displayName(call)
+                val contact: Friend? = if (matchedName != null) {
+                    null
+                } else {
                     coreContext.contactsManager.findContactByAddress(call.remoteAddress)
+                }
                 roundPicture = ImageUtils.getRoundBitmapFromUri(context, contact?.getThumbnailUri())
-                val displayName = contact?.name ?: LinphoneUtils.getDisplayName(call.remoteAddress)
+                val displayName = matchedName ?: contact?.name ?: LinphoneUtils.getDisplayName(
+                    call.remoteAddress
+                )
                 title = contact?.name ?: displayName
                 person = notificationsManager.getPerson(contact, displayName, roundPicture)
             } else {

@@ -11,6 +11,9 @@ import io.reactivex.rxjava3.subjects.BehaviorSubject
 import io.reactivex.rxjava3.subjects.PublishSubject
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicReference
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.MultipartBody
+import okhttp3.RequestBody.Companion.toRequestBody
 import org.linphone.LinphoneApplication.Companion.coreContext
 import org.linphone.R
 import org.linphone.activities.main.contact.viewmodels.UserGroupViewModel
@@ -18,10 +21,14 @@ import org.linphone.authentication.AuthStateManager
 import org.linphone.models.AuthenticatedUser
 import org.linphone.models.UserInfo
 import org.linphone.models.contact.ContactDirectoryModel
+import org.linphone.models.contact.ContactDirectoryRules
 import org.linphone.models.contact.ContactGroupItem
 import org.linphone.models.contact.ContactItemModel
+import org.linphone.models.contact.ContactItemRequest
+import org.linphone.models.realtime.ContactMatch
 import org.linphone.models.usergroup.GroupUserSummaryModel
 import org.linphone.models.usergroup.UserGroupModel
+import org.linphone.utils.GsonUtils
 import org.linphone.utils.Log
 import retrofit2.Call
 import retrofit2.Callback
@@ -141,6 +148,166 @@ class DirectoriesService(val context: Context) : DefaultLifecycleObserver {
         }
     }
 
+    val personalDirectory: ContactDirectoryModel?
+        get() = contactDirectoriesSubject.value?.let {
+            ContactDirectoryRules.findPersonalDirectory(
+                it
+            )
+        }
+
+    fun findDirectory(id: String): ContactDirectoryModel? =
+        contactDirectoriesSubject.value?.firstOrNull { it.id == id }
+
+    fun canContribute(directory: ContactDirectoryModel): Boolean =
+        ContactDirectoryRules.canContribute(directory, authStateManager.getUser().id)
+
+    // Directories the user can add contacts to, Personal first and the rest by name, as on the web client.
+    fun contributorDirectories(): List<ContactDirectoryModel> =
+        contactDirectoriesSubject.value.orEmpty()
+            .filter { canContribute(it) }
+            .sortedWith(
+                compareBy<ContactDirectoryModel> { it.name != ContactDirectoryRules.PERSONAL_DIRECTORY_NAME }
+                    .thenBy { it.name.lowercase() }
+            )
+
+    // Directory types whose matches are never shown, as on the web client
+    private val excludedDirectoryTypes = setOf("HubspotContactDirectory")
+
+    /**
+     * Whether matches from a directory must be ignored: one the user's directory list doesn't include
+     * (e.g. a server-side matching source), or an excluded type. As the web client's isDirectoryDenied.
+     */
+    fun isDirectoryDenied(directoryId: String?): Boolean {
+        val directory = directoryId?.let { findDirectory(it) } ?: return true
+        return directory.type in excludedDirectoryTypes
+    }
+
+    fun filterDeniedMatches(matches: List<ContactMatch>): List<ContactMatch> =
+        matches.filter { !isDirectoryDenied(it.directoryId) }
+
+    /**
+     * The full contact behind a match: from the loaded directory contacts, or fetched from the
+     * gateway if its directory isn't loaded (and isn't denied). As the web client's getContact.
+     */
+    suspend fun getContact(directoryId: String, contactId: String): ContactItemModel? {
+        val loaded = UserGroupService.getInstance(context).currentDirectoryContacts()
+            .firstOrNull { it.first.id == directoryId }
+        if (loaded != null) return loaded.second.firstOrNull { it.id == contactId }
+        if (isDirectoryDenied(directoryId)) return null
+
+        return try {
+            val response = apiClient.getUCGatewayService().getDirectoryContact(
+                directoryId,
+                contactId
+            )
+            if (!response.isSuccessful) {
+                Log.e("Failed to fetch contact $contactId::${response.code()}")
+                return null
+            }
+            response.body()?.withDirectoryId(directoryId)
+        } catch (e: Exception) {
+            Log.e("Failed to fetch contact $contactId", e)
+            null
+        }
+    }
+
+    /** Creates a contact and refreshes the contact groups. Returns null if the gateway call failed. */
+    suspend fun createContact(request: ContactItemRequest, avatarPng: ByteArray?): ContactItemModel? {
+        Log.d("createContact::${request.directoryId}")
+        return try {
+            val response = apiClient.getUCGatewayService().createDirectoryContact(
+                request.directoryId,
+                contactItemPart(request),
+                avatarPart(avatarPng)
+            )
+            if (!response.isSuccessful) {
+                Log.e("Failed to create contact::${response.code()}")
+                return null
+            }
+            UserGroupService.getInstance(context).fetchUserGroups()
+            response.body()?.withDirectoryId(request.directoryId)
+        } catch (e: Exception) {
+            Log.e("Failed to create contact", e)
+            null
+        }
+    }
+
+    /** Updates a contact and refreshes the contact groups. Returns null if the gateway call failed. */
+    suspend fun updateContact(
+        request: ContactItemRequest,
+        avatarPng: ByteArray?,
+        removeAvatar: Boolean
+    ): ContactItemModel? {
+        Log.d("updateContact::${request.id}")
+        return try {
+            val response = apiClient.getUCGatewayService().updateDirectoryContact(
+                request.directoryId,
+                request.id,
+                contactItemPart(request),
+                avatarPart(avatarPng),
+                if (removeAvatar) true else null
+            )
+            if (!response.isSuccessful) {
+                Log.e("Failed to update contact ${request.id}::${response.code()}")
+                return null
+            }
+            UserGroupService.getInstance(context).fetchUserGroups()
+            response.body()?.withDirectoryId(request.directoryId)
+        } catch (e: Exception) {
+            Log.e("Failed to update contact ${request.id}", e)
+            null
+        }
+    }
+
+    /** Deletes a contact and refreshes the contact groups. Returns false if the gateway call failed. */
+    suspend fun deleteContact(directoryId: String, contactId: String): Boolean {
+        Log.d("deleteContact::$contactId")
+        return try {
+            val response = apiClient.getUCGatewayService().deleteDirectoryContact(
+                directoryId,
+                contactId
+            )
+            if (!response.isSuccessful) {
+                Log.e("Failed to delete contact $contactId::${response.code()}")
+                return false
+            }
+            UserGroupService.getInstance(context).fetchUserGroups()
+            true
+        } catch (e: Exception) {
+            Log.e("Failed to delete contact $contactId", e)
+            false
+        }
+    }
+
+    suspend fun getDirectoryContacts(directory: ContactDirectoryModel): List<ContactItemModel>? {
+        return try {
+            val response = apiClient.getUCGatewayService().getDirectoryContacts(directory.id)
+            if (!response.isSuccessful) {
+                Log.e("Failed to fetch contacts for directory ${directory.id}::${response.code()}")
+                return null
+            }
+            response.body().orEmpty().map { it.withDirectoryId(directory.id) }
+        } catch (e: Exception) {
+            Log.e("Failed to fetch contacts for directory ${directory.id}", e)
+            null
+        }
+    }
+
+    private fun ContactItemModel.withDirectoryId(id: String) =
+        if (directoryId.isEmpty()) copy(directoryId = id) else this
+
+    private fun contactItemPart(request: ContactItemRequest) =
+        GsonUtils.defaultGsonInstance.toJson(request).toRequestBody()
+
+    private fun avatarPart(avatarPng: ByteArray?): MultipartBody.Part? =
+        avatarPng?.let {
+            MultipartBody.Part.createFormData(
+                "file",
+                "avatar.png",
+                it.toRequestBody("image/png".toMediaType())
+            )
+        }
+
     private fun fetchContactDirectories() {
         Log.d("Fetch contact directories...")
 
@@ -236,7 +403,8 @@ class DirectoriesService(val context: Context) : DefaultLifecycleObserver {
         val response = apiClient.getUCGatewayService().searchDirectory(id, searchText).execute()
 
         return if (response.isSuccessful && response.body() != null) {
-            response.body()!!
+            // Search results don't say which directory they came from; needed to edit or delete them
+            response.body()!!.map { it.withDirectoryId(id) }
         } else {
             listOf()
         }

@@ -122,6 +122,33 @@ internal fun TabsFragment.navigateToCallHistory() {
     )
 }
 
+internal fun TabsFragment.navigateToFavourites() {
+    findNavController().navigate(
+        R.id.action_global_favouritesFragment,
+        null,
+        popupTo(R.id.favouritesFragment, true)
+    )
+}
+
+/**
+ * Opens the gateway contact editor full screen, from any fragment (including ones in a nested nav
+ * host such as the contact details pane). See DirectoryContactEditorFragment for the arguments.
+ */
+internal fun Fragment.navigateToDirectoryContactEditor(
+    directoryId: String,
+    contactId: String? = null,
+    phoneNumber: String? = null
+) {
+    requireActivity().findNavController(R.id.nav_host_fragment).navigate(
+        R.id.action_global_directoryContactEditorFragment,
+        bundleOf(
+            "DirectoryId" to directoryId,
+            "ContactId" to contactId,
+            "PhoneNumber" to phoneNumber
+        )
+    )
+}
+
 internal fun TabsFragment.navigateToContacts() {
     val action = when (findNavController().currentDestination?.id) {
         R.id.masterCallLogsFragment -> R.id.action_masterCallLogsFragment_to_dimensionsContactsFragment
@@ -488,8 +515,14 @@ internal fun GroupInfoFragment.navigateToChatRoom(args: Bundle?, created: Boolea
 
 /* Contacts related */
 
+// The contacts screen is both the Contacts and the Favourites tab
+private fun DimensionsContactsFragment.isShowingContactsList() =
+    findNavController().currentDestination?.id.let {
+        it == R.id.dimensionsContactsFragment || it == R.id.favouritesFragment
+    }
+
 internal fun DimensionsContactsFragment.navigateToContact() {
-    if (findNavController().currentDestination?.id == R.id.dimensionsContactsFragment) {
+    if (isShowingContactsList()) {
         val navHostFragment =
             childFragmentManager.findFragmentById(R.id.contacts_nav_container) as NavHostFragment
         navHostFragment.navController.navigate(
@@ -504,7 +537,7 @@ internal fun DimensionsContactsFragment.navigateToContactEditor(
     sipUriToAdd: String? = null,
     slidingPane: SlidingPaneLayout
 ) {
-    if (findNavController().currentDestination?.id == R.id.dimensionsContactsFragment) {
+    if (isShowingContactsList()) {
         val bundle = if (sipUriToAdd != null) bundleOf("SipUri" to sipUriToAdd) else Bundle()
         val navHostFragment =
             childFragmentManager.findFragmentById(R.id.contacts_nav_container) as NavHostFragment
@@ -518,7 +551,7 @@ internal fun DimensionsContactsFragment.navigateToContactEditor(
 }
 
 internal fun DimensionsContactsFragment.clearDisplayedContact() {
-    if (findNavController().currentDestination?.id == R.id.dimensionsContactsFragment) {
+    if (isShowingContactsList()) {
         val navHostFragment =
             childFragmentManager.findFragmentById(R.id.contacts_nav_container) as NavHostFragment
         navHostFragment.navController.navigate(

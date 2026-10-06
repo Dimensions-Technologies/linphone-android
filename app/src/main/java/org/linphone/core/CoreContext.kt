@@ -69,6 +69,7 @@ import org.linphone.contact.getContactForPhoneNumberOrAddress
 import org.linphone.mediastream.Version
 import org.linphone.models.UserDevice
 import org.linphone.notifications.NotificationsManager
+import org.linphone.services.CallContactMatchService
 import org.linphone.services.PushTokenService
 import org.linphone.services.TransferService
 import org.linphone.services.UserService
@@ -406,6 +407,9 @@ class CoreContext(
         configureCore()
 
         core.start()
+
+        // Names calls after the directory or CRM contacts they match
+        CallContactMatchService.start(context)
 
         _lifecycleRegistry.currentState = Lifecycle.State.STARTED
 

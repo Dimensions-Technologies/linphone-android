@@ -162,7 +162,9 @@ class ContactsListViewModel : ViewModel() {
 
         combinedSearchSubscription = combinedSearch.subscribe { r ->
             try {
-                contactsList.value.orEmpty().forEach(ContactViewModel::destroy)
+                // Rows carried over to the new list are reused, so only destroy the ones dropped
+                contactsList.value.orEmpty().filter { old -> r.none { it === old } }
+                    .forEach(ContactViewModel::destroy)
                 contactsList.postValue(r)
             } catch (e: Exception) {
                 Log.e("combinedSearchSubscription", e)
@@ -318,6 +320,40 @@ class ContactsListViewModel : ViewModel() {
             }
 
             Log.i("processUserGroupResults Processed ${results.count()} results")
+        }
+    }
+
+    /**
+     * Takes a contact out of the list straight away, e.g. while it's deleted from the gateway.
+     * Returns a function that puts it back (works offline, without refetching).
+     */
+    fun removeFromList(contact: ContactViewModel): () -> Unit {
+        val friend = contact.contact.value
+        val group = userGroup.value
+        val removedFromGroup = friend != null && group?.friends?.remove(friend) == true
+
+        val subjects = listOf(
+            userGroupResultsSubject,
+            magicSearchResultsSubject,
+            contactSearchResultsSubject
+        )
+        val removedFrom = subjects.filter { subject ->
+            val list = subject.value ?: return@filter false
+            if (list.none { it === contact }) return@filter false
+            subject.onNext(ArrayList(list.filter { it !== contact }))
+            true
+        }
+
+        return restore@{
+            friend ?: return@restore
+            if (removedFromGroup) group?.friends?.add(friend)
+            // The removed row's view model was destroyed with it, so make a new one
+            val restored = ContactViewModel(friend)
+            removedFrom.forEach { subject ->
+                val list = ArrayList(subject.value.orEmpty() + restored)
+                list.sortBy { it.fullName }
+                subject.onNext(list)
+            }
         }
     }
 
