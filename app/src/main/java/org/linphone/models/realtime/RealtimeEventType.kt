@@ -10,5 +10,6 @@ enum class RealtimeEventType(val eventName: String) {
     UnregisterTileConfirmation("unregisterTileConfirmation"),
     PresenceEvent("presenceEvent"),
     CallHistoryEvent("callHistoryEvent"),
-    CallMatchEvent("callMatchEvent")
+    CallMatchEvent("callMatchEvent"),
+    CallEvent("callEvent")
 }
