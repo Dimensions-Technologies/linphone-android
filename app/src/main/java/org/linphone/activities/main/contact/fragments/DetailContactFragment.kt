@@ -33,8 +33,9 @@ import org.linphone.activities.main.contact.viewmodels.ContactViewModel
 import org.linphone.activities.main.contact.viewmodels.ContactViewModelFactory
 import org.linphone.activities.main.viewmodels.DialogViewModel
 import org.linphone.activities.navigateToChatRoom
-import org.linphone.activities.navigateToContactEditor
+import org.linphone.activities.navigateToDirectoryContactEditor
 import org.linphone.databinding.ContactDetailFragmentBinding
+import org.linphone.models.search.UserDataModel
 import org.linphone.utils.DialogUtils
 import org.linphone.utils.Event
 import org.linphone.utils.Log
@@ -68,10 +69,12 @@ class DetailContactFragment : GenericFragment<ContactDetailFragmentBinding>() {
             return
         }
 
+        // Keyed by contact: after an edit the selected contact is replaced, and the details must
+        // show the new one rather than the view model kept from before
         viewModel = ViewModelProvider(
             this,
             ContactViewModelFactory(contact)
-        )[ContactViewModel::class.java]
+        )["contact-${System.identityHashCode(contact)}", ContactViewModel::class.java]
         binding.viewModel = viewModel
 
         viewModel.sendSmsToEvent.observe(
@@ -127,7 +130,14 @@ class DetailContactFragment : GenericFragment<ContactDetailFragmentBinding>() {
         }
 
         binding.setEditClickListener {
-            navigateToContactEditor()
+            val contactItem = (contact.userData as? UserDataModel)?.contact
+            if (contactItem != null) {
+                navigateToDirectoryContactEditor(contactItem.directoryId, contactItem.id)
+            }
+        }
+
+        binding.setEmailClickListener {
+            sendEmail(viewModel.email.value.orEmpty())
         }
 
         binding.setDeleteClickListener {
@@ -191,6 +201,16 @@ class DetailContactFragment : GenericFragment<ContactDetailFragmentBinding>() {
         )
 
         dialog.show()
+    }
+
+    private fun sendEmail(address: String) {
+        if (address.isBlank()) return
+        val intent = Intent(Intent.ACTION_SENDTO, Uri.parse("mailto:${Uri.encode(address)}"))
+        try {
+            startActivity(intent)
+        } catch (e: android.content.ActivityNotFoundException) {
+            Log.w("[Contact] No email app to send to $address")
+        }
     }
 
     private fun sendSms(number: String) {

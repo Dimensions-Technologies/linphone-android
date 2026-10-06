@@ -40,9 +40,11 @@ class TabsViewModel : ViewModel() {
     val unreadVoicemailsCount = MutableLiveData<Int>()
     val missedCallsCount = MutableLiveData<Int>()
 
-    val leftAnchor = MutableLiveData<Float>()
-    val middleAnchor = MutableLiveData<Float>()
-    val rightAnchor = MutableLiveData<Float>()
+    // Boundaries between the five tabs
+    val anchor1 = MutableLiveData<Float>()
+    val anchor2 = MutableLiveData<Float>()
+    val anchor3 = MutableLiveData<Float>()
+    val anchor4 = MutableLiveData<Float>()
 
     val historyMissedCountTranslateY = MutableLiveData<Float>()
     val chatUnreadCountTranslateY = MutableLiveData<Float>()
@@ -129,9 +131,10 @@ class TabsViewModel : ViewModel() {
     init {
         coreContext.core.addListener(listener)
 
-        leftAnchor.value = 0.25F
-        middleAnchor.value = 0.5F
-        rightAnchor.value = 0.75F
+        anchor1.value = 0.2F
+        anchor2.value = 0.4F
+        anchor3.value = 0.6F
+        anchor4.value = 0.8F
 
         updateUnreadChatCount()
         updateMissedCallCount()

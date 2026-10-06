@@ -6,7 +6,9 @@ import org.linphone.activities.main.contact.data.ContactAdditionalData
 import org.linphone.core.Factory
 import org.linphone.core.Friend
 import org.linphone.core.SubscribePolicy
+import org.linphone.models.contact.ContactDirectoryModel
 import org.linphone.models.contact.ContactItemModel
+import org.linphone.models.contact.DirectoryFieldTypes
 import org.linphone.models.search.UserDataModel
 import org.linphone.models.usergroup.GroupUserSummaryModel
 import org.linphone.models.usergroup.UserGroupModel
@@ -21,11 +23,20 @@ class UserGroupViewModel(
     var friends: ArrayList<Friend> = arrayListOf()
     var isFavorites: Boolean = false
 
+    // Set when the group shows a contact directory's contacts (the Personal directory) rather than a user group.
+    var directory: ContactDirectoryModel? = null
+
     companion object {
         const val FAVORITES_GROUP_NAME: String = "CosmosPersonalUserGroupFavoritesName"
         const val SEARCH_RESULTS_GROUP_NAME: String = "SearchResultsGroupName"
         const val ANDROID_CONTACTS_GROUP_NAME: String = "AndroidContactsGroupName"
         const val EMPTY_USERGROUP_ID: String = "EMPTY"
+
+        private val hiddenFieldTypes = setOf(
+            DirectoryFieldTypes.BLF,
+            DirectoryFieldTypes.AVATAR,
+            DirectoryFieldTypes.ID
+        )
 
         fun createFriendFromGroupUserSummaryModel(
             user: GroupUserSummaryModel
@@ -66,7 +77,7 @@ class UserGroupViewModel(
             return friend
         }
 
-        private fun createFriendFromContactItemModel(
+        fun createFriendFromContactItemModel(
             contactItemModel: ContactItemModel
         ): Friend {
             val friend = coreContext.core.createFriend()
@@ -82,11 +93,7 @@ class UserGroupViewModel(
             friend.refKey = contactItemModel.id
             friend.name = fieldDictionary[ContactItemModel.FULL_NAME] ?: ""
 
-            if (contactDirectoryModel == null) {
-                friend.organization = fieldDictionary[ContactItemModel.ORGANIZATION] ?: ""
-            } else {
-                friend.organization = "${contactDirectoryModel.name} | ${fieldDictionary[ContactItemModel.ORGANIZATION] ?: ""}"
-            }
+            friend.organization = fieldDictionary[ContactItemModel.ORGANIZATION] ?: ""
 
             val phoneNumbers = arrayListOf<String>()
             phoneNumbers.add(fieldDictionary[ContactItemModel.PHONE1] ?: "")
@@ -146,6 +153,8 @@ class UserGroupViewModel(
 
                 for (fieldDefinition in contactDirectoryModel.fields) {
                     if (fieldExclusions.contains(fieldDefinition.id)) continue
+                    // Shown on their own ("Internal number") or not at all
+                    if (fieldDefinition.definitionType in hiddenFieldTypes) continue
 
                     val fieldValue = fieldDictionary[fieldDefinition.id]
                     if (fieldValue != null) {

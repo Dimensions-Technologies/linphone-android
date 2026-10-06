@@ -25,6 +25,7 @@ import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import io.reactivex.rxjava3.core.Observable
 import io.reactivex.rxjava3.disposables.Disposable
 import kotlinx.coroutines.CoroutineScope
 import org.linphone.LinphoneApplication.Companion.coreContext
@@ -39,9 +40,17 @@ import org.linphone.contact.ContactDataInterface
 import org.linphone.contact.ContactsUpdatedListenerStub
 import org.linphone.contact.hasLongTermPresence
 import org.linphone.core.*
+import org.linphone.models.PbxFeatureCode
+import org.linphone.models.blf.BlfDisplay
+import org.linphone.models.blf.BlfKey
+import org.linphone.models.blf.BlfKeyStatus
+import org.linphone.models.contact.ContactDirectoryRules
+import org.linphone.models.contact.DirectoryFieldTypes
 import org.linphone.models.realtime.PresenceIconState
 import org.linphone.models.search.UserDataModel
+import org.linphone.services.BlfService
 import org.linphone.services.DirectoriesService
+import org.linphone.services.FeatureCodeService
 import org.linphone.services.PhoneFormatterService
 import org.linphone.services.TransferService
 import org.linphone.utils.Event
@@ -80,6 +89,15 @@ class ContactViewModel(friend: Friend) : MessageNotifierViewModel(), ContactData
     val isFavourite = MutableLiveData<Boolean>()
     val canBeFavourite = MutableLiveData<Boolean>()
     val subTitle = MutableLiveData("")
+
+    // Gateway directory contacts the user can edit (e.g. Personal contacts)
+    val canEdit = MutableLiveData(false)
+    val isInternalNumber = MutableLiveData(false)
+    val email = MutableLiveData("")
+
+    // A watched line whose state isn't known: shown as a grey badge rather than no badge
+    val blfUnknown = MutableLiveData(false)
+    private var blfSubscription: Disposable? = null
 
     val transferState = TransferService.getInstance().transferState
 
@@ -196,6 +214,7 @@ class ContactViewModel(friend: Friend) : MessageNotifierViewModel(), ContactData
 
         updateAdditionalData()
         updateIsFavourite()
+        updateDirectoryContactData()
     }
 
     override fun onCleared() {
@@ -204,6 +223,7 @@ class ContactViewModel(friend: Friend) : MessageNotifierViewModel(), ContactData
     }
 
     fun destroy() {
+        blfSubscription?.dispose()
     }
 
     fun registerContactListener() {
@@ -246,6 +266,101 @@ class ContactViewModel(friend: Friend) : MessageNotifierViewModel(), ContactData
         val userData = friend.userData as? UserDataModel ?: return
 
         additionalData.value = userData.additionalData
+    }
+
+    private fun updateDirectoryContactData() {
+        val userData = contact.value?.userData as? UserDataModel ?: return
+        val contactItem = userData.contact ?: return
+        val directory = DirectoriesService.getInstance(coreContext.context).findDirectory(
+            contactItem.directoryId
+        )
+            ?: return
+
+        canEdit.value = DirectoriesService.getInstance(coreContext.context).canContribute(directory)
+        isInternalNumber.value = ContactDirectoryRules.isInternalNumber(directory, contactItem)
+
+        val emailFieldIds = directory.fields
+            .filter { it.definitionType == DirectoryFieldTypes.EMAIL }
+            .map { it.id }
+        email.value = contactItem.fields.firstOrNull { it.id in emailFieldIds && it.value.isNotBlank() }?.value.orEmpty()
+
+        // Under the name: the primary number and the first other display field with a value, as
+        // the web client shows them (on separate lines there)
+        val number = ContactDirectoryRules.primaryPhoneNumber(contactItem)?.let { formatNumber(it) }
+        val secondary = ContactDirectoryRules.secondaryDisplayField(directory, contactItem)?.let {
+            if (ContactDirectoryRules.isPhoneFieldId(it.id)) formatNumber(it.value) else it.value
+        }
+        subTitle.value = listOfNotNull(number, secondary).joinToString(" | ")
+
+        // If the primary number's line is watched (BLF), its state replaces the secondary field and
+        // colours the badge, as on the web client
+        val primaryPhone = ContactDirectoryRules.primaryPhoneNumber(contactItem) ?: return
+        blfSubscription = Observable.combineLatest(
+            BlfService.keys,
+            FeatureCodeService.getInstance(coreContext.context).featureCodes
+        ) { keys, codes -> Pair(keys[primaryPhone], codes) }
+            .subscribe(
+                { (key, codes) ->
+                    if (key == null) {
+                        // Directory contacts have no other presence
+                        subTitle.postValue(listOfNotNull(number, secondary).joinToString(" | "))
+                        presenceStatus.postValue(ConsolidatedPresence.Offline)
+                        blfUnknown.postValue(false)
+                    } else {
+                        val text = blfText(key, primaryPhone, codes)
+                        subTitle.postValue(listOfNotNull(number, text).joinToString(" | "))
+                        presenceStatus.postValue(blfPresence(key.status))
+                        blfUnknown.postValue(key.status == BlfKeyStatus.UNKNOWN)
+                    }
+                },
+                { e -> Log.e("[Contact] BLF status failed", e) }
+            )
+    }
+
+    private fun blfText(key: BlfKey, primaryPhone: String, codes: Map<String, String>): String {
+        val text = BlfDisplay.text(
+            key,
+            primaryPhone,
+            codes[PbxFeatureCode.PARK_AND_RETRIEVE],
+            codes[PbxFeatureCode.DIMENSIONS_DND_TOGGLE]
+        )
+        val resources = coreContext.context.resources
+        return when (text) {
+            BlfDisplay.Text.Available -> resources.getString(R.string.blf_available)
+            BlfDisplay.Text.OnACall -> resources.getString(R.string.blf_on_a_call)
+            BlfDisplay.Text.Ringing -> resources.getString(R.string.blf_ringing)
+            BlfDisplay.Text.DoNotDisturb -> resources.getString(R.string.blf_do_not_disturb)
+            BlfDisplay.Text.Enabled -> resources.getString(R.string.blf_enabled)
+            BlfDisplay.Text.Disabled -> resources.getString(R.string.blf_disabled)
+            BlfDisplay.Text.Free -> resources.getString(R.string.blf_free)
+            is BlfDisplay.Text.CallParked ->
+                if (text.displayNumber.isEmpty()) {
+                    resources.getString(R.string.blf_call_parked)
+                } else {
+                    resources.getString(
+                        R.string.blf_call_parked_by,
+                        formatNumber(text.displayNumber)
+                    )
+                }
+        }
+    }
+
+    // Web client colours: idle green, ringing or on a call red, unknown grey
+    private fun blfPresence(status: BlfKeyStatus) = when (status) {
+        BlfKeyStatus.IDLE -> ConsolidatedPresence.Online
+        BlfKeyStatus.RINGING, BlfKeyStatus.INCALL -> ConsolidatedPresence.DoNotDisturb
+        BlfKeyStatus.UNKNOWN -> ConsolidatedPresence.Offline
+    }
+
+    // Like the web client's formatPhoneNumber: short numbers and feature codes are shown as they are.
+    private fun formatNumber(number: String): String {
+        // Feature codes (e.g. park slots like *3101) would lose their * to the formatter
+        if (number.startsWith("*") || !Regex("^[+*#0-9]{5,}$").matches(number)) return number
+        return try {
+            PhoneFormatterService.getInstance(coreContext.context).formatPhoneNumber(number)
+        } catch (e: Exception) {
+            number
+        }
     }
 
     private fun updateIsFavourite() {

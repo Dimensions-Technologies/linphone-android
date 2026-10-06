@@ -1,0 +1,10 @@
+[
+  {
+    "id": "contact-1",
+    "fields": [
+      { "id": "fullName", "value": "Chris Rawlinson" },
+      { "id": "phone1", "value": "1024" },
+      { "id": "blf", "value": "true" }
+    ]
+  }
+]

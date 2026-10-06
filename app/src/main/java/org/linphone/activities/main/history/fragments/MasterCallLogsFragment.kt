@@ -22,6 +22,7 @@ package org.linphone.activities.main.history.fragments
 import android.content.res.Configuration
 import android.os.Bundle
 import android.view.View
+import androidx.appcompat.app.AlertDialog
 import androidx.lifecycle.ViewModelProvider
 import androidx.navigation.fragment.NavHostFragment
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -43,6 +44,7 @@ import org.linphone.core.ConferenceInfo
 import org.linphone.databinding.HistoryMasterFragmentBinding
 import org.linphone.models.callhistory.PbxType
 import org.linphone.services.CallHistoryService
+import org.linphone.services.DirectoriesService
 import org.linphone.services.UserService
 import org.linphone.utils.*
 import org.linphone.utils.Log
@@ -292,6 +294,12 @@ class MasterCallLogsFragment : MasterFragment<HistoryMasterFragmentBinding, Call
             it.consume { call -> navigateToRecordingPlayback(binding.slidingPane) }
         }
 
+        listViewModel.addContactEvent.observe(
+            viewLifecycleOwner
+        ) {
+            it.consume { call -> addContact(call.number) }
+        }
+
         callHistoryService.updateMissedCallTimestamp()
 
         coreContext.core.resetMissedCallsCount()
@@ -334,5 +342,21 @@ class MasterCallLogsFragment : MasterFragment<HistoryMasterFragmentBinding, Call
 
     private fun scrollToTop() {
         binding.callLogsList.scrollToPosition(0)
+    }
+
+    // Adds the number to a contact directory: the only one the user can contribute to, or the one
+    // they pick (Personal first).
+    private fun addContact(number: String) {
+        val directories = DirectoriesService.getInstance(requireContext()).contributorDirectories()
+        when (directories.size) {
+            0 -> return
+            1 -> navigateToDirectoryContactEditor(directories[0].id, phoneNumber = number)
+            else -> AlertDialog.Builder(requireContext())
+                .setTitle(R.string.contact_directory_choose_directory)
+                .setItems(directories.map { it.name }.toTypedArray()) { _, which ->
+                    navigateToDirectoryContactEditor(directories[which].id, phoneNumber = number)
+                }
+                .show()
+        }
     }
 }

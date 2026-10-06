@@ -19,6 +19,7 @@
  */
 package org.linphone.activities.main.contact.adapters
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.view.LayoutInflater
 import android.view.View
@@ -143,10 +144,14 @@ private class ContactDiffCallback : DiffUtil.ItemCallback<ContactViewModel>() {
         return oldItem.fullName.compareTo(newItem.fullName) == 0
     }
 
+    // Identity on purpose: a reload makes new view models, and the row must be bound to the new
+    // one, or it keeps showing (and stops updating from) the old one, e.g. missing a line status
+    // that started meanwhile
+    @SuppressLint("DiffUtilEquals")
     override fun areContentsTheSame(
         oldItem: ContactViewModel,
         newItem: ContactViewModel
     ): Boolean {
-        return true
+        return oldItem === newItem
     }
 }

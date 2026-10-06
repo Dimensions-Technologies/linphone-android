@@ -19,6 +19,7 @@ data class ContactItemModel(
         const val PHONE2 = "phone2"
         const val PHONE3 = "phone3"
         const val PHONE4 = "phone4"
+        const val EMAIL = "email"
         const val AVATAR_URL = "avatar"
     }
 

@@ -59,6 +59,7 @@ import org.linphone.contact.ContactAvatarGenerator
 import org.linphone.contact.ContactDataInterface
 import org.linphone.contact.getPictureUri
 import org.linphone.core.ConsolidatedPresence
+import org.linphone.core.Friend
 import org.linphone.views.VoiceRecordProgressBar
 
 /**
@@ -519,6 +520,23 @@ fun loadVoipContactPictureWithCoilAlt(imageView: ImageView, contact: ContactData
             )
         }
     }
+}
+
+/**
+ * As coilVoipContactAlt, redrawn when the call's contact or name changes after the screen is shown
+ * (e.g. once a contact match names the caller).
+ */
+@BindingAdapter(
+    value = ["coilVoipCallAvatar", "coilVoipCallContact", "coilVoipCallName"],
+    requireAll = false
+)
+fun loadVoipCallAvatar(
+    imageView: ImageView,
+    call: ContactDataInterface?,
+    contact: Friend?,
+    name: String?
+) {
+    loadVoipContactPictureWithCoilAlt(imageView, call)
 }
 
 @BindingAdapter("coilVoipContact")

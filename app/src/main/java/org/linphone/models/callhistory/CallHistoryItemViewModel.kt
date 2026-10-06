@@ -46,6 +46,11 @@ class CallHistoryItemViewModel(
 
     var canCallBack = number.isNotEmpty()
 
+    // An external number not matched to a contact (by the gateway, or to a directory contact by
+    // CallHistoryContactMatcher), as on the web client
+    val canAddContact = number.isNotEmpty() && call.callType == CallTypes.External &&
+        !call.hasContactMatch && !call.isConference
+
 //    val canCall: Observable<Boolean> = Observable.defer {
 //        if (call.pbxType == PbxType.Teams) {
 //            Observable.just(!call.isConference)

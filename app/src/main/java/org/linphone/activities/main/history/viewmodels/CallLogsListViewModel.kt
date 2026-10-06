@@ -32,6 +32,7 @@ import org.linphone.contact.ContactsUpdatedListenerStub
 import org.linphone.core.*
 import org.linphone.models.callhistory.CallHistoryItemViewModel
 import org.linphone.services.CallHistoryService
+import org.linphone.services.DirectoriesService
 import org.linphone.services.TransferService
 import org.linphone.utils.AppUtils
 import org.linphone.utils.Event
@@ -62,6 +63,13 @@ class CallLogsListViewModel : ViewModel() {
     val playRecordingEvent: MutableLiveData<Event<CallHistoryItemViewModel>> by lazy {
         MutableLiveData<Event<CallHistoryItemViewModel>>()
     }
+
+    val addContactEvent: MutableLiveData<Event<CallHistoryItemViewModel>> by lazy {
+        MutableLiveData<Event<CallHistoryItemViewModel>>()
+    }
+
+    // Whether the context menu's call can be added as a contact (checked as the menu opens)
+    val canAddContact = MutableLiveData(false)
 
     val transferState = TransferService.getInstance().transferState
 
@@ -204,11 +212,18 @@ class CallLogsListViewModel : ViewModel() {
     }
 
     fun showContextMenu(call: CallHistoryItemViewModel) {
-        if (call.canCallBack || (call.call.hasRecording && hasPlaybackPermission.value == true)) {
+        canAddContact.value = canAddContact(call)
+        if (call.canCallBack || canAddContact.value == true || (call.call.hasRecording && hasPlaybackPermission.value == true)) {
             contextMenuAnimator.start()
             isContextMenuOpen.value = true
         }
     }
+
+    // As on the web client: an unmatched external number, and a directory to add it to. Calls are
+    // matched to directory contacts as the history is formatted (CallHistoryContactMatcher).
+    private fun canAddContact(call: CallHistoryItemViewModel): Boolean =
+        call.canAddContact &&
+            DirectoriesService.getInstance(coreContext.context).contributorDirectories().isNotEmpty()
 
     fun hideContextMenu(skipAnimation: Boolean) {
         // Animation must be skipped when called from Fragment's onPause() !
@@ -230,6 +245,11 @@ class CallLogsListViewModel : ViewModel() {
     fun playRecording(call: CallHistoryItemViewModel) {
         hideContextMenu(false)
         playRecordingEvent.value = Event(call)
+    }
+
+    fun addContact(call: CallHistoryItemViewModel) {
+        hideContextMenu(false)
+        addContactEvent.value = Event(call)
     }
 }
 

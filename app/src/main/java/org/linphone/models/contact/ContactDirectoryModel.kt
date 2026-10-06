@@ -12,6 +12,9 @@ data class ContactDirectoryModel(
     @SerializedName("name")
     val name: String = "",
 
+    @SerializedName("type")
+    val type: String = "",
+
     @SerializedName("description")
     val description: String = "",
 

@@ -6,6 +6,7 @@ data class FieldItemModel(
     @SerializedName("id")
     val id: String = "",
 
-    @SerializedName("value")
+    // The list endpoints send "value"; create/update responses echo the "val" we send.
+    @SerializedName(value = "value", alternate = ["val"])
     val value: String = ""
 )

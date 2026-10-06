@@ -47,6 +47,7 @@ import org.linphone.compatibility.Compatibility
 import org.linphone.contact.getPerson
 import org.linphone.contact.getThumbnailUri
 import org.linphone.core.*
+import org.linphone.services.CallContactMatchService
 import org.linphone.utils.*
 import org.linphone.utils.Log
 
@@ -756,6 +757,21 @@ class NotificationsManager(private val context: Context) {
                 .build()
     }
 
+    // Rebuilds the call's notification, e.g. when a contact match names the caller after it was shown
+    fun refreshCallNotification(call: Call) {
+        if (corePreferences.preventInterfaceFromShowingUp) return
+        when (call.state) {
+            Call.State.IncomingEarlyMedia, Call.State.IncomingReceived -> {
+                if (service != null) displayIncomingCallNotification(call, false)
+            }
+            Call.State.OutgoingInit, Call.State.OutgoingProgress, Call.State.OutgoingRinging -> {
+                displayCallNotification(call, false)
+            }
+            Call.State.End, Call.State.Error, Call.State.Released, Call.State.Idle -> {}
+            else -> displayCallNotification(call, true)
+        }
+    }
+
     fun displayIncomingCallNotification(call: Call, useAsForeground: Boolean) {
         if (coreContext.declineCallDueToGsmActiveCall()) {
             Log.w(
@@ -835,8 +851,10 @@ class NotificationsManager(private val context: Context) {
             )
         } else {
             val friend: Friend? = coreContext.contactsManager.findContactByAddress(remoteAddress)
-            body = context.getString(R.string.missed_call_notification_body)
-                .format(friend?.name ?: LinphoneUtils.getDisplayName(remoteAddress))
+            val name = CallContactMatchService.displayName(remoteAddress)
+                ?: friend?.name
+                ?: LinphoneUtils.getDisplayName(remoteAddress)
+            body = context.getString(R.string.missed_call_notification_body).format(name)
             Log.i("[Notifications Manager] Creating missed call notification")
         }
 

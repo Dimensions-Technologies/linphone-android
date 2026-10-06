@@ -60,8 +60,8 @@ class PhoneFormatterService(val context: Context) : DefaultLifecycleObserver {
         return input
     }
 
-    private fun getPbxCountryCode(): String {
-        return currentUser?.pbxCountryCode ?: Locale.getDefault().country
+    fun getPbxCountryCode(): String {
+        return currentUser?.pbxCountryCode?.takeIf { it.isNotBlank() } ?: Locale.getDefault().country
     }
 
     fun formatPhoneNumber(phoneNumber: String): String {
