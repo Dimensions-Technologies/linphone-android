@@ -67,5 +67,9 @@ data class CallHistoryItem(
     val pbxType: PbxType,
 
     @SerializedName("interactionTags")
-    val interactionTags: List<CallInteractionTag>
+    val interactionTags: List<CallInteractionTag>,
+
+    // The external party's number on an external call
+    @SerializedName("cli")
+    val cli: String? = null
 )

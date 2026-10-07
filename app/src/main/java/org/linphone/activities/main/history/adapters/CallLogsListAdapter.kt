@@ -173,18 +173,23 @@ class CallLogsListAdapter(
     }
 }
 
+// Rows are the same call by its id, and unchanged only if the call's data and the date shown are.
+// (Comparing just the number of call logs, as upstream did, left rows stale when e.g. a contact
+// name was filled in; reporting every row as changed instead redrew the whole list on each update.)
 private class CallLogDiffCallback : DiffUtil.ItemCallback<GroupedCallLogData>() {
     override fun areItemsTheSame(
         oldItem: GroupedCallLogData,
         newItem: GroupedCallLogData
     ): Boolean {
-        return false // oldItem.lastCallLogId == newItem.lastCallLogId //FixME: The original code prevents the UI redrawing
+        return oldItem.lastCallLogId != null && oldItem.lastCallLogId == newItem.lastCallLogId
     }
 
     override fun areContentsTheSame(
         oldItem: GroupedCallLogData,
         newItem: GroupedCallLogData
     ): Boolean {
-        return false // oldItem.callLogs.size == newItem.callLogs.size //FixME: The original code prevents the UI redrawing
+        val old = oldItem.lastCallLog as? CallHistoryItemViewModel ?: return false
+        val new = newItem.lastCallLog as? CallHistoryItemViewModel ?: return false
+        return old.call == new.call && old.date == new.date && old.time == new.time
     }
 }

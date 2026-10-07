@@ -1,0 +1,68 @@
+{
+  "data": {
+    "id": "sess-1",
+    "type": 2,
+    "dir": 2,
+    "start": 1723627273,
+    "end": 1723627400,
+    "duration": 127,
+    "pbxinfo": { "type": "Kazoo", "ver": "4.3", "name": "PBX", "siteId": "s1", "siteName": "UK" },
+    "tags": {
+      "t2": { "id": "tag-link", "name": "Ticket", "val": "1234", "userId": "u1", "ts": 1723627390 },
+      "t1": { "id": "tag-bool", "name": "Resolved", "val": "true", "userId": "u1", "ts": 1723627380 }
+    },
+    "calls": [
+      {
+        "callId": "call-1",
+        "type": 2,
+        "dir": 2,
+        "cli": [ { "type": 1, "num": "+441332362900", "name": "Acme Ltd" } ],
+        "ddi": [ { "type": 1, "num": "+443300889055" } ],
+        "hgNum": "500",
+        "hgName": "Sales",
+        "routePathId": "rp1",
+        "routePathName": "Main",
+        "hangupCause": "NORMAL_CLEARING",
+        "start": 1723627273,
+        "answer": 1723627280,
+        "end": 1723627400,
+        "duration": 127,
+        "ring": 7,
+        "talk": 120,
+        "hold": 0,
+        "answered": true,
+        "conns": [
+          {
+            "connId": "c1",
+            "type": 2,
+            "dir": 1,
+            "caller": "+441332362900",
+            "callerName": "",
+            "called": "1031",
+            "start": 1723627273,
+            "end": 1723627400,
+            "answered": true,
+            "recording": { "recordingIds": [] }
+          },
+          {
+            "connId": "c2",
+            "type": 6,
+            "dir": 2,
+            "caller": "+441332362900",
+            "called": "1031",
+            "userName": "Test User 1",
+            "userNum": "1031",
+            "devName": "Desk",
+            "start": 1723627273,
+            "answer": 1723627280,
+            "end": 1723627400,
+            "answered": true,
+            "recording": { "recordingIds": [ "rec-1" ] },
+            "analytic": { "hasTrans": 1, "sent": { "usr": 0.5, "cust": -0.2 } },
+            "events": [ { "type": 1, "eventTime": 1723627300 }, { "type": 2, "eventTime": 1723627310 } ]
+          }
+        ]
+      }
+    ]
+  }
+}

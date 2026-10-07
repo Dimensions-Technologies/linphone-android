@@ -1,0 +1,21 @@
+{
+  "id": "sum-1",
+  "transId": "trans-1",
+  "tId": "tenant-1",
+  "sessionId": "sess-1",
+  "recordingId": "rec-1",
+  "connId": "c2",
+  "sum": { "state": "Succeeded", "sum": [ "The customer asked about an order.", "A refund was agreed." ] },
+  "sent": { "state": "Succeeded", "sent": { "scoreLbl": "Positive", "score": 72, "pos": 0.72, "neut": 0.2, "neg": 0.08 } },
+  "trans": { "state": "Succeeded", "conf": 0.91, "dur": 120 },
+  "langDet": {
+    "state": "Succeeded",
+    "asp": [
+      { "type": "issue", "val": "Order arrived damaged", "spk": 1 },
+      { "type": "followUp", "val": "Send a refund", "spk": 0 },
+      { "type": "followUp", "val": "Return the item", "spk": 1 },
+      { "type": "resolution", "val": "Refund agreed", "spk": 0 }
+    ]
+  },
+  "spkrs": { "state": "Succeeded", "map": { "0": "user", "1": "customer" } }
+}

@@ -75,6 +75,7 @@ import org.linphone.services.PullCallService
 import org.linphone.services.PushTokenService
 import org.linphone.services.TransferService
 import org.linphone.services.UserService
+import org.linphone.services.VoicemailBoxService
 import org.linphone.telecom.TelecomHelper
 import org.linphone.utils.*
 import org.linphone.utils.Event
@@ -419,6 +420,9 @@ class CoreContext(
         // Watches the user's parking slots
         ParkingSlotService.start()
 
+        // Keeps the user's voicemail boxes up to date
+        VoicemailBoxService.start()
+
         _lifecycleRegistry.currentState = Lifecycle.State.STARTED
 
         initPhoneStateListener()
@@ -730,6 +734,10 @@ class CoreContext(
     }
 
     fun onForeground() {
+        // Voicemail notifications sent while the app was in the background (and often not
+        // registered) were missed, so catch up with the mailbox
+        VoicemailBoxService.refresh()
+
         // We can't rely on defaultAccount?.params?.isPublishEnabled
         // as it will be modified by the SDK when changing the presence status
 //        if (corePreferences.publishPresence) {

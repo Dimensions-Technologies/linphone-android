@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Call detail page, as the web client's conversation styles -->
+    <color name="call_detail_bubble_user">#AED6E4</color>
+    <color name="call_detail_bubble_other">#DDE2E4</color>
+    <color name="call_detail_bubble_text">#212529</color>
+    <color name="call_detail_highlight_text">#B15B07</color>
+    <color name="call_detail_highlight_background">#FAE18A</color>
+    <color name="call_detail_positive">#28A745</color>
+    <color name="call_detail_neutral">#9E9E9E</color>
+    <color name="call_detail_negative">#DC3545</color>
+    <color name="call_detail_timeline_track">#E6E6E6</color>
+    <color name="call_detail_pii">#E7792B</color>
+</resources>

@@ -30,6 +30,7 @@ import org.linphone.LinphoneApplication.Companion.coreContext
 import org.linphone.LinphoneApplication.Companion.corePreferences
 import org.linphone.R
 import org.linphone.activities.main.history.data.GroupedCallLogData
+import org.linphone.activities.main.history.viewmodels.CallLogsFilter
 import org.linphone.core.*
 import org.linphone.models.callhistory.CallHistoryItemViewModel
 import org.linphone.utils.AppUtils
@@ -50,6 +51,13 @@ class SharedMainViewModel : ViewModel() {
 
     /* Call history */
     val selectedHistoryItem = MutableLiveData<CallHistoryItemViewModel>()
+
+    // Whether the call history is showing its Voicemail tab, which the voicemail tab highlights
+    val isVoicemailTabShown = MutableLiveData(false)
+
+    // The History or voicemail button, pressed while the call history is shown: switch it to
+    // that tab rather than opening the call history again
+    val callHistoryTabEvent = MutableLiveData<Event<CallLogsFilter>>()
     val selectedCallLogGroup = MutableLiveData<GroupedCallLogData>()
 
     /* Chat */

@@ -22,6 +22,10 @@
         <variable
             name="contextItemViewModel"
             type="org.linphone.models.callhistory.CallHistoryItemViewModel" />
+
+        <variable
+            name="voicemailViewModel"
+            type="org.linphone.activities.main.history.viewmodels.VoicemailListViewModel" />
     </data>
 
     <androidx.constraintlayout.widget.ConstraintLayout
@@ -101,6 +105,56 @@
 
                     <RelativeLayout
                         android:layout_width="0dp"
+                        android:layout_height="match_parent"
+                        android:layout_weight="0.333"
+                        android:visibility="@{viewModel.showVoicemailTab ? View.VISIBLE : View.GONE, default=gone}">
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            android:background="?attr/button_background_drawable"
+                            android:enabled="@{viewModel.filter != CallLogsFilter.VOICEMAIL}"
+                            android:gravity="center"
+                            android:onClick="@{() -> viewModel.showVoicemail()}"
+                            android:orientation="horizontal">
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:textSize="18sp"
+                                android:textColor="@{viewModel.filter == CallLogsFilter.VOICEMAIL ? @color/primary_color : @color/light_primary_text_color}"
+                                android:text="@string/voicemail_tab"/>
+
+                            <!-- New voicemails, or a spinner while they refresh -->
+                            <ProgressBar
+                                android:layout_width="14dp"
+                                android:layout_height="14dp"
+                                android:layout_marginStart="4dp"
+                                android:indeterminate="true"
+                                android:visibility="@{viewModel.isRefreshingVoicemail ? View.VISIBLE : View.GONE, default=gone}" />
+
+                            <TextView
+                                style="@style/unread_count_font"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginStart="4dp"
+                                android:gravity="center"
+                                android:background="@drawable/unread_message_count_bg"
+                                android:text="@{String.valueOf(viewModel.newVoicemailCount)}"
+                                android:visibility="@{!viewModel.isRefreshingVoicemail &amp;&amp; viewModel.newVoicemailCount > 0 ? View.VISIBLE : View.GONE, default=gone}" />
+                        </LinearLayout>
+
+                        <View
+                            android:visibility="@{viewModel.filter == CallLogsFilter.VOICEMAIL ? View.VISIBLE : View.GONE}"
+                            android:layout_width="match_parent"
+                            android:layout_height="5dp"
+                            android:layout_alignParentBottom="true"
+                            android:background="?attr/accentColor" />
+
+                    </RelativeLayout>
+
+                    <RelativeLayout
+                        android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="0"
                         android:visibility="@{viewModel.showConferencesFilter ? View.VISIBLE : View.INVISIBLE}">
@@ -141,6 +195,7 @@
                     android:layout_height="wrap_content"
                     android:layout_centerInParent="true"
                     android:text="@{ viewModel.message, default=`Loading call history...`}"
+                    android:visibility="@{viewModel.filter == CallLogsFilter.VOICEMAIL ? View.GONE : View.VISIBLE}"
                     style="@style/empty_list_font" />
 
                 <androidx.recyclerview.widget.RecyclerView
@@ -148,7 +203,49 @@
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
                     android:layout_below="@id/top_bar"
-                    android:layout_marginTop="-1dp"/>
+                    android:layout_marginTop="-1dp"
+                    android:visibility="@{viewModel.filter == CallLogsFilter.VOICEMAIL ? View.GONE : View.VISIBLE}"/>
+
+                <!-- Voicemail tab: the player is pinned above the list so it stays in reach in a long mailbox -->
+                <LinearLayout
+                    android:id="@+id/voicemail_container"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:layout_below="@id/top_bar"
+                    android:orientation="vertical"
+                    android:visibility="@{viewModel.filter == CallLogsFilter.VOICEMAIL ? View.VISIBLE : View.GONE, default=gone}">
+
+                    <androidx.media3.ui.PlayerView
+                        android:id="@+id/voicemail_player"
+                        android:layout_width="match_parent"
+                        android:layout_height="110dp"
+                        android:layout_marginHorizontal="10dp"
+                        android:visibility="gone"
+                        app:controller_layout_id="@layout/media_player_controls"
+                        app:player_layout_id="@layout/media_player_view"
+                        app:show_timeout="0"
+                        app:surface_type="none"
+                        app:time_bar_scrubbing_enabled="true" />
+
+                    <FrameLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="0dp"
+                        android:layout_weight="1">
+
+                        <androidx.recyclerview.widget.RecyclerView
+                            android:id="@+id/voicemailList"
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent" />
+
+                        <TextView
+                            style="@style/empty_list_font"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_gravity="center"
+                            android:text="@string/voicemail_none"
+                            android:visibility="@{voicemailViewModel.isEmpty ? View.VISIBLE : View.GONE, default=gone}" />
+                    </FrameLayout>
+                </LinearLayout>
 <!--
                 <TextView
                     style="@style/empty_list_font"
