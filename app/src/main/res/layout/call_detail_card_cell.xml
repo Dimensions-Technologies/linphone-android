@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginTop="12dp"
+    android:gravity="center_vertical"
+    android:orientation="horizontal"
+    android:paddingStart="15dp"
+    android:paddingEnd="5dp">
+
+    <TextView
+        android:id="@+id/title"
+        style="@style/contact_name_list_cell_font"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:textStyle="bold" />
+
+    <ImageView
+        android:id="@+id/copy"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:contentDescription="@string/call_detail_copy"
+        android:padding="9dp"
+        android:src="@drawable/ic_call_detail_copy" />
+</LinearLayout>

@@ -32,6 +32,7 @@ import org.linphone.R
 import org.linphone.core.*
 import org.linphone.services.CallHistoryService
 import org.linphone.services.ParkingSlotService
+import org.linphone.services.VoicemailBoxService
 import org.linphone.utils.AppUtils
 import org.linphone.utils.Log
 
@@ -60,6 +61,24 @@ class TabsViewModel : ViewModel() {
     val voicemailUnreadCountTranslateY = MutableLiveData<Float>()
 
     private var missedCallCountSubscription: Disposable? = null
+
+    // With visual voicemail the voicemail button opens the Voicemail tab, and its badge counts the
+    // mailbox's new messages; without it, the button dials voicemail and the badge is SIP MWI's count
+    var isVisualVoicemailAvailable = false
+        private set
+    private var mwiVoicemailCount = 0
+
+    private val voicemailSubscription: Disposable = Observable.combineLatest(
+        VoicemailBoxService.isAvailable,
+        VoicemailBoxService.newCount
+    ) { available, count -> Pair(available, count) }
+        .subscribe(
+            { (available, count) ->
+                isVisualVoicemailAvailable = available
+                unreadVoicemailsCount.postValue(if (available) count else mwiVoicemailCount)
+            },
+            { e -> Log.e("[Tabs] Voicemail failed", e) }
+        )
 
     private val parkingSubscription: Disposable = Observable.combineLatest(
         ParkingSlotService.hasSlots,
@@ -150,7 +169,8 @@ class TabsViewModel : ViewModel() {
                     val toParse = voiceMail!![1].split("/", limit = 0)
                     try {
                         val unreadCount: Int = toParse[0].toInt()
-                        unreadVoicemailsCount.value = unreadCount
+                        mwiVoicemailCount = unreadCount
+                        if (!isVisualVoicemailAvailable) unreadVoicemailsCount.value = unreadCount
                     } catch (nfe: NumberFormatException) {
                         Log.e("[Status Fragment] $nfe")
                     }
@@ -176,6 +196,7 @@ class TabsViewModel : ViewModel() {
 
     override fun onCleared() {
         parkingSubscription.dispose()
+        voicemailSubscription.dispose()
         coreContext.core.removeListener(listener)
         super.onCleared()
     }

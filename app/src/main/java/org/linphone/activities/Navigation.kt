@@ -42,6 +42,7 @@ import org.linphone.activities.main.contact.fragments.DetailContactFragment
 import org.linphone.activities.main.contact.fragments.DimensionsContactsFragment
 import org.linphone.activities.main.dialer.fragments.DialerFragment
 import org.linphone.activities.main.fragments.TabsFragment
+import org.linphone.activities.main.history.fragments.CallDetailFragment
 import org.linphone.activities.main.history.fragments.DetailCallLogFragment
 import org.linphone.activities.main.history.fragments.MasterCallLogsFragment
 import org.linphone.activities.main.settings.fragments.*
@@ -118,6 +119,20 @@ internal fun TabsFragment.navigateToCallHistory() {
     findNavController().navigate(
         action,
         null,
+        popupTo(R.id.masterCallLogsFragment, true)
+    )
+}
+
+internal fun TabsFragment.navigateToVoicemail() {
+    val action = when (findNavController().currentDestination?.id) {
+        R.id.dimensionsContactsFragment -> R.id.action_dimensionsContactsFragment_to_masterCallLogsFragment
+        R.id.dialerFragment -> R.id.action_dialerFragment_to_masterCallLogsFragment
+        R.id.masterChatRoomsFragment -> R.id.action_masterChatRoomsFragment_to_masterCallLogsFragment
+        else -> R.id.action_global_masterCallLogsFragment
+    }
+    findNavController().navigate(
+        action,
+        bundleOf(MasterCallLogsFragment.TAB_ARGUMENT to MasterCallLogsFragment.TAB_VOICEMAIL),
         popupTo(R.id.masterCallLogsFragment, true)
     )
 }
@@ -677,6 +692,24 @@ internal fun MasterCallLogsFragment.navigateToRecordingPlayback(slidingPane: Sli
             R.id.action_global_recordingPlaybackFragment,
             null,
             popupTo(R.id.recordingPlaybackFragment, false)
+        )
+        if (!slidingPane.isOpen) slidingPane.openPane()
+    }
+}
+
+internal fun MasterCallLogsFragment.navigateToCallDetail(
+    slidingPane: SlidingPaneLayout,
+    documentId: String,
+    voicemailBoxId: String? = null,
+    voicemailMediaId: String? = null,
+    autoPlay: Boolean = false
+) {
+    if (findNavController().currentDestination?.id == R.id.masterCallLogsFragment) {
+        val navHostFragment = childFragmentManager.findFragmentById(R.id.history_nav_container) as NavHostFragment
+        navHostFragment.navController.navigate(
+            R.id.action_global_callDetailFragment,
+            CallDetailFragment.arguments(documentId, voicemailBoxId, voicemailMediaId, autoPlay),
+            popupTo(R.id.callDetailFragment, true)
         )
         if (!slidingPane.isOpen) slidingPane.openPane()
     }

@@ -1,0 +1,12 @@
+{
+  "id": "t-1",
+  "transId": "trans-1",
+  "tId": "tenant-1",
+  "duration": 20,
+  "timeline": [
+    { "_type": "SpeakerSegment", "start": 0, "end": 4, "duration": 4, "spk": 0, "conf": 0.95, "txt": "Hello, how can I help?", "sent": { "scoreLbl": "Positive", "score": 80 }, "idx": 0 },
+    { "_type": "SpeakerSegment", "start": 4, "end": 10, "duration": 6, "spk": 1, "conf": 0.3, "txt": "My card 4111 1111 was charged twice", "sent": { "scoreLbl": "Negative", "score": 65 }, "pii": { "items": [ { "txt": "4111 1111", "cat": "CREDIT_CARD", "conf": 0.9, "piiStart": 8, "piiEnd": 17 } ] }, "idx": 1 },
+    { "_type": "SilenceSegment", "start": 10, "end": 12, "duration": 2, "spk": 1, "idx": 2 },
+    { "_type": "SpeakerSegment", "start": 12, "end": 20, "duration": 8, "spk": 0, "conf": 0.9, "txt": "I'll refund it.", "sent": { "scoreLbl": "Neutral" }, "idx": 3 }
+  ]
+}

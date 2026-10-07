@@ -1,0 +1,4 @@
+[
+  { "id": "tag-link", "name": "Support ticket", "tagType": { "_type": "LinkTagValueType", "name": "Link", "url": "https://tickets.example.com/{value}" } },
+  { "id": "tag-bool", "name": "Resolved", "tagType": { "_type": "BoolTagValueType", "name": "Yes/No" } }
+]

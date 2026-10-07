@@ -35,6 +35,7 @@ import androidx.navigation.fragment.findNavController
 import org.linphone.LinphoneApplication.Companion.corePreferences
 import org.linphone.R
 import org.linphone.activities.GenericFragment
+import org.linphone.activities.main.history.viewmodels.CallLogsFilter
 import org.linphone.activities.main.viewmodels.TabsViewModel
 import org.linphone.activities.navigateToCallHistory
 import org.linphone.activities.navigateToChatRooms
@@ -42,6 +43,7 @@ import org.linphone.activities.navigateToContacts
 import org.linphone.activities.navigateToDialer
 import org.linphone.activities.navigateToFavourites
 import org.linphone.activities.navigateToParking
+import org.linphone.activities.navigateToVoicemail
 import org.linphone.databinding.TabsFragmentBinding
 import org.linphone.utils.Event
 
@@ -100,7 +102,12 @@ class TabsFragment : GenericFragment<TabsFragmentBinding>(), NavController.OnDes
                     R.id.masterCallLogsFragment
                 )
             }
-            navigateToCallHistory()
+            if (findNavController().currentDestination?.id == R.id.masterCallLogsFragment) {
+                // Already in the call history (e.g. on Voicemail): just switch it to History
+                sharedViewModel.callHistoryTabEvent.value = Event(CallLogsFilter.ALL)
+            } else {
+                navigateToCallHistory()
+            }
         }
 
         binding.setContactsClickListener {
@@ -139,8 +146,27 @@ class TabsFragment : GenericFragment<TabsFragmentBinding>(), NavController.OnDes
             navigateToChatRooms()
         }
 
+        sharedViewModel.isVoicemailTabShown.observe(viewLifecycleOwner) { highlightTab() }
+
         binding.setVoicemailClickListener {
-            viewModel.dialVoicemail()
+            if (viewModel.isVisualVoicemailAvailable) {
+                when (findNavController().currentDestination?.id) {
+                    R.id.dimensionsContactsFragment, R.id.favouritesFragment -> sharedViewModel.updateContactsAnimationsBasedOnDestination.value = Event(
+                        R.id.masterCallLogsFragment
+                    )
+                    R.id.dialerFragment -> sharedViewModel.updateDialerAnimationsBasedOnDestination.value = Event(
+                        R.id.masterCallLogsFragment
+                    )
+                }
+                if (findNavController().currentDestination?.id == R.id.masterCallLogsFragment) {
+                    // Already in the call history: just switch it to its Voicemail tab
+                    sharedViewModel.callHistoryTabEvent.value = Event(CallLogsFilter.VOICEMAIL)
+                } else {
+                    navigateToVoicemail()
+                }
+            } else {
+                viewModel.dialVoicemail()
+            }
         }
 
         binding.setParkingClickListener {
@@ -223,7 +249,15 @@ class TabsFragment : GenericFragment<TabsFragmentBinding>(), NavController.OnDes
             }
         }
 
-        // Highlight the appropriate tab
+        currentDestinationId = destination.id
+        highlightTab()
+    }
+
+    private var currentDestinationId: Int? = null
+
+    // Highlights the tab for the screen shown: Voicemail rather than History when the call
+    // history shows its Voicemail tab
+    private fun highlightTab() {
         // First reset all
         val tabChat = view?.findViewById<ImageView>(R.id.chat)
         val tabFavourites = view?.findViewById<ImageView>(R.id.favourites)
@@ -231,18 +265,24 @@ class TabsFragment : GenericFragment<TabsFragmentBinding>(), NavController.OnDes
         val tabDialpad = view?.findViewById<ImageView>(R.id.dialer)
         val tabHistory = view?.findViewById<ImageView>(R.id.history)
         val tabParking = view?.findViewById<ImageView>(R.id.parking)
+        val tabVoicemail = view?.findViewById<ImageView>(R.id.voicemail)
         if (tabParking != null) tabParking.isSelected = false
+        if (tabVoicemail != null) tabVoicemail.isSelected = false
         if (tabChat != null) tabChat.isSelected = false
         if (tabFavourites != null) tabFavourites.isSelected = false
         if (tabContacts != null) tabContacts.isSelected = false
         if (tabDialpad != null) tabDialpad.isSelected = false
         if (tabHistory != null) tabHistory.isSelected = false
 
-        when (destination.id) {
+        when (currentDestinationId) {
             R.id.dialerFragment -> if (tabDialpad != null) tabDialpad.isSelected = true
             R.id.favouritesFragment -> if (tabFavourites != null) tabFavourites.isSelected = true
             R.id.dimensionsContactsFragment -> if (tabContacts != null) tabContacts.isSelected = true
-            R.id.masterCallLogsFragment -> if (tabHistory != null) tabHistory.isSelected = true
+            R.id.masterCallLogsFragment -> if (sharedViewModel.isVoicemailTabShown.value == true) {
+                if (tabVoicemail != null) tabVoicemail.isSelected = true
+            } else {
+                if (tabHistory != null) tabHistory.isSelected = true
+            }
             R.id.masterChatRoomsFragment -> if (tabChat != null) tabChat.isSelected = true
             R.id.parkingSlotsFragment -> if (tabParking != null) tabParking.isSelected = true
         }

@@ -41,6 +41,11 @@
         android:name="org.linphone.activities.main.history.fragments.MasterCallLogsFragment"
         android:label="MasterCallLogsFragment"
         tools:layout="@layout/history_master_fragment" >
+        <argument
+            android:name="Tab"
+            app:argType="string"
+            android:defaultValue="@null"
+            app:nullable="true" />
         <action
             android:id="@+id/action_masterCallLogsFragment_to_dialerFragment"
             app:destination="@id/dialerFragment" />

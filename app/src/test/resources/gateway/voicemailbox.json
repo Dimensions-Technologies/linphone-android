@@ -1,0 +1,20 @@
+[
+  {
+    "id": "3ed4e3dcf69f145218a10f9fb1c316c7",
+    "name": "Test User 1",
+    "number": "1031",
+    "totalMessages": 3,
+    "saved": 1,
+    "new": 2,
+    "enabled": true
+  },
+  {
+    "id": "c94289e4b1ae023724176d0e82fb88ac",
+    "name": "Sales",
+    "number": "2000",
+    "totalMessages": 0,
+    "saved": 0,
+    "new": 0,
+    "enabled": false
+  }
+]

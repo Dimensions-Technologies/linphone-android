@@ -218,7 +218,9 @@ class CallHistoryService(val context: Context) : DefaultLifecycleObserver {
 
     companion object {
         private const val TAG: String = "CallHistoryService"
-        private const val CACHE_VERSION = 1
+
+        // 2: items carry cli (voicemails are matched to calls by it)
+        private const val CACHE_VERSION = 2
 
         private val instance: AtomicReference<CallHistoryService> =
             AtomicReference<CallHistoryService>()

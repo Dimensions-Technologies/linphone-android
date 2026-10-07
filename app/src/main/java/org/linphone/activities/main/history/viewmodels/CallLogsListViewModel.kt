@@ -34,6 +34,7 @@ import org.linphone.models.callhistory.CallHistoryItemViewModel
 import org.linphone.services.CallHistoryService
 import org.linphone.services.DirectoriesService
 import org.linphone.services.TransferService
+import org.linphone.services.VoicemailBoxService
 import org.linphone.utils.AppUtils
 import org.linphone.utils.Event
 import org.linphone.utils.LinphoneUtils
@@ -64,6 +65,10 @@ class CallLogsListViewModel : ViewModel() {
         MutableLiveData<Event<CallHistoryItemViewModel>>()
     }
 
+    val viewDetailsEvent: MutableLiveData<Event<CallHistoryItemViewModel>> by lazy {
+        MutableLiveData<Event<CallHistoryItemViewModel>>()
+    }
+
     val addContactEvent: MutableLiveData<Event<CallHistoryItemViewModel>> by lazy {
         MutableLiveData<Event<CallHistoryItemViewModel>>()
     }
@@ -74,6 +79,11 @@ class CallLogsListViewModel : ViewModel() {
     val transferState = TransferService.getInstance().transferState
 
     val hasPlaybackPermission = MutableLiveData<Boolean>(false)
+
+    // The Voicemail tab: shown when licensed, permitted and the user has an enabled mailbox
+    val showVoicemailTab = MutableLiveData(false)
+    val newVoicemailCount = MutableLiveData(0)
+    val isRefreshingVoicemail = MutableLiveData(false)
 
     val destroy = AsyncSubject.create<Unit>()
 
@@ -109,6 +119,25 @@ class CallLogsListViewModel : ViewModel() {
         val msgSubscription = callHistoryService.historyMessage
             .takeUntil(destroy)
             .subscribe { msg -> message.postValue(msg) }
+
+        VoicemailBoxService.isAvailable
+            .takeUntil(destroy)
+            .subscribe(
+                { available ->
+                    showVoicemailTab.postValue(available)
+                    // Voicemail can be taken away (licence, permission or mailbox) while it's shown
+                    if (!available && filter.value == CallLogsFilter.VOICEMAIL) {
+                        coreContext.handler.post { showAllCallLogs() }
+                    }
+                },
+                { error -> Log.e(error, "Failed to check voicemail availability.") }
+            )
+        VoicemailBoxService.newCount
+            .takeUntil(destroy)
+            .subscribe { count -> newVoicemailCount.postValue(count) }
+        VoicemailBoxService.isRefreshing
+            .takeUntil(destroy)
+            .subscribe { refreshing -> isRefreshingVoicemail.postValue(refreshing) }
     }
 
     override fun onCleared() {
@@ -123,14 +152,22 @@ class CallLogsListViewModel : ViewModel() {
         super.onCleared()
     }
 
+    // Whether the list holds only missed calls; it isn't rebuilt (which redraws every row) for a
+    // tab that shows the same calls, e.g. coming back to History from Voicemail
+    private var listIsMissedOnly: Boolean? = null
+
     fun showAllCallLogs() {
         filter.value = CallLogsFilter.ALL
-        updateCallLogs()
+        if (listIsMissedOnly != false) updateCallLogs()
     }
 
     fun showOnlyMissedCallLogs() {
         filter.value = CallLogsFilter.MISSED
-        updateCallLogs()
+        if (listIsMissedOnly != true) updateCallLogs()
+    }
+
+    fun showVoicemail() {
+        filter.value = CallLogsFilter.VOICEMAIL
     }
 
     fun showOnlyConferenceCallLogs() {
@@ -178,6 +215,7 @@ class CallLogsListViewModel : ViewModel() {
     private fun updateCallLogs() {
         callHistoryService.formattedHistory.subscribe({ formattedHistory ->
             callLogs.value.orEmpty().forEach(GroupedCallLogData::destroy)
+            listIsMissedOnly = filter.value == CallLogsFilter.MISSED
 
             val updatedCallLogs = when (filter.value) {
                 CallLogsFilter.MISSED -> computeCallLogs(
@@ -213,7 +251,8 @@ class CallLogsListViewModel : ViewModel() {
 
     fun showContextMenu(call: CallHistoryItemViewModel) {
         canAddContact.value = canAddContact(call)
-        if (call.canCallBack || canAddContact.value == true || (call.call.hasRecording && hasPlaybackPermission.value == true)) {
+        // Every call has its details, as on the web client
+        if (call.canCallBack || canAddContact.value == true || call.call.documentId.isNotEmpty()) {
             contextMenuAnimator.start()
             isContextMenuOpen.value = true
         }
@@ -247,6 +286,11 @@ class CallLogsListViewModel : ViewModel() {
         playRecordingEvent.value = Event(call)
     }
 
+    fun viewDetails(call: CallHistoryItemViewModel) {
+        hideContextMenu(false)
+        viewDetailsEvent.value = Event(call)
+    }
+
     fun addContact(call: CallHistoryItemViewModel) {
         hideContextMenu(false)
         addContactEvent.value = Event(call)
@@ -256,5 +300,6 @@ class CallLogsListViewModel : ViewModel() {
 enum class CallLogsFilter {
     ALL,
     MISSED,
-    CONFERENCE
+    CONFERENCE,
+    VOICEMAIL
 }

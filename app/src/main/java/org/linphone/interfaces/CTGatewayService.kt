@@ -4,6 +4,7 @@ import ReportResult
 import okhttp3.MultipartBody
 import okhttp3.RequestBody
 import okhttp3.ResponseBody
+import org.linphone.models.CustomerLicence
 import org.linphone.models.DeviceSummary
 import org.linphone.models.PbxFeatureCode
 import org.linphone.models.TenantBrandingDefinition
@@ -13,12 +14,19 @@ import org.linphone.models.UserSession
 import org.linphone.models.callhistory.CallRecordingInfo
 import org.linphone.models.callhistory.ReportRequest
 import org.linphone.models.callhistory.UserCallHistorySummary
+import org.linphone.models.callsession.CallSessionResponse
+import org.linphone.models.callsession.ConversationSummary
+import org.linphone.models.callsession.ConversationTranscription
+import org.linphone.models.callsession.InteractionTag
 import org.linphone.models.contact.ContactDirectoryModel
 import org.linphone.models.contact.ContactGroupItem
 import org.linphone.models.contact.ContactItemModel
 import org.linphone.models.realtime.PresenceProfile
 import org.linphone.models.realtime.SetPresenceModel
 import org.linphone.models.usergroup.UserGroupModel
+import org.linphone.models.voicemail.VoicemailBox
+import org.linphone.models.voicemail.VoicemailMessagePage
+import org.linphone.models.voicemail.VoicemailTranscription
 import retrofit2.Call
 import retrofit2.Response
 import retrofit2.http.Body
@@ -31,6 +39,7 @@ import retrofit2.http.PUT
 import retrofit2.http.Part
 import retrofit2.http.Path
 import retrofit2.http.Query
+import retrofit2.http.Streaming
 
 interface CTGatewayService {
     @GET("api/v1.0/users/{userID}/devices?manufacturer=Softphones&model=UCM&model=KZSM")
@@ -178,4 +187,62 @@ interface CTGatewayService {
 
     @POST("api/v1.0/callsessions/{sessionId}/recordings/audio")
     suspend fun getRecordingAudio(@Path("sessionId") sessionId: String, @Body recordingId: String): ResponseBody
+
+    @GET("api/v1.0/licence")
+    suspend fun getLicence(): Response<CustomerLicence>
+
+    // Null (an empty body) when the user has no voicemail box
+    @GET("api/v1.0/voicemailbox")
+    suspend fun getVoicemailBoxes(): Response<List<VoicemailBox>?>
+
+    @GET("api/v1.0/voicemailbox/{boxId}/messages")
+    suspend fun getVoicemailMessages(
+        @Path("boxId") boxId: String,
+        @Query("pageSize") pageSize: Int = 50,
+        @Query("includeDeleted") includeDeleted: Boolean = false,
+        @Query("startKey") startKey: String? = null
+    ): Response<VoicemailMessagePage>
+
+    @Streaming
+    @GET("api/v1.0/voicemailbox/{boxId}/messages/{mediaId}/audio")
+    suspend fun getVoicemailAudio(
+        @Path("boxId") boxId: String,
+        @Path("mediaId") mediaId: String
+    ): Response<ResponseBody>
+
+    @GET("api/v1.0/voicemailbox/{boxId}/messages/{mediaId}/transcription")
+    suspend fun getVoicemailTranscription(
+        @Path("boxId") boxId: String,
+        @Path("mediaId") mediaId: String
+    ): Response<VoicemailTranscription>
+
+    // Moves the message to the saved folder
+    @PUT("api/v1.0/voicemailbox/{boxId}/messages/{mediaId}/save")
+    suspend fun saveVoicemailMessage(
+        @Path("boxId") boxId: String,
+        @Path("mediaId") mediaId: String
+    ): Response<Void>
+
+    @DELETE("api/v1.0/voicemailbox/{boxId}/messages/{mediaId}")
+    suspend fun deleteVoicemailMessage(
+        @Path("boxId") boxId: String,
+        @Path("mediaId") mediaId: String
+    ): Response<Void>
+
+    // The call detail page
+
+    @GET("api/v1.0/session/{documentId}")
+    suspend fun getCallSession(@Path("documentId") documentId: String): Response<CallSessionResponse>
+
+    @GET("api/v1.0/calltranscriptionsummaries")
+    suspend fun getConversationSummary(@Query("recordingId") recordingId: String): Response<ConversationSummary>
+
+    @GET("api/v1.0/calltranscriptions/{transcriptionId}")
+    suspend fun getConversationTranscription(
+        @Path("transcriptionId") transcriptionId: String
+    ): Response<ConversationTranscription>
+
+    // Tag definitions, naming the tags set on a session
+    @GET("api/v1.0/interactiontags")
+    suspend fun getInteractionTags(): Response<List<InteractionTag>>
 }

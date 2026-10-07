@@ -355,6 +355,9 @@ fun loadRoundImageWithCoil(imageView: ImageView, path: String?) {
     if (!path.isNullOrEmpty() && FileUtils.isExtensionImage(path)) {
         imageView.load(path) {
             transformations(CircleCropTransformation())
+            // The view's backdrop is for the placeholder: left behind the photo, it fills in
+            // any transparency the photo has
+            listener(onSuccess = { _, _ -> imageView.background = null })
         }
     } else {
         Log.w("[Data Binding] [Coil] Can't load $path")

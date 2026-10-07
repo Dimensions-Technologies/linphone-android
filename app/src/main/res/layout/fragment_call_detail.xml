@@ -1,0 +1,159 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <data>
+
+        <import type="android.view.View" />
+
+        <variable
+            name="viewModel"
+            type="org.linphone.activities.main.history.viewmodels.CallDetailViewModel" />
+    </data>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="?attr/backgroundColor"
+        android:orientation="vertical">
+
+        <!-- The call's parties and start, and close -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingStart="15dp"
+            android:paddingTop="8dp"
+            android:paddingEnd="5dp">
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    style="@style/contact_name_list_cell_font"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@{viewModel.title}"
+                    android:textStyle="bold" />
+
+                <TextView
+                    style="@style/contact_number_list_cell_font"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@{viewModel.start}" />
+            </LinearLayout>
+
+            <ImageView
+                android:id="@+id/close"
+                android:layout_width="44dp"
+                android:layout_height="44dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/call_detail_close"
+                android:padding="10dp"
+                android:src="@drawable/ic_call_detail_close" />
+        </LinearLayout>
+
+        <ProgressBar
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginTop="40dp"
+            android:indeterminate="true"
+            android:visibility="@{viewModel.isLoading ? View.VISIBLE : View.GONE}" />
+
+        <TextView
+            style="@style/empty_list_font"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginTop="40dp"
+            android:text="@string/call_detail_loading_failed"
+            android:visibility="@{viewModel.loadFailed ? View.VISIBLE : View.GONE, default=gone}" />
+
+        <org.linphone.activities.main.history.views.CallTimelineView
+            android:id="@+id/timeline"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingStart="15dp"
+            android:paddingTop="8dp"
+            android:paddingEnd="15dp"
+            android:visibility="gone" />
+
+        <!-- The recordings (or a voicemail), with previous and next between recordings -->
+        <LinearLayout
+            android:id="@+id/player_container"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:visibility="gone">
+
+            <TextView
+                android:id="@+id/player_label"
+                style="@style/contact_number_list_cell_font"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="15dp"
+                android:layout_marginTop="6dp" />
+
+            <androidx.media3.ui.PlayerView
+                android:id="@+id/player"
+                android:layout_width="match_parent"
+                android:layout_height="110dp"
+                android:layout_marginHorizontal="10dp"
+                app:controller_layout_id="@layout/media_player_controls"
+                app:player_layout_id="@layout/media_player_view"
+                app:show_timeout="0"
+                app:surface_type="none"
+                app:time_bar_scrubbing_enabled="true" />
+
+            <!-- The recordings: who each was between and how long, tap to play -->
+            <LinearLayout
+                android:id="@+id/recordings"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical" />
+        </LinearLayout>
+
+        <com.google.android.material.tabs.TabLayout
+            android:id="@+id/tabs"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="?attr/lightToolbarBackgroundColor"
+            android:visibility="@{viewModel.isLoading || viewModel.loadFailed ? View.GONE : View.VISIBLE}"
+            app:tabIndicatorColor="?attr/accentColor"
+            app:tabMode="scrollable"
+            app:tabSelectedTextColor="@color/primary_color" />
+
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1">
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/rows"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:clipToPadding="false"
+                android:paddingBottom="16dp" />
+
+            <!-- Shown once the user scrolls the transcript away from what's playing -->
+            <ImageView
+                android:id="@+id/follow"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:layout_gravity="bottom|end"
+                android:layout_margin="16dp"
+                android:background="@drawable/background_round_primary_color"
+                app:tint="@color/white_color"
+                android:contentDescription="@string/call_detail_sync_transcript"
+                android:elevation="4dp"
+                android:padding="12dp"
+                android:src="@drawable/ic_call_detail_follow"
+                android:visibility="gone" />
+        </FrameLayout>
+    </LinearLayout>
+</layout>

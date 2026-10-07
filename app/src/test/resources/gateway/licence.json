@@ -1,0 +1,9 @@
+{
+  "tenantId": "25f5a9bd9fc5c8cd8052060186ad3f35",
+  "features": {
+    "customer.ucwebclient.enabled": 1,
+    "customer.ucwebclient.voicemail.enabled": 1,
+    "customer.ucwebclient.cti.enabled": 0,
+    "customer.callrecording": -1
+  }
+}
