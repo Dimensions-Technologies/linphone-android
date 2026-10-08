@@ -9,10 +9,10 @@ import org.linphone.utils.CallUriIntents
 import org.w3c.dom.Element
 
 /**
- * Checks the tel: and sip: intent filters (WI #28994). Call links go to LoginActivity, so a user
- * who isn't signed in is signed in before the call is made. The app takes them from browsers
- * (VIEW) and other apps' call buttons (DIAL), but mustn't claim CALL or CALL_BUTTON, which make it
- * act like the default phone app on some models.
+ * Checks the tel: and sip: intent filters (WI #28994, #29001). Call links go to LoginActivity, so
+ * a user who isn't signed in is signed in before the call is made. The app takes them from
+ * browsers (VIEW), other apps' call buttons (DIAL) and contacts apps (CALL), but mustn't claim
+ * CALL_BUTTON, the hardware or headset call button, which makes it act like the default phone app.
  */
 class CallIntentFilterTest {
 
@@ -21,10 +21,12 @@ class CallIntentFilterTest {
         .first { File(it, "src/main/AndroidManifest.xml").exists() }
 
     private val callSchemes = setOf("tel", "sip", "sips")
-    private val forbiddenActions = setOf(
-        "android.intent.action.CALL",
-        "android.intent.action.CALL_BUTTON"
+    private val callActions = listOf(
+        "android.intent.action.VIEW",
+        "android.intent.action.DIAL",
+        "android.intent.action.CALL"
     )
+    private val forbiddenActions = setOf("android.intent.action.CALL_BUTTON")
     private val loginActivity = ".activities.main.LoginActivity"
 
     private data class Filter(
@@ -69,10 +71,10 @@ class CallIntentFilterTest {
     private fun Filter.handlesCallLinks() = schemes.any { it in callSchemes }
 
     @Test
-    fun `LoginActivity takes tel and sip links from VIEW and DIAL`() {
+    fun `LoginActivity takes tel and sip links from VIEW, DIAL and CALL`() {
         val loginFilters = mainFilters.filter { it.activity == loginActivity }
         for (scheme in callSchemes) {
-            for (action in listOf("android.intent.action.VIEW", "android.intent.action.DIAL")) {
+            for (action in callActions) {
                 assertTrue(
                     "LoginActivity doesn't handle $action for $scheme: links",
                     loginFilters.any { action in it.actions && scheme in it.schemes }
@@ -112,7 +114,7 @@ class CallIntentFilterTest {
     }
 
     @Test
-    fun `no manifest claims CALL or CALL_BUTTON for call links`() {
+    fun `no manifest claims CALL_BUTTON for call links`() {
         val offending = allFilters
             .filter { it.handlesCallLinks() || it.schemes.isEmpty() }
             .flatMap { filter ->
