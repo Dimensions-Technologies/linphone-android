@@ -14,10 +14,11 @@ class CallUriIntentsTest {
 
     private val view = "android.intent.action.VIEW"
     private val dial = "android.intent.action.DIAL"
+    private val call = "android.intent.action.CALL"
 
     @Test
-    fun `VIEW and DIAL with a call scheme are call links`() {
-        for (action in listOf(view, dial)) {
+    fun `VIEW, DIAL and CALL with a call scheme are call links`() {
+        for (action in listOf(view, dial, call)) {
             for (scheme in listOf("tel", "sip", "sips", "linphone", "sip-linphone")) {
                 assertTrue("$action $scheme:", CallUriIntents.isCallUri(action, scheme))
             }
@@ -42,6 +43,7 @@ class CallUriIntentsTest {
     fun `intents without a link are not call links`() {
         assertFalse(CallUriIntents.isCallUri(view, null))
         assertFalse(CallUriIntents.isCallUri(dial, null))
+        assertFalse(CallUriIntents.isCallUri(call, null))
     }
 
     @Test
@@ -51,6 +53,8 @@ class CallUriIntentsTest {
             "sip:1040@example.com",
             CallUriIntents.callUriToHold(dial, "sip:1040@example.com", null)
         )
+        // Contacts apps dial with CALL (WI #29001)
+        assertEquals("tel:01234567890", CallUriIntents.callUriToHold(call, "tel:01234567890", null))
     }
 
     @Test
@@ -83,7 +87,6 @@ class CallUriIntentsTest {
     fun `other actions are not call links`() {
         val actions = listOf(
             "android.intent.action.MAIN",
-            "android.intent.action.CALL",
             "android.intent.action.CALL_BUTTON",
             "android.intent.action.SENDTO",
             null

@@ -136,11 +136,13 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
 
-            <!-- Call links. CALL and CALL_BUTTON are left out on purpose, as they make the app
-                 act like the default phone app on some models -->
+            <!-- Call links. CALL is what contacts apps send, and is how the app gets offered in
+                 Android's chooser. CALL_BUTTON is left out on purpose: it's the hardware or
+                 headset call button, and taking it makes the app act like the default phone app -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <action android:name="android.intent.action.DIAL" />
+                <action android:name="android.intent.action.CALL" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="tel" />
