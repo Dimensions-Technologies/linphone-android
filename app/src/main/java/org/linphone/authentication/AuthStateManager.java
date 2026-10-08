@@ -39,7 +39,6 @@ import java.lang.ref.WeakReference;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReentrantLock;
 
-import org.linphone.activities.main.MainActivity;
 import org.linphone.activities.main.LoginActivity;
 import org.linphone.models.AuthenticatedUser;
 
@@ -215,13 +214,20 @@ public class AuthStateManager {
         final var authService = new AuthorizationService(context);
         final var config = AuthConfiguration.getInstance(context);
         final var authConfig = current.getAuthorizationServiceConfiguration();
-        if (authConfig == null) {
-            // TODO: handle this
-            return;
-        }
         Log.Log.i("AuthStateManager.logout");
 
         replace(new AuthState(), "logout");
+
+        // Clears MainActivity off the task, so the signed-out app can't be returned to
+        var loginIntent = new Intent(context, LoginActivity.class);
+        loginIntent.putExtra(AUTH_KEY, LOGOUT_VALUE);
+        loginIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK | Intent.FLAG_ACTIVITY_NO_HISTORY);
+
+        if (authConfig == null) {
+            Log.Log.w("AuthStateManager.logout: no service configuration, skipping end session");
+            context.startActivity(loginIntent);
+            return;
+        }
 
         EndSessionRequest endSessionRequest =
                 new EndSessionRequest.Builder(authConfig)
@@ -229,16 +235,15 @@ public class AuthStateManager {
                         .setPostLogoutRedirectUri(config.getEndSessionRedirectUri())
                         .build();
 
-        var endSessionIntent = new Intent(context, LoginActivity.class);
-        endSessionIntent.putExtra(AUTH_KEY, LOGOUT_VALUE);
-        endSessionIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NO_HISTORY);
+        var logoutIntent = PendingIntent.getActivity(
+                context,
+                0,
+                loginIntent,
+                PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
 
-        var logoutIntent = PendingIntent.getActivity(context, 0, endSessionIntent, PendingIntent.FLAG_IMMUTABLE);
-
-        authService.performEndSessionRequest(
-                endSessionRequest,
-                logoutIntent,
-                PendingIntent.getActivity(context, 0, new Intent(context, MainActivity.class), PendingIntent.FLAG_IMMUTABLE));
+        // The local session is already gone, so the login screen is shown whether the identity
+        // server redirects back or the end session page is cancelled
+        authService.performEndSessionRequest(endSessionRequest, logoutIntent, logoutIntent);
     }
 
     private void updateObservable(@Nullable AuthState state, String caller) {
