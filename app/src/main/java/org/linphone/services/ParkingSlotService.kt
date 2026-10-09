@@ -41,14 +41,6 @@ object ParkingSlotService {
     private val coreListener = object : CoreListenerStub() {
         override fun onCallStateChanged(core: Core, call: Call, state: Call.State, message: String) {
             connectedCall.onNext(isOnConnectedCall(core))
-            // TEMP: trace the identity the PBX sends on calls (remove once park identity is settled)
-            Log.i(
-                "[Parking][TEMP] ${call.callLog.callId} $state remote=${call.remoteAddress.asStringUriOnly()} " +
-                    "display=${call.remoteAddress.displayName} " +
-                    "PAI=${call.remoteParams?.getCustomHeader("P-Asserted-Identity")} " +
-                    "RPID=${call.remoteParams?.getCustomHeader("Remote-Party-ID")} " +
-                    "contact=${call.remoteContact}"
-            )
         }
 
         override fun onLastCallEnded(core: Core) {

@@ -942,16 +942,6 @@ class CoreContext(
         val appName = context.getString(R.string.user_agent_app_name)
 
         core.setUserAgent(appName, appVersion)
-
-        // TEMP experiment (WI 36043): make the INVITE look like the web client's, to find why the PBX
-        // sends it a P-Asserted-Identity UPDATE after answer and not us. Remove when settled.
-        core.setUserAgent("Dimensions PlumUCW", "v1.0.26278-2")
-        core.removeSupportedTag("path")
-        core.removeSupportedTag("record-aware")
-        core.addSupportedTag("ice")
-        Log.w(
-            "[Context][TEMP] INVITE headers aligned with the web client for the park identity experiment"
-        )
     }
 
     private fun initUserCertificates() {

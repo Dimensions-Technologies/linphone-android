@@ -47,6 +47,22 @@ stages:
             echo keyAlias=uconnect android ad-hoc >> keystore.properties
             echo storeFile=$(KEYSTORE.SECUREFILEPATH) >> keystore.properties
             
+      # Runs before the build so a failure stops the Play Store upload, and before the steps that
+      # edit build.gradle and strings.xml so the tests see the source as committed. To skip it,
+      # untick "Run unit tests and lint before building" when queueing the pipeline.
+      - ${{ if eq(parameters.runTests, true) }}:
+        - task: Gradle@3
+          displayName: "Unit Tests and Lint"
+          inputs:
+            gradleWrapperFile: 'gradlew'
+            tasks: 'testDebugUnitTest lintDebug'
+            publishJUnitResults: true
+            testResultsFiles: '**/TEST-*.xml'
+            testRunTitle: 'Unit tests'
+            javaHomeOption: 'JDKVersion'
+            sonarQubeRunAnalysis: false
+            spotBugsAnalysis: false
+
       - task: Bash@3
         displayName: "Set VersionCode"
         inputs:
@@ -78,21 +94,6 @@ stages:
           tokenSuffix: '#~@'
           escapeType: custom
           actionOnNoFiles: fail
-
-      # Runs before the build so a failure stops the Play Store upload. To skip it, untick
-      # "Run unit tests and lint before building" when queueing the pipeline.
-      - ${{ if eq(parameters.runTests, true) }}:
-        - task: Gradle@3
-          displayName: "Unit Tests and Lint"
-          inputs:
-            gradleWrapperFile: 'gradlew'
-            tasks: 'testDebugUnitTest lintDebug'
-            publishJUnitResults: true
-            testResultsFiles: '**/TEST-*.xml'
-            testRunTitle: 'Unit tests'
-            javaHomeOption: 'JDKVersion'
-            sonarQubeRunAnalysis: false
-            spotBugsAnalysis: false
 
       - task: Gradle@3
         displayName: "Build App"
