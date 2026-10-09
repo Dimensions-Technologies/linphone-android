@@ -6,7 +6,11 @@ The upstream `README.md` and `CHANGELOG.md` describe Linphone, not this fork.
 
 ## Build
 
-- JDK 17, AGP 8.7, compile/target SDK 36, min SDK 23. Single module: `:app`.
+- JDK 17, AGP 9.4, Gradle 9.6, Kotlin 2.2, compile/target SDK 37, min SDK 23. Single module: `:app`.
+- AGP 9 compiles Kotlin itself, so there's no `kotlin-android` plugin. Data binding uses AGP's
+  `com.android.legacy-kapt`. The build uses the new DSL only, so `applicationVariants` is gone.
+  Per-build-type values go in `buildTypes` (brands inherit through `initWith release`), and
+  per-variant logic goes in `androidComponents`.
 - `./gradlew assembleDebug`: debug APK. The application id gets a `.debug` suffix.
 - `./gradlew bundleRelease`: the Dimensions-branded AAB. Reseller builds use `bundleBryteCall`,
   `bundleEcx`, `bundleVoyager` and `bundleVpbx`.

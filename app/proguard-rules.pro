@@ -20,6 +20,10 @@
 # hide the original source file name.
 #-renamesourcefileattribute SourceFile
 
+# AGP 9 dropped proguard-android.txt, which had -dontoptimize. build.gradle now uses
+# proguard-android-optimize.txt, so this keeps R8 from optimising, as before.
+-dontoptimize
+
 -keep public class * extends androidx.fragment.app.Fragment { *; }
 -dontwarn com.google.errorprone.annotations.Immutable
 

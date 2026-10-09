@@ -181,7 +181,7 @@ private fun rotateLogs(path: String, name: String) {
     val currentTime = System.currentTimeMillis()
     file.parentFile.listFiles()
         ?.filter {
-            it.extension.toLowerCase(Locale.ROOT) == "gz" &&
+            it.extension.lowercase(Locale.ROOT) == "gz" &&
                 it.lastModified() + LOG_FILE_RETENTION < currentTime
         }?.map { it.delete() }
 }

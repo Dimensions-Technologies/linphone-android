@@ -1,10 +1,10 @@
 plugins {
     id 'com.android.application'
-    id 'kotlin-android'
-    id 'kotlin-kapt'
+    // AGP 9 compiles Kotlin itself, so there's no Kotlin Android plugin. Data binding still
+    // needs kapt, which AGP provides as legacy-kapt.
+    id 'com.android.legacy-kapt'
     id 'org.jlleitschuh.gradle.ktlint' version '11.3.1'
-    id 'org.jetbrains.kotlin.android'
-    id 'io.sentry.android.gradle' version '5.8.0'
+    id 'io.sentry.android.gradle' version '6.23.0'
 }
 
 // Quick test to see how environment variables load:
@@ -53,41 +53,31 @@ def firebaseAvailable = new File(projectDir.absolutePath +'/google-services.json
 
 def crashlyticsAvailable = new File(projectDir.absolutePath +'/google-services.json').exists() && new File(LinphoneSdkBuildDir + '/libs/').exists() && new File(LinphoneSdkBuildDir + '/libs-debug/').exists()
 
-def extractNativeLibs = false
-
 if (firebaseAvailable) {
     apply plugin: 'com.google.gms.google-services'
 }
 
-def gitBranch = new ByteArrayOutputStream()
+// Runs git and returns its trimmed output. Throws if git fails, like the old exec {} did.
+def git = { String... args ->
+    providers.exec {
+        commandLine(["git"] + args.toList())
+    }.standardOutput.asText.get().trim()
+}
+
+def gitBranch = ""
 task getGitVersion() {
     def gitVersion = appVersionName
-    def gitVersionStream = new ByteArrayOutputStream()
-    def gitCommitsCount = new ByteArrayOutputStream()
-    def gitCommitHash = new ByteArrayOutputStream()
 
     try {
-        exec {
-            executable "git" args "describe", "--abbrev=0"
-            standardOutput = gitVersionStream
-        }
-        exec {
-            executable "git" args "rev-list", gitVersionStream.toString().trim() + "..HEAD", "--count"
-            standardOutput = gitCommitsCount
-        }
-        exec {
-            executable "git" args "rev-parse", "--short", "HEAD"
-            standardOutput = gitCommitHash
-        }
-        exec {
-            executable "git" args "name-rev", "--name-only", "HEAD"
-            standardOutput = gitBranch
-        }
+        def gitTag = git("describe", "--abbrev=0")
+        def gitCommitsCount = git("rev-list", gitTag + "..HEAD", "--count")
+        def gitCommitHash = git("rev-parse", "--short", "HEAD")
+        gitBranch = git("name-rev", "--name-only", "HEAD")
 
-        if (gitCommitsCount.toString().toInteger() == 0) {
-            gitVersion = gitVersionStream.toString().trim()
+        if (gitCommitsCount.toInteger() == 0) {
+            gitVersion = gitTag
         } else {
-            gitVersion = gitVersionStream.toString().trim() + "." + gitCommitsCount.toString().trim() + "+" + gitCommitHash.toString().trim()
+            gitVersion = gitTag + "." + gitCommitsCount + "+" + gitCommitHash
         }
         println("Git version: " + gitVersion + " (" + appVersionCode + ")")
     } catch (ignored) {
@@ -121,44 +111,18 @@ android {
         targetCompatibility = 17
     }
 
-    compileSdkVersion 36
+    compileSdk = 37
     defaultConfig {
-        minSdkVersion 23
-        targetSdkVersion 36
+        minSdk = 23
+        targetSdk = 37
         versionCode appVersionCode
         versionName "${project.version}"
         applicationId packageName
-        manifestPlaceholders = [
-            appAuthRedirectScheme: 'plum.oauth2'
-        ]
-    }
-
-    applicationVariants.all { variant ->
-        variant.outputs.all {
-            outputFileName = "linphone-android-${variant.buildType.name}-${project.version}.apk"
-        }
-
-        var enableFirebaseService = "false"
-        if (firebaseAvailable) {
-            enableFirebaseService = "true"
-        }
-
-        // See https://developer.android.com/studio/releases/gradle-plugin#3-6-0-behavior for why extractNativeLibs is set to true in debug flavor
-        if (variant.buildType.name == "debug") {
-            variant.getMergedFlavor().manifestPlaceholders = [linphone_address_mime_type: "vnd.android.cursor.item/vnd." + packageName + ".provider.sip_address",
-                                                              linphone_file_provider: packageName + ".debug.fileprovider",
-                                                              appLabel: "@string/app_name_debug",
-                                                              appAuthRedirectScheme: "plum.oauth2",
-                                                              firebaseServiceEnabled: enableFirebaseService]
-            extractNativeLibs = true
-        }
-        else {
-            variant.getMergedFlavor().manifestPlaceholders = [linphone_address_mime_type: "vnd.android.cursor.item/vnd." + packageName + ".provider.sip_address",
-                                                              linphone_file_provider: packageName + ".fileprovider",
-                                                              appLabel: "@string/app_name",
-                                                              appAuthRedirectScheme: "plum.oauth2",
-                                                              firebaseServiceEnabled: enableFirebaseService]
-        }
+        manifestPlaceholders.putAll([
+            appAuthRedirectScheme: 'plum.oauth2',
+            linphone_address_mime_type: "vnd.android.cursor.item/vnd." + packageName + ".provider.sip_address",
+            firebaseServiceEnabled: firebaseAvailable.toString()
+        ])
     }
 
     def keystorePropertiesFile = rootProject.file("keystore.properties")
@@ -167,20 +131,27 @@ android {
 
     signingConfigs {
         release {
-            storeFile file(keystoreProperties['storeFile'])
-            storePassword keystoreProperties['storePassword']
-            keyAlias keystoreProperties['keyAlias']
-            keyPassword keystoreProperties['keyPassword']
+            storeFile = file(keystoreProperties['storeFile'])
+            storePassword = keystoreProperties['storePassword']
+            keyAlias = keystoreProperties['keyAlias']
+            keyPassword = keystoreProperties['keyPassword']
         }
     }
 
     buildTypes {
         release {
-            minifyEnabled true
-            signingConfig signingConfigs.release
-            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            minifyEnabled = true
+            signingConfig = signingConfigs.release
+            // AGP 9 only ships the -optimize default file. proguard-rules.pro adds -dontoptimize
+            // to keep the R8 behaviour of the old proguard-android.txt.
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
 
-            resValue "string", "linphone_app_branch", gitBranch.toString().trim()
+            manifestPlaceholders.putAll([
+                linphone_file_provider: packageName + ".fileprovider",
+                appLabel: "@string/app_name"
+            ])
+
+            resValue "string", "linphone_app_branch", gitBranch
             resValue "string", "sync_account_type", packageName + ".sync"
             resValue "string", "file_provider", packageName + ".fileprovider"
             resValue "string", "linphone_address_mime_type", "vnd.android.cursor.item/vnd." + packageName + ".provider.sip_address"
@@ -192,7 +163,7 @@ android {
             resValue "bool", "crashlytics_enabled", "false"
 
             ndk {
-                debugSymbolLevel "FULL"
+                debugSymbolLevel = "FULL"
             }
         }
 
@@ -212,11 +183,16 @@ android {
         }
 
         debug {
-            applicationIdSuffix ".debug"
-            debuggable true
-            jniDebuggable true
+            applicationIdSuffix = ".debug"
+            debuggable = true
+            jniDebuggable = true
 
-            resValue "string", "linphone_app_branch", gitBranch.toString().trim()
+            manifestPlaceholders.putAll([
+                linphone_file_provider: packageName + ".debug.fileprovider",
+                appLabel: "@string/app_name_debug"
+            ])
+
+            resValue "string", "linphone_app_branch", gitBranch
             resValue "string", "sync_account_type", packageName + ".sync"
             resValue "string", "file_provider", packageName + ".debug.fileprovider"
             resValue "string", "linphone_address_mime_type", "vnd.android.cursor.item/vnd." + packageName + ".provider.sip_address"
@@ -243,6 +219,8 @@ android {
 
     buildFeatures {
         dataBinding = true
+        buildConfig = true
+        resValues = true
     }
 
     testOptions {
@@ -255,15 +233,15 @@ android {
         // Existing issues are recorded here and ignored; only new ones fail lint.
         // Regenerate with: ./gradlew updateLintBaselineDebug
         baseline = file("lint-baseline.xml")
-        // This check ships with lifecycle-livedata 2.9.x and was built for a newer lint than AGP 8.7
-        // bundles, so it crashes lint analysis. Re-enable after upgrading AGP.
-        disable "NullSafeMutableLiveData"
     }
 
-    namespace 'org.linphone'
-    packagingOptions {
-        jniLibs {
-            useLegacyPackaging extractNativeLibs
+    namespace = 'org.linphone'
+}
+
+androidComponents {
+    onVariants(selector().all()) { variant ->
+        variant.outputs.each { output ->
+            output.outputFileName.set("linphone-android-${variant.buildType}-${project.version}.apk")
         }
     }
 }
