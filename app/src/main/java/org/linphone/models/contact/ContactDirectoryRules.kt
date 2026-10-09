@@ -33,6 +33,14 @@ object ContactDirectoryRules {
                 it.type !in unlistedDirectoryTypes
         }
 
+    /**
+     * The directories numbers are matched against (calls, call history, voicemail, parking): every
+     * directory but the excluded types, in the gateway's order, as the web client's
+     * directories.service.ts `directories`. This includes the unlisted ones, e.g. the users directory.
+     */
+    fun matchedDirectories(directories: List<ContactDirectoryModel>): List<ContactDirectoryModel> =
+        directories.filter { it.type !in excludedDirectoryTypes }
+
     // Whether the user can add, edit and delete contacts in the directory.
     fun canContribute(directory: ContactDirectoryModel, userId: String?): Boolean {
         // Gson ignores Kotlin defaults, so a missing userRoleAssociations arrives as null.
@@ -114,19 +122,17 @@ object ContactDirectoryRules {
         number: String,
         countryCode: String
     ): Pair<ContactDirectoryModel, ContactItemModel>? {
-        if (number.isBlank()) return null
-        val target = toE164(toDialable(number), countryCode)
+        // A name (e.g. a parked caller's BLF display "Draper 2") isn't a number and matches nothing
+        val target = toMatchable(number)?.let { toE164(it, countryCode) } ?: return null
         for ((directory, contacts) in directories) {
             val phoneFieldIds = directory.fields
                 .filter { it.definitionType == DirectoryFieldTypes.PHONE }
                 .map { it.id }
                 .toSet()
             val match = contacts.firstOrNull { contact ->
-                contact.fields.any {
-                    it.id in phoneFieldIds && toE164(
-                        toDialable(it.value),
-                        countryCode
-                    ) == target
+                contact.fields.any { field ->
+                    field.id in phoneFieldIds &&
+                        toMatchable(field.value)?.let { toE164(it, countryCode) } == target
                 }
             }
             if (match != null) return directory to match
@@ -240,6 +246,14 @@ object ContactDirectoryRules {
     }
 
     fun toDialable(number: String): String = number.replace(Regex("[^0-9+#*]"), "")
+
+    /**
+     * The number to compare when matching, or null if it isn't one. Only formatting (spaces, dashes,
+     * dots and brackets) is dropped, as the web client's formatPhoneNumberToE164 cleans it; any
+     * other text means it's a name, which must not be reduced to its digits ("Draper 2" isn't "2").
+     */
+    fun toMatchable(number: String): String? =
+        number.replace(Regex("[\\s\\-().]"), "").takeIf { Regex("^[+*#0-9]*[0-9][+*#0-9]*$").matches(it) }
 
     // Mirrors formatPhoneNumberToE164 on the web client: feature codes and short numbers are kept as is.
     fun toE164(number: String, countryCode: String): String {

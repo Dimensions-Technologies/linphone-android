@@ -49,6 +49,12 @@ class UserGroupService(val context: Context) : DefaultLifecycleObserver {
         emptyList<UserGroupViewModel>()
     )
 
+    // Every matched directory with its contacts (see ContactDirectoryRules.matchedDirectories), a
+    // superset of the groups above
+    private val directoryContactsSubject = BehaviorSubject.createDefault(
+        emptyList<Pair<ContactDirectoryModel, List<ContactItemModel>>>()
+    )
+
     // Main dispatcher: Friends are created from the fetched contacts, and the core isn't thread safe.
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private var directoryGroupsJob: Job? = null
@@ -109,6 +115,7 @@ class UserGroupService(val context: Context) : DefaultLifecycleObserver {
                         )
 
                         directoryGroupsSubject.onNext(emptyList())
+                        directoryContactsSubject.onNext(emptyList())
                     } else {
                         fetchUserGroups()
                     }
@@ -141,19 +148,14 @@ class UserGroupService(val context: Context) : DefaultLifecycleObserver {
         }
     }
 
-    // The directories listed as groups, with their contacts as last fetched
+    // The directories numbers are matched against, with their contacts as last fetched. As on the web
+    // client, this includes directories not listed as groups (e.g. the users directory).
     fun currentDirectoryContacts(): List<Pair<ContactDirectoryModel, List<ContactItemModel>>> =
-        toDirectoryContacts(directoryGroupsSubject.value.orEmpty())
+        directoryContactsSubject.value.orEmpty()
 
-    private fun toDirectoryContacts(groups: List<UserGroupViewModel>) =
-        groups.mapNotNull { group ->
-            val directory = group.directory ?: return@mapNotNull null
-            directory to group.friends.mapNotNull { (it.userData as? UserDataModel)?.contact }
-        }
-
-    // The directories listed as groups, with their contacts, each time they're fetched
+    // The directories numbers are matched against, with their contacts, each time they're fetched
     val directoryContacts: Observable<List<Pair<ContactDirectoryModel, List<ContactItemModel>>>> =
-        directoryGroupsSubject.map { toDirectoryContacts(it) }
+        directoryContactsSubject.map { it }
 
     fun fetchUserGroups() {
         fetchTenantUserGroups()
@@ -167,22 +169,28 @@ class UserGroupService(val context: Context) : DefaultLifecycleObserver {
         val directories = directoriesService.contactDirectoriesSubject.value.orEmpty()
         val listed = listOfNotNull(ContactDirectoryRules.findPersonalDirectory(directories)) +
             ContactDirectoryRules.otherListedDirectories(directories)
-        if (listed.isEmpty()) {
+        val matched = ContactDirectoryRules.matchedDirectories(directories)
+        if (matched.isEmpty()) {
             directoryGroupsSubject.onNext(emptyList())
+            directoryContactsSubject.onNext(emptyList())
             return
         }
 
-        Log.d("Fetch contacts for ${listed.size} directories...")
+        Log.d("Fetch contacts for ${matched.size} directories...")
         directoryGroupsJob?.cancel()
         directoryGroupsJob = scope.launch {
-            val contactLists = listed
+            val contactLists = matched
                 .map { directory -> async { directoriesService.getDirectoryContacts(directory) } }
                 .awaitAll()
-            val groups = listed.zip(contactLists)
-                // A directory that failed to load is left out rather than shown empty
-                .filter { (_, contacts) -> contacts != null }
-                .map { (directory, contacts) -> directoryGroup(directory, contacts!!) }
+            // A directory that failed to load is left out rather than shown empty
+            val loaded = matched.zip(contactLists)
+                .mapNotNull { (directory, contacts) -> contacts?.let { directory to it } }
+            val groups = listed.mapNotNull { directory ->
+                loaded.firstOrNull { it.first.id == directory.id }
+                    ?.let { (_, contacts) -> directoryGroup(directory, contacts) }
+            }
             directoryGroupsSubject.onNext(groups)
+            directoryContactsSubject.onNext(loaded)
         }
     }
 
