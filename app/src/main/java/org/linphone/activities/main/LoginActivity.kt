@@ -443,7 +443,8 @@ class LoginActivity : AppCompatActivity() {
      * Initiates a dynamic registration request if a client ID is not provided by the static
      * configuration.
      */
-    @WorkerThread
+    // Called on the main thread. Nothing here blocks, and UI updates go through runOnUiThread.
+    @AnyThread
     private fun initializeClient() {
         if (mConfiguration.clientId != "") {
             Log.i("Using static client ID: " + mConfiguration.clientId)

@@ -19,6 +19,7 @@
  */
 package org.linphone.activities.voip.data
 
+import android.annotation.SuppressLint
 import android.view.View
 import android.widget.Toast
 import androidx.lifecycle.MediatorLiveData
@@ -158,6 +159,8 @@ open class CallData(val call: Call) : GenericContactData(call.remoteAddress) {
      * Names the call after its contact matches, as the web client's call view does: the first match's
      * name, and its full contact (e.g. for the avatar) when exactly one contact matches.
      */
+    // contact is typed non-null in ContactDataInterface, but null is how "no contact" is shown.
+    @SuppressLint("NullSafeMutableLiveData")
     private suspend fun applyContactMatches(matches: List<ContactMatch>) {
         CallContactMatchService.displayName(call)?.let { displayName.value = it }
         if (matches.isEmpty()) return

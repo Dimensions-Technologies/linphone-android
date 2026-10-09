@@ -87,9 +87,11 @@ class RecordingsFragment : MasterFragment<RecordingsFragmentBinding, RecordingsL
                 val publicFilePath = FileUtils.getPublicFilePath(requireContext(), "file://$path")
                 Log.i("[Recordings] Exporting file [$path] with public URI [$publicFilePath]")
                 val intent = Intent(Intent.ACTION_SEND)
-                intent.type = " video/x-matroska"
+                intent.type = "video/x-matroska"
                 intent.putExtra(Intent.EXTRA_STREAM, publicFilePath)
                 intent.putExtra(Intent.EXTRA_TEXT, getString(R.string.recordings_export))
+                // Android 18 stops granting this automatically for ACTION_SEND
+                intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
 
                 try {
                     requireActivity().startActivity(

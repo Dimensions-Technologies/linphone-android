@@ -4,20 +4,23 @@ buildscript {
     repositories {
         google()
         maven {
-            url "https://plugins.gradle.org/m2/"
+            url = "https://plugins.gradle.org/m2/"
         }
         maven {
-            url "https://www.jitpack.io"
+            url = "https://www.jitpack.io"
         } // for com.github.chrisbanes:PhotoView
     }
     dependencies {
-        classpath 'com.android.tools.build:gradle:8.7.1'
-        classpath 'com.google.gms:google-services:4.3.15'
-        classpath 'org.jetbrains.kotlin:kotlin-gradle-plugin:1.9.25'
-        classpath 'com.google.firebase:firebase-crashlytics-gradle:2.9.6'
+        classpath 'com.android.tools.build:gradle:9.4.1'
+        // Provides com.android.legacy-kapt, which data binding needs.
+        classpath 'com.android.tools.build:gradle-kotlin:9.4.1'
+        classpath 'com.google.gms:google-services:4.4.4'
+        // AGP 9 compiles Kotlin itself (built-in Kotlin); this only pins the Kotlin compiler version.
+        classpath 'org.jetbrains.kotlin:kotlin-gradle-plugin:2.2.21'
+        classpath 'com.google.firebase:firebase-crashlytics-gradle:3.0.8'
     }
 }
 
-task clean(type: Delete) {
-    delete rootProject.buildDir
+tasks.register('clean', Delete) {
+    delete rootProject.layout.buildDirectory
 }
