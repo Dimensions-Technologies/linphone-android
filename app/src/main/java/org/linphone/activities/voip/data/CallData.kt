@@ -137,7 +137,12 @@ open class CallData(val call: Call) : GenericContactData(call.remoteAddress) {
         }
 
         update()
+    }
 
+    // Matches are kept by SIP Call-ID, which an outgoing call doesn't have yet at OutgoingInit, so
+    // this waits for a state change that has it
+    private fun subscribeToMatches() {
+        if (matchSubscription != null || call.callLog.callId.isNullOrEmpty()) return
         matchSubscription = CallContactMatchService.matches(call).subscribe(
             { matches -> scope.launch { applyContactMatches(matches) } },
             { e -> Log.e("[Call] Contact matches failed", e) }
@@ -263,6 +268,7 @@ open class CallData(val call: Call) : GenericContactData(call.remoteAddress) {
     }
 
     private fun update() {
+        subscribeToMatches()
         updateOtherParty()
         isRecording.value = call.params.isRecording
         isPaused.value = isCallPaused()

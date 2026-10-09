@@ -120,6 +120,16 @@ class ParkingSlotRulesTest {
     }
 
     @Test
+    fun `a parked caller shown by name keeps the name when no contact matches`() {
+        // The PBX's BLF display for a parked call is the caller's name, as the web client shows it
+        val key = BlfKey("*3101", BlfKeyStatus.RINGING, "early", "Draper 2")
+        val slot = ParkingSlotRules.slot(reception, key) { null }
+
+        assertEquals("Draper 2", slot.callerNumber)
+        assertNull(slot.callerName)
+    }
+
+    @Test
     fun `a free slot has no caller, even if the last dialog had one`() {
         val key = BlfKey("*3101", BlfKeyStatus.IDLE, "terminated", "07968543537")
         val slot = ParkingSlotRules.slot(reception, key) { "Chris Smith" }

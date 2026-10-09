@@ -64,6 +64,21 @@ class ContactDirectoryRulesTest {
     }
 
     @Test
+    fun `numbers are matched against every directory but HubSpot, listed or not`() {
+        val shared = directory(name = "Suppliers").copy(type = "TenantContactDirectory")
+        val userDirectory = directory(name = "Users").copy(type = "UserContactDirectory")
+        val otherPersonal = directory(name = "Someone's").copy(type = "PersonalContactDirectory")
+        val hubspot = directory(name = "HubSpot").copy(type = "HubspotContactDirectory")
+
+        assertEquals(
+            listOf(shared, userDirectory, otherPersonal, personal),
+            ContactDirectoryRules.matchedDirectories(
+                listOf(shared, userDirectory, hubspot, otherPersonal, personal)
+            )
+        )
+    }
+
+    @Test
     fun `contributor role for the user or for everyone allows editing`() {
         assertTrue(ContactDirectoryRules.canContribute(personal, "user-1"))
         assertFalse(ContactDirectoryRules.canContribute(personal, "user-2"))
@@ -306,5 +321,61 @@ class ContactDirectoryRulesTest {
         assertEquals(extension, ContactDirectoryRules.findContactByPhone(directories, "1024", "GB"))
         assertNull(ContactDirectoryRules.findContactByPhone(directories, "+441614960000", "GB"))
         assertNull(ContactDirectoryRules.findContactByPhone(directories, "", "GB"))
+    }
+
+    @Test
+    fun `a name or other text with no digits matches no contact`() {
+        val noNumber = ContactItemModel(
+            "c1",
+            "dir-Personal",
+            listOf(FieldItemModel("fullName", "ACC Voice & Data Networks"), FieldItemModel("phone1", "N/A"))
+        )
+        val emptyNumber = ContactItemModel(
+            "c2",
+            "dir-Personal",
+            listOf(FieldItemModel("phone1", ""))
+        )
+        val directories = listOf(personal to listOf(noNumber, emptyNumber))
+
+        assertNull(ContactDirectoryRules.findContactByPhone(directories, "Noel Test", "GB"))
+        assertNull(ContactDirectoryRules.findContactByPhone(directories, "N/A", "GB"))
+        assertNull(ContactDirectoryRules.findContactByPhone(directories, "*#", "GB"))
+    }
+
+    @Test
+    fun `a name with digits in it isn't reduced to a number`() {
+        // A parked caller's BLF display is their name, e.g. "Draper 2"
+        val two = ContactItemModel(
+            "c1",
+            "dir-Personal",
+            listOf(FieldItemModel("fullName", "Fullname"), FieldItemModel("phone1", "Ext 2"))
+        )
+        val draper = ContactItemModel(
+            "c2",
+            "dir-Users",
+            listOf(FieldItemModel("fullName", "Draper 2"), FieldItemModel("phone1", "1041"))
+        )
+        val users = directory(name = "Users").copy(type = "UserContactDirectory")
+        val directories = listOf(personal to listOf(two), users to listOf(draper))
+
+        assertNull(ContactDirectoryRules.findContactByPhone(directories, "Draper 2", "GB"))
+        assertNull(ContactDirectoryRules.findContactByPhone(directories, "2", "GB"))
+        assertEquals(draper, ContactDirectoryRules.findContactByPhone(directories, "1041", "GB"))
+        assertEquals(
+            "Draper 2",
+            ContactDirectoryRules.findContactAndDirectoryByPhone(directories, "1041", "GB")
+                ?.let { (directory, contact) -> ContactDirectoryRules.toContactMatch(directory, contact).displayName }
+        )
+    }
+
+    @Test
+    fun `formatting is ignored when matching numbers`() {
+        assertEquals("07921910119", ContactDirectoryRules.toMatchable("07921 910-119"))
+        assertEquals("+441614960000", ContactDirectoryRules.toMatchable("+44 (161) 496.0000"))
+        assertEquals("*3101", ContactDirectoryRules.toMatchable("*3101"))
+        assertNull(ContactDirectoryRules.toMatchable("Draper 2"))
+        assertNull(ContactDirectoryRules.toMatchable("ext. 1041"))
+        assertNull(ContactDirectoryRules.toMatchable(""))
+        assertNull(ContactDirectoryRules.toMatchable("*#"))
     }
 }

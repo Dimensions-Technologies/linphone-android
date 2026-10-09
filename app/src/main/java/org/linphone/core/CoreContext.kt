@@ -942,6 +942,8 @@ class CoreContext(
         val appName = context.getString(R.string.user_agent_app_name)
 
         core.setUserAgent(appName, appVersion)
+
+        InviteHeaders.apply(core)
     }
 
     private fun initUserCertificates() {
