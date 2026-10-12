@@ -118,7 +118,10 @@ class CallLogsListViewModel : ViewModel() {
 
         val msgSubscription = callHistoryService.historyMessage
             .takeUntil(destroy)
-            .subscribe { msg -> message.postValue(msg) }
+            .subscribe(
+                { msg -> message.postValue(msg) },
+                { error -> Log.e(error, "Failed to update the call history message.") }
+            )
 
         VoicemailBoxService.isAvailable
             .takeUntil(destroy)
@@ -134,10 +137,16 @@ class CallLogsListViewModel : ViewModel() {
             )
         VoicemailBoxService.newCount
             .takeUntil(destroy)
-            .subscribe { count -> newVoicemailCount.postValue(count) }
+            .subscribe(
+                { count -> newVoicemailCount.postValue(count) },
+                { error -> Log.e(error, "Failed to count new voicemails.") }
+            )
         VoicemailBoxService.isRefreshing
             .takeUntil(destroy)
-            .subscribe { refreshing -> isRefreshingVoicemail.postValue(refreshing) }
+            .subscribe(
+                { refreshing -> isRefreshingVoicemail.postValue(refreshing) },
+                { error -> Log.e(error, "Failed to follow the voicemail refresh.") }
+            )
     }
 
     override fun onCleared() {

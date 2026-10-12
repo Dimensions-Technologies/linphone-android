@@ -1,6 +1,7 @@
 package org.linphone.services
 
 import android.content.Context
+import androidx.annotation.Keep
 import com.google.gson.reflect.TypeToken
 import io.reactivex.rxjava3.core.Observable
 import io.reactivex.rxjava3.disposables.Disposable
@@ -333,6 +334,8 @@ object VoicemailBoxService {
 
     // Cache: the user's boxes and collapsed state, shown at startup until live data arrives
 
+    // Kept: R8 otherwise strips the type of data, and Gson reads the boxes back as maps (ClassCastException)
+    @Keep
     private data class Cache(
         val userId: String?,
         val version: Int,
