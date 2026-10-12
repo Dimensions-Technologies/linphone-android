@@ -9,9 +9,11 @@ import org.linphone.core.CallLog
 import org.linphone.core.ChatRoom
 import org.linphone.core.ConferenceInfo
 import org.linphone.core.ErrorInfo
+import org.linphone.core.Factory
 import org.linphone.services.PhoneFormatterService
 import org.linphone.utils.DateUtils
 import org.linphone.utils.LinphoneUtils
+import org.linphone.utils.Log
 import org.threeten.bp.LocalDateTime
 import org.threeten.bp.ZoneId
 import org.threeten.bp.format.DateTimeFormatter
@@ -177,17 +179,17 @@ class CallHistoryItemViewModel(
 
     override fun getFromAddress(): Address {
         return if (CallDirections.fromValue(call.callDirection) == CallDirections.Outgoing) {
-            getAddress(call.callingUserNumber)!!
+            getAddress(call.callingUserNumber)
         } else {
-            getAddress(call.calledUserNumber)!!
+            getAddress(call.calledUserNumber)
         }
     }
 
     override fun getLocalAddress(): Address {
         return if (CallDirections.fromValue(call.callDirection) == CallDirections.Outgoing) {
-            getAddress(call.callingUserNumber)!!
+            getAddress(call.callingUserNumber)
         } else {
-            getAddress(call.calledUserNumber)!!
+            getAddress(call.calledUserNumber)
         }
     }
 
@@ -205,9 +207,9 @@ class CallHistoryItemViewModel(
 
     override fun getRemoteAddress(): Address {
         return if (CallDirections.fromValue(call.callDirection) == CallDirections.Outgoing) {
-            getAddress(call.calledUserNumber)!!
+            getAddress(call.calledUserNumber)
         } else {
-            getAddress(call.callingUserNumber)!!
+            getAddress(call.callingUserNumber)
         }
     }
 
@@ -236,9 +238,9 @@ class CallHistoryItemViewModel(
 
     override fun getToAddress(): Address {
         return if (CallDirections.fromValue(call.callDirection) == CallDirections.Outgoing) {
-            getAddress(call.calledUserNumber)!!
+            getAddress(call.calledUserNumber)
         } else {
-            getAddress(call.callingUserNumber)!!
+            getAddress(call.callingUserNumber)
         }
     }
 
@@ -266,19 +268,23 @@ class CallHistoryItemViewModel(
         return -1 // FixMe - not sure how linphone get native pointers
     }
 
-    private fun getAddress(number: String?): Address? {
-        try {
-            if (number.isNullOrBlank()) throw IllegalArgumentException()
-
-            return coreContext.core.interpretUrl(
-                number,
-                LinphoneUtils.applyInternationalPrefix()
-            )
+    // Never null: the list binds every row's address, so one the core can't interpret (it returns
+    // null rather than throwing) crashed the whole call history
+    private fun getAddress(number: String?): Address {
+        val core = coreContext.core
+        val interpreted = try {
+            if (number.isNullOrBlank()) {
+                null
+            } else {
+                core.interpretUrl(number, LinphoneUtils.applyInternationalPrefix())
+                    ?: Factory.instance().createAddress(
+                        CallHistoryAddresses.sipUri(number, core.defaultAccount?.params?.domain)
+                    )
+            }
         } catch (e: Exception) {
-            return coreContext.core.interpretUrl(
-                "07921910119",
-                LinphoneUtils.applyInternationalPrefix()
-            )
+            Log.w("[Call History] Failed to interpret [$number]: $e")
+            null
         }
+        return interpreted ?: Factory.instance().createAddress(CallHistoryAddresses.ANONYMOUS)!!
     }
 }
