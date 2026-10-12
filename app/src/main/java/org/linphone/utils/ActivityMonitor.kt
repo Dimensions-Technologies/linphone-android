@@ -26,104 +26,40 @@ import org.linphone.LinphoneApplication.Companion.coreContext
 import org.linphone.core.tools.service.AndroidDispatcher
 
 class ActivityMonitor : ActivityLifecycleCallbacks {
-    private val activities = ArrayList<Activity>()
-    private var mActive = false
-    private var mRunningActivities = 0
-    private var mLastChecker: InactivityChecker? = null
+    // Only activities seen starting are counted when they stop
+    private val visibleActivities = HashSet<Activity>()
+
+    private val foregroundTracker = ForegroundTracker(
+        { delayMs, task ->
+            var isCanceled = false
+            AndroidDispatcher.dispatchOnUIThreadAfter({ if (!isCanceled) task() }, delayMs)
+            ForegroundTracker.Cancellable { isCanceled = true }
+        },
+        onForeground = { coreContext.onForeground() },
+        onBackground = { coreContext.onBackground() }
+    )
+
+    override fun onActivityCreated(activity: Activity, savedInstanceState: Bundle?) {}
 
     @Synchronized
-    override fun onActivityCreated(activity: Activity, savedInstanceState: Bundle?) {
-        if (!activities.contains(activity)) activities.add(activity)
-    }
-
     override fun onActivityStarted(activity: Activity) {
+        if (visibleActivities.add(activity)) foregroundTracker.onActivityVisible()
     }
+
+    override fun onActivityResumed(activity: Activity) {}
+
+    override fun onActivityPaused(activity: Activity) {}
 
     @Synchronized
-    override fun onActivityResumed(activity: Activity) {
-        if (!activities.contains(activity)) {
-            activities.add(activity)
-        }
-        mRunningActivities++
-        checkActivity()
-    }
-
-    @Synchronized
-    override fun onActivityPaused(activity: Activity) {
-        if (!activities.contains(activity)) {
-            activities.add(activity)
-        } else {
-            mRunningActivities--
-            checkActivity()
-        }
-    }
-
     override fun onActivityStopped(activity: Activity) {
+        if (visibleActivities.remove(activity)) foregroundTracker.onActivityHidden()
     }
 
     @Synchronized
     override fun onActivityDestroyed(activity: Activity) {
-        activities.remove(activity)
-    }
-
-    private fun startInactivityChecker() {
-        if (mLastChecker != null) mLastChecker!!.cancel()
-        AndroidDispatcher.dispatchOnUIThreadAfter(
-            InactivityChecker().also { mLastChecker = it },
-            2000
-        )
-    }
-
-    private fun checkActivity() {
-        if (mRunningActivities == 0) {
-            if (mActive) startInactivityChecker()
-        } else if (mRunningActivities > 0) {
-            if (!mActive) {
-                mActive = true
-                onForegroundMode()
-            }
-            if (mLastChecker != null) {
-                mLastChecker!!.cancel()
-                mLastChecker = null
-            }
-        }
-    }
-
-    private fun onBackgroundMode() {
-        coreContext.onBackground()
-    }
-
-    private fun onForegroundMode() {
-        coreContext.onForeground()
+        // Stopped is normally called first, this only covers it being skipped
+        if (visibleActivities.remove(activity)) foregroundTracker.onActivityHidden()
     }
 
     override fun onActivitySaveInstanceState(activity: Activity, outState: Bundle) {}
-
-    internal inner class InactivityChecker : Runnable {
-        private var isCanceled = false
-        fun cancel() {
-            isCanceled = true
-        }
-
-        override fun run() {
-            if (!isCanceled) {
-                if (mRunningActivities == 0 && mActive) {
-                    mActive = false
-                    onBackgroundMode()
-                }
-            }
-            /*
-            if (CoreManager.isReady()) {
-                synchronized(CoreManager.instance()) {
-                    if (!isCanceled) {
-                        if (mRunningActivities == 0 && mActive) {
-                            mActive = false
-                            onBackgroundMode()
-                        }
-                    }
-                }
-            }
-            */
-        }
-    }
 }
