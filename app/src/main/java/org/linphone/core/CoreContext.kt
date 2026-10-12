@@ -148,6 +148,29 @@ class CoreContext(
 
     private val activityMonitor = ActivityMonitor()
 
+    // Accounts unregistered while the app is in the background, so the ones the user disabled
+    // themselves stay disabled when the app comes back
+    private val backgroundUnregisteredAccounts = mutableSetOf<Account>()
+
+    private val backgroundRegistration = BackgroundRegistration(
+        object : BackgroundRegistration.Registrar {
+            override val callCount: Int
+                get() = core.callsNb
+
+            override fun setRegistered(registered: Boolean) {
+                if (registered) {
+                    backgroundUnregisteredAccounts.forEach { setRegisterEnabled(it, true) }
+                    backgroundUnregisteredAccounts.clear()
+                } else {
+                    core.accountList.filter { it.params.isRegisterEnabled }.forEach {
+                        setRegisterEnabled(it, false)
+                        backgroundUnregisteredAccounts.add(it)
+                    }
+                }
+            }
+        }
+    )
+
     private val listener: CoreListenerStub = object : CoreListenerStub() {
         override fun onGlobalStateChanged(core: Core, state: GlobalState, message: String) {
             Log.i("[Context] Global state changed [$state]")
@@ -186,6 +209,8 @@ class CoreContext(
 
         override fun onPushNotificationReceived(core: Core, payload: String?) {
             Log.i("[Context] Push notification received: $payload")
+            // Called before the SDK reconnects, so the accounts register to take the call
+            backgroundRegistration.onPushReceived()
         }
 
         override fun onCallStateChanged(
@@ -305,6 +330,7 @@ class CoreContext(
                 Log.w("[Context] Mic was muted in Core, enabling it back for next call")
                 core.isMicEnabled = true
             }
+            backgroundRegistration.onLastCallEnded()
         }
 
         override fun onMessagesReceived(
@@ -411,6 +437,17 @@ class CoreContext(
 
         core.start()
 
+        // The SDK saves account params, so an app killed while unregistered for the background
+        // starts with its accounts disabled, and a cold start from a push would never register for
+        // the call. Rebuilding from the gateway registers every account anyway, so nothing else
+        // leaves one disabled.
+        core.accountList.filter { !it.params.isRegisterEnabled }.forEach {
+            Log.i(
+                "[Context] Re-enabling registration for [${it.params.identityAddress?.asStringUriOnly()}], left disabled when the app was last in the background"
+            )
+            setRegisterEnabled(it, true)
+        }
+
         // Names calls after the directory or CRM contacts they match
         CallContactMatchService.start(context)
 
@@ -468,8 +505,75 @@ class CoreContext(
         core.clearAccounts()
         core.clearAllAuthInfo()
         core.clearProxyConfig()
+        backgroundUnregisteredAccounts.clear()
 
         Log.i("[Context] Cleared SIP registrations")
+    }
+
+    // Unregisters on logout with the push token taken out of the Contact first, as the iOS app
+    // does, so the PBX stops pushing calls to a phone nobody is signed in to (WI #36133). The token
+    // has to go in a REGISTER of its own: cleared alongside the unregister, the old Contact is sent.
+    suspend fun unregisterForLogout() {
+        if (stopped) return
+
+        val registered = core.accountList.filter { it.params.isRegisterEnabled }
+        val withPushToken = registered.filter { !it.params.contactParameters.isNullOrEmpty() }
+
+        Log.i("[Context] Logout: clearing the push token from ${withPushToken.size} account(s)")
+        awaitRegistrationState(withPushToken, setOf(RegistrationState.Ok)) {
+            withPushToken.forEach {
+                val params = it.params.clone()
+                params.contactParameters = ""
+                it.params = params
+            }
+        }
+
+        Log.i("[Context] Logout: unregistering ${registered.size} account(s)")
+        awaitRegistrationState(
+            registered,
+            setOf(RegistrationState.Cleared, RegistrationState.None)
+        ) {
+            registered.forEach { setRegisterEnabled(it, false) }
+        }
+    }
+
+    // Makes a change, then waits until each account reports one of the states, or the timeout
+    private suspend fun awaitRegistrationState(
+        accounts: List<Account>,
+        states: Set<RegistrationState>,
+        change: () -> Unit
+    ) {
+        if (accounts.isEmpty()) return
+
+        val pending = accounts.toMutableSet()
+        var listener: CoreListenerStub? = null
+        try {
+            withTimeoutOrNull(LOGOUT_REGISTRATION_TIMEOUT_MS) {
+                suspendCancellableCoroutine { continuation ->
+                    listener = object : CoreListenerStub() {
+                        override fun onAccountRegistrationStateChanged(
+                            core: Core,
+                            account: Account,
+                            state: RegistrationState?,
+                            message: String
+                        ) {
+                            if (state in states) pending.remove(account)
+                            if (pending.isEmpty() && continuation.isActive) continuation.resume(Unit)
+                        }
+                    }
+                    core.addListener(listener)
+                    change()
+                }
+            } ?: Log.w("[Context] Logout: timed out waiting for $states on ${pending.size} account(s)")
+        } finally {
+            listener?.let { core.removeListener(it) }
+        }
+    }
+
+    private fun setRegisterEnabled(account: Account, enabled: Boolean) {
+        val params = account.params.clone()
+        params.isRegisterEnabled = enabled
+        account.params = params
     }
 
     private fun haveDevicesBeenReceived(): Boolean {
@@ -602,7 +706,8 @@ class CoreContext(
             accountParams.serverAddress = core.interpretUrl(serverUri, false)
 
             accountParams.isOutboundProxyEnabled = enableOutboundProxy
-            accountParams.isRegisterEnabled = true
+            // Accounts rebuilt while unregistered for the background wait for the foreground or a push
+            accountParams.isRegisterEnabled = !backgroundRegistration.isUnregistered
             accountParams.avpfMode = AVPFMode.Disabled // This is always disabled in PlumMobile
             accountParams.expires = if (userDevice.sipRegisterTimeout == 0) 3600 else userDevice.sipRegisterTimeout
             accountParams.pushNotificationAllowed = false
@@ -642,6 +747,9 @@ class CoreContext(
                 val account = core.createAccount(accountParams)
                 Log.i("RegisterSipEndpoints::${account.params.identityAddress?.username}")
                 core.addAccount(account)
+                if (backgroundRegistration.isUnregistered) {
+                    backgroundUnregisteredAccounts.add(account)
+                }
             }
         }
     }
@@ -734,6 +842,8 @@ class CoreContext(
     }
 
     fun onForeground() {
+        backgroundRegistration.onForeground()
+
         // Voicemail notifications sent while the app was in the background (and often not
         // registered) were missed, so catch up with the mailbox
         VoicemailBoxService.refresh()
@@ -747,6 +857,8 @@ class CoreContext(
     }
 
     fun onBackground() {
+        backgroundRegistration.onBackground()
+
         // We can't rely on defaultAccount?.params?.isPublishEnabled
         // as it will be modified by the SDK when changing the presence status
 //        if (corePreferences.publishPresence) {
@@ -1545,6 +1657,9 @@ class CoreContext(
         private const val LINPHONE_VFS_ENCRYPTION_AES256GCM128_SHA256 = 2
         private const val VFS_IV = "vfsiv"
         private const val VFS_KEY = "vfskey"
+
+        // Each logout step's wait, the same as the iOS app's wait for its unregister
+        private const val LOGOUT_REGISTRATION_TIMEOUT_MS = 2_000L
 
         @Throws(java.lang.Exception::class)
         private fun generateSecretKey() {

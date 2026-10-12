@@ -43,6 +43,8 @@ import net.openid.appauth.ClientSecretBasic
 import net.openid.appauth.RegistrationRequest
 import net.openid.appauth.RegistrationResponse
 import net.openid.appauth.ResponseTypeValues
+import org.linphone.LinphoneApplication
+import org.linphone.LinphoneApplication.Companion.coreContext
 import org.linphone.R
 import org.linphone.authentication.AuthConfiguration
 import org.linphone.authentication.AuthStateManager
@@ -114,6 +116,12 @@ class LoginActivity : AppCompatActivity() {
                     if (mAuthStateManager.current.isAuthorized) {
                         runBlocking {
                             UserService.getInstance(applicationContext).removeUserSession()
+                        }
+                        // The Core lives on the main thread, and may not exist from this screen
+                        if (LinphoneApplication.contextExists()) {
+                            runBlocking(Dispatchers.Main) {
+                                coreContext.unregisterForLogout()
+                            }
                         }
                         mAuthStateManager.logout(
                             applicationContext

@@ -328,11 +328,15 @@ class SideMenuFragment : GenericFragment<SideMenuFragmentBinding>() {
         // Removing the user session is a network call, so keep it off the main thread. It needs
         // the current access token, so the auth state is only cleared once it has finished.
         lifecycleScope.launch {
+            // SIP is unregistered at the same time, and before the accounts are cleared, so the
+            // push token can be taken out of the Contact first
+            val sipUnregistration = launch { coreContext.unregisterForLogout() }
             withContext(Dispatchers.IO) {
                 withTimeoutOrNull(LOGOUT_SESSION_REMOVAL_TIMEOUT_MS) {
                     UserService.getInstance(context).removeUserSession()
                 } ?: Log.w("Timed out removing user session during logout")
             }
+            sipUnregistration.join()
             authManager.logout(context)
             Log.i("DONE")
         }
