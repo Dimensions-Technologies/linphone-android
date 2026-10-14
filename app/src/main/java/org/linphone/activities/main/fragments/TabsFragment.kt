@@ -67,8 +67,11 @@ class TabsFragment : GenericFragment<TabsFragmentBinding>(), NavController.OnDes
             setTabAnchors(TabsViewModel.tabAnchors(showParking))
         }
 
-        val tabsContainer = view.findViewById<RelativeLayout>(R.id.tabs_container)
-        ViewCompat.setOnApplyWindowInsetsListener(tabsContainer) { v, windowInsets ->
+        // Only the portrait layout has a tabs_container to grow by the navigation bar height. The
+        // landscape tabs are a vertical side bar, and the app can be in landscape despite asking for
+        // portrait (e.g. large screens on Android 16+ ignore orientation requests).
+        val tabsContainer = view.findViewById<RelativeLayout?>(R.id.tabs_container)
+        if (tabsContainer != null) ViewCompat.setOnApplyWindowInsetsListener(tabsContainer) { v, windowInsets ->
             val insets = windowInsets.getInsets(WindowInsetsCompat.Type.navigationBars())
 
             val contentDpHeight = 68f
