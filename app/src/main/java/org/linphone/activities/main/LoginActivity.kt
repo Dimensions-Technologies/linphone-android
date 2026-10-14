@@ -28,6 +28,7 @@ import io.reactivex.rxjava3.subjects.PublishSubject
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
+import java.util.concurrent.RejectedExecutionException
 import java.util.concurrent.atomic.AtomicReference
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -80,7 +81,7 @@ class LoginActivity : AppCompatActivity() {
     private val mAuthRequest = AtomicReference<AuthorizationRequest?>()
     private val mAuthIntent = AtomicReference<CustomTabsIntent?>()
     private var mAuthIntentLatch = CountDownLatch(1)
-    private var mExecutor: ExecutorService = Executors.newSingleThreadExecutor()
+    private val mExecutor: ExecutorService = Executors.newSingleThreadExecutor()
     private lateinit var environmentAdapter: EnvironmentSelectionAdapter
     private val mUsePendingIntents = true
     private var isEnvironmentSelected = false
@@ -111,7 +112,7 @@ class LoginActivity : AppCompatActivity() {
         mConfiguration = AuthConfiguration.getInstance(this)
 
         findViewById<View>(R.id.retry).setOnClickListener { _: View? ->
-            mExecutor.submit(
+            runInBackground(
                 Runnable {
                     if (mAuthStateManager.current.isAuthorized) {
                         runBlocking {
@@ -252,21 +253,21 @@ class LoginActivity : AppCompatActivity() {
         finish()
     }
 
-    override fun onStart() {
-        super.onStart()
-
-        if (mExecutor.isShutdown) {
-            mExecutor = Executors.newSingleThreadExecutor()
-        }
-    }
-
-    override fun onStop() {
-        super.onStop()
-        mExecutor.shutdownNow()
-    }
-
+    // The executor lives until onDestroy, not onStop, so sign-in work started before the user
+    // leaves the screen (e.g. fetching the discovery document) still completes while it's hidden
     override fun onDestroy() {
+        mExecutor.shutdownNow()
         super.onDestroy()
+    }
+
+    // Callbacks that aren't tied to the activity lifecycle (e.g. AppAuth's discovery fetch) can
+    // still arrive after onDestroy, once the executor is shut down. Drop their work rather than crash.
+    private fun runInBackground(task: Runnable) {
+        try {
+            mExecutor.submit(task)
+        } catch (e: RejectedExecutionException) {
+            Log.w("[LoginActivity] Activity is being destroyed, dropping background task")
+        }
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
@@ -340,7 +341,7 @@ class LoginActivity : AppCompatActivity() {
 
             // WrongThread inference is incorrect for lambdas
             // noinspection WrongThread
-            mExecutor.submit { this.doAuth() }
+            runInBackground { this.doAuth() }
         }
     }
 
@@ -444,7 +445,7 @@ class LoginActivity : AppCompatActivity() {
         Log.i("Discovery document retrieved")
         mAuthStateManager.replace(AuthState(config), "handleConfigurationRetrievalResult")
 
-        mExecutor.submit { this.initializeClient() }
+        runInBackground { this.initializeClient() }
     }
 
     /**
@@ -708,7 +709,7 @@ class LoginActivity : AppCompatActivity() {
 
     private fun warmUpBrowser() {
         mAuthIntentLatch = CountDownLatch(1)
-        mExecutor.execute {
+        runInBackground {
             Log.i("Warming up browser instance for auth request")
             val intentBuilder =
                 AuthorizationServiceManager.getInstance(this).authorizationServiceInstance.createCustomTabsIntentBuilder(
