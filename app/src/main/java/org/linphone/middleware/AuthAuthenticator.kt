@@ -10,8 +10,10 @@ import okhttp3.Route
 import org.linphone.authentication.AuthStateManager
 import org.linphone.utils.Log
 
+// The AuthorizationService is looked up on every call rather than held, because LoginActivity
+// disposes the shared instance whenever it starts, and these OkHttp clients outlive that.
 class AuthAuthenticator(
-    private val authService: AuthorizationService,
+    private val authServiceProvider: () -> AuthorizationService?,
     private val authManager: AuthStateManager
 ) :
     Authenticator {
@@ -39,32 +41,45 @@ class AuthAuthenticator(
             "authenticate($requestUid) - AUTH access token: " + authState.accessToken + " exp:" + authState.accessTokenExpirationTime
         )
 
-        authState.performActionWithFreshTokens(authService) { accessToken, _, ex ->
-            if (ex != null) {
-                Log.e("authenticate($requestUid) - Failed to authorize: $ex")
+        val authService = authServiceProvider()
+        if (authService == null) {
+            Log.e("authenticate($requestUid) - No authorization service available, giving up")
+            return null
+        }
+
+        try {
+            authState.performActionWithFreshTokens(authService) { accessToken, _, ex ->
+                if (ex != null) {
+                    Log.e("authenticate($requestUid) - Failed to authorize: $ex")
+                }
+
+                Log.i(
+                    "authenticate($requestUid) - AUTH performActionWithFreshTokens $accessToken, isRefreshingToken= $isRefreshingToken"
+                )
+
+                if (isRefreshingToken) {
+                    isRefreshingToken = false
+                    authManager.replace(authState, "performActionWithFreshTokens")
+                }
+
+                if (response.request.header("Authorization") != null) {
+                    future.complete(null) // Give up, we've already failed to authenticate.
+                }
+
+                Log.d(
+                    "performActionWithFreshTokens::Url(${response.request.url})::Token($accessToken)"
+                )
+                val responseWithAuth = response.request.newBuilder()
+                    .header("Authorization", "Bearer $accessToken")
+                    .build()
+
+                future.complete(responseWithAuth)
             }
-
-            Log.i(
-                "authenticate($requestUid) - AUTH performActionWithFreshTokens $accessToken, isRefreshingToken= $isRefreshingToken"
-            )
-
-            if (isRefreshingToken) {
-                isRefreshingToken = false
-                authManager.replace(authState, "performActionWithFreshTokens")
-            }
-
-            if (response.request.header("Authorization") != null) {
-                future.complete(null) // Give up, we've already failed to authenticate.
-            }
-
-            Log.d(
-                "performActionWithFreshTokens::Url(${response.request.url})::Token($accessToken)"
-            )
-            val responseWithAuth = response.request.newBuilder()
-                .header("Authorization", "Bearer $accessToken")
-                .build()
-
-            future.complete(responseWithAuth)
+        } catch (ise: IllegalStateException) {
+            // The service can still be disposed between being looked up and being used
+            Log.e("authenticate($requestUid) - Authorization service unusable, giving up: $ise")
+            isRefreshingToken = false
+            return null
         }
 
         return future.get()

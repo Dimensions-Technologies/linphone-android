@@ -5,9 +5,6 @@ import android.content.Context;
 import androidx.annotation.AnyThread;
 import androidx.annotation.NonNull;
 
-import java.lang.ref.WeakReference;
-import java.util.concurrent.atomic.AtomicReference;
-
 import net.openid.appauth.AppAuthConfiguration;
 import net.openid.appauth.AuthorizationService;
 import net.openid.appauth.browser.AnyBrowserMatcher;
@@ -17,8 +14,9 @@ import org.linphone.utils.Log;
 
 public class AuthorizationServiceManager {
 
-    private static final AtomicReference<WeakReference<AuthorizationServiceManager>> INSTANCE_REF =
-            new AtomicReference<>(new WeakReference<>(null));
+    // Held strongly: with a weak reference the manager could be collected, and a new one would
+    // create a second AuthorizationService while the old one was never disposed
+    private static AuthorizationServiceManager INSTANCE;
 
     private static final String TAG = "AuthorizationServiceManager";
 
@@ -29,14 +27,12 @@ public class AuthorizationServiceManager {
     private AuthorizationService AuthorizationServiceInstance;
 
     @AnyThread
-    public static AuthorizationServiceManager getInstance(@NonNull Context context) {
-        AuthorizationServiceManager manager = INSTANCE_REF.get().get();
-        if (manager == null) {
-            manager = new AuthorizationServiceManager(context.getApplicationContext());
-            INSTANCE_REF.set(new WeakReference<>(manager));
+    public static synchronized AuthorizationServiceManager getInstance(@NonNull Context context) {
+        if (INSTANCE == null) {
+            INSTANCE = new AuthorizationServiceManager(context.getApplicationContext());
         }
 
-        return manager;
+        return INSTANCE;
     }
 
     private AuthorizationServiceManager(Context context) {
@@ -44,7 +40,9 @@ public class AuthorizationServiceManager {
         mConfiguration = AuthConfiguration.getInstance(context);
     }
 
-    public AuthorizationService getAuthorizationServiceInstance() {
+    // Synchronized so concurrent callers (e.g. several services building API clients at once) share
+    // one instance, rather than each creating their own that clearAuthorizationServiceInstance never disposes
+    public synchronized AuthorizationService getAuthorizationServiceInstance() {
         if (AuthorizationServiceInstance == null) {
             Log.Log.i("Creating authorization service");
             try {
@@ -71,8 +69,10 @@ public class AuthorizationServiceManager {
         return AuthorizationServiceInstance;
     }
 
-    public void clearAuthorizationServiceInstance() {
-        AuthorizationServiceInstance.dispose();
-        AuthorizationServiceInstance = null;
+    public synchronized void clearAuthorizationServiceInstance() {
+        if (AuthorizationServiceInstance != null) {
+            AuthorizationServiceInstance.dispose();
+            AuthorizationServiceInstance = null;
+        }
     }
 }
