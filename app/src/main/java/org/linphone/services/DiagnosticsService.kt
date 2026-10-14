@@ -98,12 +98,16 @@ class DiagnosticsService {
                 uploadName,
                 body
             )
-            val code = response.code()
-            if (code < 200 || code > 299) {
-                val msg = response.errorBody()
-                Log.e("Failed to upload logs: $msg")
-                throw Exception(msg.toString())
+            if (!response.isSuccessful) {
+                // The caller logs this once, so it isn't logged here too
+                throw Exception(describeUploadFailure(response.code(), response.errorBody()?.string()))
             }
+        }
+
+        // Keeps the server's reason for a failed upload, so it reaches the logs and the user
+        fun describeUploadFailure(code: Int, errorBody: String?): String {
+            val reason = errorBody?.trim()?.replace(Regex("\\s+"), " ")?.take(200)
+            return if (reason.isNullOrEmpty()) "HTTP $code" else "HTTP $code: $reason"
         }
 
         private fun writeDiagnosticsFile(context: Context) {

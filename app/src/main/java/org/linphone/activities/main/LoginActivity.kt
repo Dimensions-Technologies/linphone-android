@@ -34,6 +34,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.rx3.awaitFirst
 import net.openid.appauth.AuthState
 import net.openid.appauth.AuthorizationException
@@ -357,20 +358,18 @@ class LoginActivity : AppCompatActivity() {
                 ).show()
         } else {
             CoroutineScope(Dispatchers.IO).launch {
-                try {
+                val result = try {
                     DiagnosticsService.uploadDiagnostics(applicationContext)
-                    Snackbar
-                        .make(
-                            findViewById(R.id.login_coordinator),
-                            "Logs uploaded to server",
-                            Snackbar.LENGTH_SHORT
-                        ).show()
+                    "Logs uploaded to server"
                 } catch (e: Exception) {
-                    Log.e("[LoginActivity] Failed to upload logs, $e")
+                    Log.e("[LoginActivity] Failed to upload logs, ${e.message}")
+                    "Failed to upload logs! " + e.message
+                }
+                withContext(Dispatchers.Main) {
                     Snackbar
                         .make(
                             findViewById(R.id.login_coordinator),
-                            "Failed to upload logs! " + e.message,
+                            result,
                             Snackbar.LENGTH_SHORT
                         ).show()
                 }
