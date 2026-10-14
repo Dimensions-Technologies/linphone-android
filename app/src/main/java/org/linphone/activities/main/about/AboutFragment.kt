@@ -30,6 +30,7 @@ import io.reactivex.rxjava3.disposables.Disposable
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.linphone.R
 import org.linphone.activities.main.MainActivity
 import org.linphone.activities.main.fragments.SecureFragment
@@ -97,15 +98,17 @@ class AboutFragment : SecureFragment<AboutFragmentBinding>() {
         }
 
         binding.setUploadLogsClickListener {
+            val activity = requireActivity() as MainActivity
+            val context = requireContext().applicationContext
             CoroutineScope(Dispatchers.IO).launch {
-                val activity = requireActivity() as MainActivity
-                try {
-                    DiagnosticsService.uploadDiagnostics(requireContext())
-                    activity.showSnackBar("Logs uploaded to server")
+                val result = try {
+                    DiagnosticsService.uploadDiagnostics(context)
+                    "Logs uploaded to server"
                 } catch (e: Exception) {
-                    Log.e("[About] Failed to upload logs, $e")
-                    activity.showSnackBar("Failed to upload logs! " + e.message)
+                    Log.e("[About] Failed to upload logs, ${e.message}")
+                    "Failed to upload logs! " + e.message
                 }
+                withContext(Dispatchers.Main) { activity.showSnackBar(result) }
             }
         }
 

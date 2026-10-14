@@ -24,6 +24,7 @@ import android.database.Cursor
 import android.database.StaleDataException
 import android.net.Uri
 import android.os.Bundle
+import android.os.SystemClock
 import android.provider.ContactsContract
 import android.util.Patterns
 import androidx.lifecycle.lifecycleScope
@@ -31,10 +32,13 @@ import androidx.loader.app.LoaderManager
 import androidx.loader.content.CursorLoader
 import androidx.loader.content.Loader
 import java.lang.Exception
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.yield
 import org.linphone.LinphoneApplication.Companion.coreContext
 import org.linphone.LinphoneApplication.Companion.corePreferences
 import org.linphone.R
@@ -48,7 +52,13 @@ import org.linphone.utils.Log
 import org.linphone.utils.PhoneNumberUtils
 
 class ContactLoader : LoaderManager.LoaderCallbacks<Cursor> {
+    private var applyJob: Job? = null
+
     companion object {
+        // Longest the friend list update holds the main thread before letting other work run. A
+        // friend list write takes 5-10+ ms depending on the device, so this is time based.
+        private const val MAIN_THREAD_SLICE_MS = 100L
+
         val projection = arrayOf(
             ContactsContract.Data.CONTACT_ID,
             ContactsContract.Contacts.DISPLAY_NAME_PRIMARY,
@@ -288,8 +298,19 @@ class ContactLoader : LoaderManager.LoaderCallbacks<Cursor> {
 
                             friends[id] = friend
                         } catch (e: Exception) {
+                            if (cursor.isClosed || e is StaleDataException) break
                             Log.e("[Contacts Loader] Exception: $e")
                         }
+                    }
+
+                    // The CursorLoader closes this cursor when it delivers a newer one (e.g. the
+                    // address book changed) or is reset, possibly while we're still reading it.
+                    // What we have is then incomplete, and the newer load will publish the full list.
+                    if (cursor.isClosed) {
+                        Log.i(
+                            "[Contacts Loader] Cursor was closed while being read, discarding this partial load"
+                        )
+                        return@withContext
                     }
 
                     val userGroupModel = UserGroupModel()
@@ -301,6 +322,11 @@ class ContactLoader : LoaderManager.LoaderCallbacks<Cursor> {
                     val userGroupViewModel = UserGroupViewModel(userGroupModel)
                     for (friendHash in friends) {
                         userGroupViewModel.friends.add(friendHash.value)
+                    }
+
+                    val incoming = HashMap<String, ContactSnapshot>()
+                    for (friend in friends.values) {
+                        friend.toSnapshot()?.let { incoming[it.refKey] = it }
                     }
 
                     withContext(Dispatchers.Main) {
@@ -329,33 +355,21 @@ class ContactLoader : LoaderManager.LoaderCallbacks<Cursor> {
                                 }
                             }
 
-                            val fl = core.defaultFriendList ?: core.createFriendList()
-                            for (friend in fl.friends) {
-                                fl.removeFriend(friend)
+                            // A newer load supersedes one that's still being applied
+                            applyJob?.cancel()
+                            applyJob = coreContext.lifecycleScope.launch(Dispatchers.Main) {
+                                applyToFriendList(core, HashMap(friends), incoming)
                             }
-
-                            if (fl != core.defaultFriendList) core.addFriendList(fl)
-
-                            val friendsList = friends.values
-                            for (friend in friendsList) {
-                                fl.addLocalFriend(friend)
-                            }
-                            friends.clear()
-                            Log.i("[Contacts Loader] Friends added")
-
-                            // Only update subscriptions when default account is registered or anytime if it isn't the first contacts fetch
-                            if (core.defaultAccount?.state == RegistrationState.Ok || coreContext.contactsManager.latestContactFetch.isNotEmpty()) {
-                                Log.i("[Contacts Loader] Updating friend list [$fl] subscriptions")
-                                fl.updateSubscriptions()
-                            }
-
-                            coreContext.contactsManager.fetchFinished()
                         }
                     }
                 } catch (sde: StaleDataException) {
-                    Log.e("[Contacts Loader] State Data Exception: $sde")
+                    Log.i("[Contacts Loader] Cursor was closed while being read, discarding this partial load")
                 } catch (ise: IllegalStateException) {
-                    Log.e("[Contacts Loader] Illegal State Exception: $ise")
+                    if (cursor.isClosed) {
+                        Log.i("[Contacts Loader] Cursor was closed while being read, discarding this partial load")
+                    } else {
+                        Log.e("[Contacts Loader] Illegal State Exception: $ise")
+                    }
                 } catch (e: Exception) {
                     Log.e("[Contacts Loader] Exception: $e")
                 } finally {
@@ -367,5 +381,93 @@ class ContactLoader : LoaderManager.LoaderCallbacks<Cursor> {
 
     override fun onLoaderReset(loader: Loader<Cursor>) {
         Log.i("[Contacts Loader] Loader reset")
+    }
+
+    // Brings the default friend list in line with the loaded contacts. Must run on the main thread,
+    // where the Core lives. Each friend list add or remove costs several milliseconds, so only the
+    // differences are written, a batch at a time, giving the main thread back between batches.
+    private suspend fun applyToFriendList(
+        core: Core,
+        loaded: Map<String, Friend>,
+        incoming: Map<String, ContactSnapshot>
+    ) {
+        val startTime = System.currentTimeMillis()
+        val fl = core.defaultFriendList ?: core.createFriendList()
+
+        val existingFriends = fl.friends
+        val existing = ArrayList<ContactSnapshot>(existingFriends.size)
+        val toRemove = ArrayList<Friend>()
+        val slice = MainThreadSlice(core)
+        for (friend in existingFriends) {
+            val snapshot = friend.toSnapshot()
+            if (snapshot == null) {
+                toRemove.add(friend) // Not a native contact, the list should only hold those
+            } else {
+                existing.add(snapshot)
+            }
+            slice.yieldIfDue()
+        }
+
+        val diff = ContactsDiff.compute(existing, incoming)
+        existingFriends.filterTo(toRemove) { it.refKey in diff.toRemove }
+        Log.i(
+            "[Contacts Loader] Friend list has ${existingFriends.size} friends, removing ${toRemove.size} and adding ${diff.toAdd.size}"
+        )
+
+        // nativeUri isn't stored, so friends loaded from the database at startup don't have it
+        for (friend in existingFriends) {
+            val nativeUri = loaded[friend.refKey ?: continue]?.nativeUri
+            if (nativeUri != null && friend.nativeUri != nativeUri) friend.nativeUri = nativeUri
+        }
+
+        for (friend in toRemove) {
+            fl.removeFriend(friend)
+            slice.yieldIfDue()
+        }
+
+        if (fl != core.defaultFriendList) core.addFriendList(fl)
+
+        for (refKey in diff.toAdd) {
+            loaded[refKey]?.let { fl.addLocalFriend(it) }
+            slice.yieldIfDue()
+        }
+        Log.i("[Contacts Loader] Friends added in ${System.currentTimeMillis() - startTime} ms")
+
+        // Only update subscriptions when default account is registered or anytime if it isn't the first contacts fetch
+        if (core.defaultAccount?.state == RegistrationState.Ok || coreContext.contactsManager.latestContactFetch.isNotEmpty()) {
+            Log.i("[Contacts Loader] Updating friend list [$fl] subscriptions")
+            fl.updateSubscriptions()
+        }
+
+        coreContext.contactsManager.fetchFinished()
+    }
+
+    // Gives the main thread back to other work (UI, Core iterate) once the current slice has used
+    // its time, and stops if this load was superseded (the job is cancelled) or the Core is stopping
+    private class MainThreadSlice(private val core: Core) {
+        private var sliceStart = SystemClock.uptimeMillis()
+
+        suspend fun yieldIfDue() {
+            if (SystemClock.uptimeMillis() - sliceStart < MAIN_THREAD_SLICE_MS) return
+            yield()
+            if (core.globalState == GlobalState.Shutdown || core.globalState == GlobalState.Off) {
+                throw CancellationException("Core is being stopped")
+            }
+            sliceStart = SystemClock.uptimeMillis()
+        }
+    }
+
+    private fun Friend.toSnapshot(): ContactSnapshot? {
+        val key = refKey
+        if (key.isNullOrEmpty()) return null
+        return ContactSnapshot(
+            refKey = key,
+            name = name,
+            organization = organization,
+            starred = starred,
+            photo = photo,
+            phoneNumbers = phoneNumbersWithLabel.map { "${it.label}|${it.phoneNumber}" }.sorted(),
+            addresses = addresses.map { it.asStringUriOnly() }.sorted()
+        )
     }
 }
