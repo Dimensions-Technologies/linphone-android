@@ -71,6 +71,10 @@ class CoreService : CoreService() {
                 service = this,
                 useAutoStartDescription = false
             )
+            // A null intent is a sticky restart, which isn't a startForegroundService() call
+            if (intent != null) {
+                coreContext.notificationsManager.startAndStopForegroundIfNoCall(this)
+            }
         }
 
         coreContext.notificationsManager.serviceCreated(this)

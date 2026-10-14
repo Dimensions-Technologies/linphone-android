@@ -577,6 +577,34 @@ class NotificationsManager(private val context: Context) {
         )
     }
 
+    // Context.startForegroundService() requires the service to call startForeground() even when
+    // there is nothing left to show, otherwise the app is crashed. The SDK starts the service when
+    // a call starts, but if that call has already ended by the time the service starts (e.g. it was
+    // refused as busy straight away), nothing else would call it.
+    fun startAndStopForegroundIfNoCall(coreService: CoreService) {
+        service = coreService
+        if (currentForegroundServiceNotificationId != 0 || coreContext.core.callsNb > 0) return
+
+        val notification = serviceNotification ?: createServiceNotification(false)
+        if (notification == null) {
+            Log.e(
+                "[Notifications Manager] Failed to create service notification, can't honour startForegroundService()!"
+            )
+            return
+        }
+
+        Log.i(
+            "[Notifications Manager] Service started without a call to show, starting and stopping foreground straight away"
+        )
+        Compatibility.startDataSyncForegroundService(
+            coreService,
+            SERVICE_NOTIF_ID,
+            notification,
+            false
+        )
+        coreService.stopForeground(true)
+    }
+
     fun startForegroundToKeepAppAlive(
         coreService: CoreService,
         useAutoStartDescription: Boolean = true
