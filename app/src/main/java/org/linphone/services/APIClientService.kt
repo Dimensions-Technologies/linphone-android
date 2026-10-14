@@ -3,7 +3,6 @@ package org.linphone.services
 import android.content.Context
 import com.google.gson.Gson
 import java.util.concurrent.TimeUnit
-import net.openid.appauth.AuthorizationService
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import org.linphone.authentication.AuthStateManager
@@ -24,12 +23,11 @@ class APIClientService(val context: Context) {
     fun getUCGatewayService(): CTGatewayService {
         val dimensionsEnvironment = DimensionsEnvironmentService.getInstance(context).getCurrentEnvironment()
         val asm = AuthStateManager.getInstance(context)
-        val auth = AuthorizationServiceManager.getInstance(context).getAuthorizationServiceInstance()
 
         if (!::ctGatewayService.isInitialized || dimensionsEnvironment!!.gatewayApiUri != this.baseUrl) {
             baseUrl = dimensionsEnvironment!!.gatewayApiUri
 
-            ctGatewayService = getRetrofit(dimensionsEnvironment!!.gatewayApiUri, auth, asm).create(
+            ctGatewayService = getRetrofit(dimensionsEnvironment!!.gatewayApiUri, asm).create(
                 CTGatewayService::class.java
             )
         }
@@ -39,7 +37,6 @@ class APIClientService(val context: Context) {
 
     private fun getRetrofit(
         baseUrl: String,
-        authService: AuthorizationService,
         asm: AuthStateManager
     ): Retrofit {
         val gson: Gson = GsonUtils.create()
@@ -48,14 +45,11 @@ class APIClientService(val context: Context) {
             .baseUrl(baseUrl)
             .addCallAdapterFactory(RxJava3CallAdapterFactory.create())
             .addConverterFactory(GsonConverterFactory.create(gson))
-            .client(getOkHttpClient(authService, asm))
+            .client(getOkHttpClient(asm))
             .build()
     }
 
-    private fun getOkHttpClient(
-        authService: AuthorizationService,
-        asm: AuthStateManager
-    ): OkHttpClient {
+    private fun getOkHttpClient(asm: AuthStateManager): OkHttpClient {
         // TODO its recommended to remove the HttpLoggingInterceptor from release code, but the
         // details it's exposing are the same as we currently expose in the webRTC code which is
         // far easier to intercept - need to have a discussion on this
@@ -67,7 +61,12 @@ class APIClientService(val context: Context) {
             .writeTimeout(30, TimeUnit.SECONDS)
             .readTimeout(30, TimeUnit.SECONDS)
             .addInterceptor(interceptor)
-            .authenticator(AuthAuthenticator(authService, asm))
+            .authenticator(
+                AuthAuthenticator(
+                    { AuthorizationServiceManager.getInstance(context).authorizationServiceInstance },
+                    asm
+                )
+            )
             .build()
     }
 }
