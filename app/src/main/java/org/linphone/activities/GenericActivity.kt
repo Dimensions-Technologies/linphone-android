@@ -51,10 +51,12 @@ abstract class GenericActivity : AppCompatActivity() {
 
     @SuppressLint("SourceLockedOrientationActivity")
     override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-
+        // Must happen before super.onCreate: after process death, super.onCreate restores the
+        // saved fragments, and their constructors / property initialisers may use coreContext.
         Log.i("[Generic Activity] Ensuring Core exists")
         ensureCoreExists(applicationContext)
+
+        super.onCreate(savedInstanceState)
 
         lifecycleScope.launch(Dispatchers.Main) {
             WindowInfoTracker
