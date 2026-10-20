@@ -32,9 +32,13 @@ abstract class GenericSettingFragment<T : ViewDataBinding> : GenericFragment<T>(
 
         super.onViewCreated(view, savedInstanceState)
 
+        // The activity is edge-to-edge, so adjustResize doesn't shrink the page for the keyboard:
+        // pad it above the keyboard, or above the navigation bar when the keyboard is closed, so
+        // text settings at the bottom of the page (e.g. Audio's gains) aren't hidden while typing
         ViewCompat.setOnApplyWindowInsetsListener(view) { v, windowInsets ->
-            val insets = windowInsets.getInsets(WindowInsetsCompat.Type.navigationBars())
-            view.setPadding(0, 0, 0, insets.bottom)
+            val ime = windowInsets.getInsets(WindowInsetsCompat.Type.ime())
+            val navigationBars = windowInsets.getInsets(WindowInsetsCompat.Type.navigationBars())
+            v.setPadding(0, 0, 0, maxOf(ime.bottom, navigationBars.bottom))
 
             windowInsets
         }

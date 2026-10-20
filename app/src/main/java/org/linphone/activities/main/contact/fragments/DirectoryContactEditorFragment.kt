@@ -11,6 +11,8 @@ import android.widget.EditText
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.core.widget.doAfterTextChanged
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
@@ -61,6 +63,17 @@ class DirectoryContactEditorFragment : GenericFragment<DirectoryContactEditorFra
         super.onViewCreated(view, savedInstanceState)
 
         binding.lifecycleOwner = viewLifecycleOwner
+
+        // The activity is edge-to-edge, so adjustResize doesn't shrink the form for the keyboard:
+        // pad it above the keyboard, or above the navigation bar when the keyboard is closed. The
+        // scroll view then shrinks and keeps the focused field visible, and SAVE / CANCEL stay reachable
+        ViewCompat.setOnApplyWindowInsetsListener(view) { v, windowInsets ->
+            val ime = windowInsets.getInsets(WindowInsetsCompat.Type.ime())
+            val navigationBars = windowInsets.getInsets(WindowInsetsCompat.Type.navigationBars())
+            v.setPadding(0, 0, 0, maxOf(ime.bottom, navigationBars.bottom))
+
+            windowInsets
+        }
 
         val directoryId = arguments?.getString(ARG_DIRECTORY_ID)
         val directory = directoryId?.let {
