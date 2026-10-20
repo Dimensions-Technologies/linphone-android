@@ -460,7 +460,7 @@ private suspend fun loadContactPictureWithCoil(
         imageView.load(base64 ?: source) {
             transformations(CircleCropTransformation())
             error(
-                if (displayName.isEmpty() || AppUtils.getInitials(displayName) == "+") {
+                if (AvatarLabel.usesPlaceholder(displayName)) {
                     AppCompatResources.getDrawable(context, R.drawable.icon_single_contact_avatar)
                 } else {
                     coroutineScope {
