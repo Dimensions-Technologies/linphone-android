@@ -25,6 +25,7 @@ import android.view.View
 import android.widget.RelativeLayout
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.updateLayoutParams
 import androidx.lifecycle.ViewModelProvider
 import org.linphone.LinphoneApplication.Companion.coreContext
 import org.linphone.R
@@ -70,7 +71,12 @@ class StatusFragment : GenericFragment<StatusFragmentBinding>() {
                 resources.displayMetrics
             )
 
-            statusContainer.layoutParams.height = (insets.top + contentPixelHeight).toInt()
+            // Set through updateLayoutParams so the view is laid out again: just changing
+            // layoutParams.height keeps the old height until something else triggers a layout
+            val height = (insets.top + contentPixelHeight).toInt()
+            if (statusContainer.layoutParams.height != height) {
+                statusContainer.updateLayoutParams { this.height = height }
+            }
 
             windowInsets
         }
