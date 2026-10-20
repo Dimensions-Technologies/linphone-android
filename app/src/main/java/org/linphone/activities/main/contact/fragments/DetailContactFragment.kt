@@ -24,7 +24,9 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.view.View
+import androidx.core.view.doOnPreDraw
 import androidx.lifecycle.ViewModelProvider
+import androidx.navigation.fragment.findNavController
 import org.linphone.LinphoneApplication.Companion.coreContext
 import org.linphone.R
 import org.linphone.activities.*
@@ -65,7 +67,11 @@ class DetailContactFragment : GenericFragment<ContactDetailFragmentBinding>() {
         val contact = sharedViewModel.selectedContact.value
         if (contact == null) {
             Log.e("[Contact] Friend is null, aborting!")
-            goBack()
+            // E.g. restored after the contact was deleted. Leave the pane's own stack, not the app's:
+            // goBack() fails here (the fragment manager is still executing transactions), and with
+            // the pane closed it would go back in the main navigation. The Contacts screen closes
+            // the pane once it shows the empty fragment
+            view.doOnPreDraw { findNavController().popBackStack() }
             return
         }
 
