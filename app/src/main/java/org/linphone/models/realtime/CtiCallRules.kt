@@ -32,6 +32,17 @@ object CtiCallRules {
     }
 
     /**
+     * The CTI call a SIP call is a leg of, by its SIP Call-ID, as the web client's
+     * call-manager.service.ts getMatchingCtiCall.
+     */
+    fun callForSipCall(currentCalls: Map<String, CtiCallData>, sipCallId: String): CtiCallData? {
+        if (sipCallId.isEmpty()) return null
+        return currentCalls.values.firstOrNull { call ->
+            call.relatedCalls.orEmpty().any { it.callId == sipCallId }
+        }
+    }
+
+    /**
      * The PBX can report several "-quickcall" legs at once (one per device rung while originating
      * or bridging a call) that are the same call to the user, differing only in PBX bookkeeping.
      * Each group with the same direction, type and numbers is collapsed to its first leg by call id.

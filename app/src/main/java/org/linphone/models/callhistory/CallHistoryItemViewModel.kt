@@ -93,19 +93,14 @@ class CallHistoryItemViewModel(
             name = coreContext.context.getString(R.string.contact_match_voicemail)
         }
 
-        val route = call.routePathName ?: call.groupName ?: call.huntgroupName ?: ""
+        if (name != null) contactName = name
 
-        val fields = mutableListOf<String>()
-
-        if (name != null) {
-            fields.add(name)
-            contactName = name
-        }
-
-        if (formattedNumber.isNotEmpty() && formattedNumber != name) fields.add(formattedNumber)
-        if (!route.contains(number)) fields.add("via $route")
-
-        return fields
+        return CallHistoryFieldRules.fields(
+            name,
+            formattedNumber,
+            number,
+            CallHistoryFieldRules.route(call)
+        ) { route -> coreContext.context.getString(R.string.call_history_via_route, route) }
     }
 
     private fun buildIcon(): String {

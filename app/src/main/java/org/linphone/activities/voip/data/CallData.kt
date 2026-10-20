@@ -37,8 +37,10 @@ import org.linphone.contact.GenericContactData
 import org.linphone.core.*
 import org.linphone.models.UserInfo
 import org.linphone.models.contact.CallAvatarRules
+import org.linphone.models.realtime.CallRouteRules
 import org.linphone.models.realtime.ContactMatch
 import org.linphone.services.CallContactMatchService
+import org.linphone.services.CallRouteService
 import org.linphone.services.DirectoriesService
 import org.linphone.services.TransferService
 import org.linphone.utils.AppUtils
@@ -51,6 +53,10 @@ open class CallData(val call: Call) : GenericContactData(call.remoteAddress) {
     }
 
     val displayableAddress = MutableLiveData<String>()
+
+    // The route and queue an incoming call came in on, one per line (CallRouteRules.callViewInfo)
+    val routeInfo = MutableLiveData<String>()
+    val hasRouteInfo = MutableLiveData<Boolean>()
 
     val isPaused = MutableLiveData<Boolean>()
     val isRemotelyPaused = MutableLiveData<Boolean>()
@@ -76,6 +82,7 @@ open class CallData(val call: Call) : GenericContactData(call.remoteAddress) {
 
     private var matchSubscription: Disposable? = null
     private var applyMatchesJob: Job? = null
+    private var routeSubscription: Disposable? = null
 
     private val listener = object : CallListenerStub() {
         override fun onStateChanged(call: Call, state: Call.State, message: String) {
@@ -160,6 +167,19 @@ open class CallData(val call: Call) : GenericContactData(call.remoteAddress) {
         )
     }
 
+    // Kept by SIP Call-ID too, as subscribeToMatches
+    private fun subscribeToRoute() {
+        if (routeSubscription != null || call.callLog.callId.isNullOrEmpty()) return
+        routeSubscription = CallRouteService.route(call).subscribe(
+            { route ->
+                val info = CallRouteRules.callViewInfo(route, call.dir == Call.Dir.Incoming)
+                routeInfo.postValue(info.joinToString("\n"))
+                hasRouteInfo.postValue(info.isNotEmpty())
+            },
+            { e -> Log.e("[Call] Route failed", e) }
+        )
+    }
+
     /**
      * The number and name shown: the remote address's, unless the other party is someone else (a
      * call retrieved from a parking slot, or one the PBX asserts a new identity for, e.g. after a
@@ -211,6 +231,7 @@ open class CallData(val call: Call) : GenericContactData(call.remoteAddress) {
 
     override fun destroy() {
         matchSubscription?.dispose()
+        routeSubscription?.dispose()
         call.removeListener(listener)
         timer?.cancel()
         scope.cancel()
@@ -293,6 +314,7 @@ open class CallData(val call: Call) : GenericContactData(call.remoteAddress) {
 
     private fun update() {
         subscribeToMatches()
+        subscribeToRoute()
         updateOtherParty()
         isRecording.value = call.params.isRecording
         isPaused.value = isCallPaused()

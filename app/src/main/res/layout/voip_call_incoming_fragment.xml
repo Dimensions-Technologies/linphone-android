@@ -100,10 +100,27 @@
             android:ellipsize="end"
             android:maxLines="1"
             android:text="@{callsViewModel.currentCallData.contact.name ?? callsViewModel.currentCallData.displayName, default=`Bilbo Baggins`}"
-            app:layout_constraintBottom_toTopOf="@id/sipAddress"
+            app:layout_constraintBottom_toTopOf="@id/route"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@id/avatar" />
+
+        <!-- Not in single_call_group, whose visibility would override its own -->
+        <TextView
+            android:id="@+id/route"
+            style="@style/call_header_subtitle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="5dp"
+            android:ellipsize="end"
+            android:gravity="center"
+            android:maxLines="2"
+            android:text="@{callsViewModel.currentCallData.routeInfo, default=`Main 1234`}"
+            android:visibility="@{callsViewModel.currentCallData.hasRouteInfo &amp;&amp; !callsViewModel.currentCallData.isConferenceCall &amp;&amp; !controlsViewModel.isIncomingEarlyMediaVideo ? View.VISIBLE : View.GONE, default=gone}"
+            app:layout_constraintBottom_toTopOf="@id/sipAddress"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/caller_name" />
 
         <TextView
             android:id="@+id/sipAddress"
@@ -120,7 +137,7 @@
             app:layout_constraintBottom_toTopOf="@id/buttons"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/caller_name" />
+            app:layout_constraintTop_toBottomOf="@id/route" />
 
         <ImageView
             android:id="@+id/conference_avatar"

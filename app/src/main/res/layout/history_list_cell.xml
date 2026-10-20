@@ -153,7 +153,7 @@
                     android:singleLine="true"
                     android:ellipsize="end"
                     android:maxLines="1"
-                    android:visibility='@{viewModel.hasContactName ? View.VISIBLE : View.GONE}'
+                    android:visibility='@{viewModel.hasContactName &amp;&amp; viewModel.hasContactDetails ? View.VISIBLE : View.GONE}'
                     android:text="@{viewModel.dimensionsContactNumber, default=`07987 123 4567`}"
                     />
 

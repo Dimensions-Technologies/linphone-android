@@ -34,5 +34,19 @@ data class CtiCallData(
     val calledName: String? = null,
     val calledNumber: String? = null,
     val startTime: String? = null,
-    val answerTime: String? = null
+    val answerTime: String? = null,
+    // The queue (hunt group) and route path the call came in on, for an incoming call
+    val groupName: String? = null,
+    val groupNumber: String? = null,
+    val routePathName: String? = null,
+    val routePathId: String? = null,
+    // The PBX legs of the call; a softphone's leg has its SIP Call-ID
+    val relatedCalls: List<CtiRelatedCall>? = null
+)
+
+@Keep
+data class CtiRelatedCall(
+    val callId: String? = null,
+    val userId: String? = null,
+    val state: String? = null
 )
