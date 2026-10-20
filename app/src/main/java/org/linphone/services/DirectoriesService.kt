@@ -5,6 +5,7 @@ import android.widget.Toast
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
 import io.reactivex.rxjava3.core.Observable
+import io.reactivex.rxjava3.core.Single
 import io.reactivex.rxjava3.disposables.Disposable
 import io.reactivex.rxjava3.functions.BiFunction
 import io.reactivex.rxjava3.subjects.BehaviorSubject
@@ -170,20 +171,13 @@ class DirectoriesService(val context: Context) : DefaultLifecycleObserver {
                     .thenBy { it.name.lowercase() }
             )
 
-    // Directory types whose matches are never shown, as on the web client
-    private val excludedDirectoryTypes = setOf("HubspotContactDirectory")
+    // See ContactDirectoryRules.isDirectoryDenied
+    fun isDirectoryDenied(directoryId: String?): Boolean =
+        ContactDirectoryRules.isDirectoryDenied(contactDirectoriesSubject.value.orEmpty(), directoryId)
 
-    /**
-     * Whether matches from a directory must be ignored: one the user's directory list doesn't include
-     * (e.g. a server-side matching source), or an excluded type. As the web client's isDirectoryDenied.
-     */
-    fun isDirectoryDenied(directoryId: String?): Boolean {
-        val directory = directoryId?.let { findDirectory(it) } ?: return true
-        return directory.type in excludedDirectoryTypes
-    }
-
-    fun filterDeniedMatches(matches: List<ContactMatch>): List<ContactMatch> =
-        matches.filter { !isDirectoryDenied(it.directoryId) }
+    /** The matches that aren't from a denied directory, once the directory list has loaded. */
+    fun filterDeniedMatches(matches: List<ContactMatch>): Single<List<ContactMatch>> =
+        ContactDirectoryRules.filterDeniedMatches(contactDirectories, matches)
 
     /**
      * The full contact behind a match: from the loaded directory contacts, or fetched from the

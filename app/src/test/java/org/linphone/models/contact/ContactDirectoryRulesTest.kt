@@ -1,10 +1,12 @@
 package org.linphone.models.contact
 
+import io.reactivex.rxjava3.subjects.BehaviorSubject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import org.linphone.models.realtime.ContactMatch
 
 class ContactDirectoryRulesTest {
 
@@ -377,5 +379,55 @@ class ContactDirectoryRulesTest {
         assertNull(ContactDirectoryRules.toMatchable("ext. 1041"))
         assertNull(ContactDirectoryRules.toMatchable(""))
         assertNull(ContactDirectoryRules.toMatchable("*#"))
+    }
+
+    private val shared = directory(name = "Over100").copy(type = "TenantContactDirectory")
+    private val hubspot = directory(name = "HubSpot").copy(type = "HubspotContactDirectory")
+
+    private fun match(directoryId: String?, contactId: String) =
+        ContactMatch(directoryId = directoryId, contactId = contactId)
+
+    // As WI 36366: the server sent a HubSpot match first, then a match from a shared directory
+    private val serverMatches = listOf(match(hubspot.id, "hubspot-contact"), match(shared.id, "contact-150"))
+
+    @Test
+    fun `matches from unknown, missing and HubSpot directories are denied`() {
+        val directories = listOf(shared, hubspot)
+
+        assertFalse(ContactDirectoryRules.isDirectoryDenied(directories, shared.id))
+        assertTrue(ContactDirectoryRules.isDirectoryDenied(directories, hubspot.id))
+        assertTrue(ContactDirectoryRules.isDirectoryDenied(directories, "server-only-source"))
+        assertTrue(ContactDirectoryRules.isDirectoryDenied(directories, null))
+        assertEquals(
+            listOf(match(shared.id, "contact-150")),
+            ContactDirectoryRules.filterDeniedMatches(directories, serverMatches)
+        )
+    }
+
+    @Test
+    fun `server matches wait for the directory list instead of all being denied`() {
+        val directories = BehaviorSubject.create<List<ContactDirectoryModel>>()
+
+        val result = ContactDirectoryRules.filterDeniedMatches(directories, serverMatches).test()
+        result.assertNoValues()
+
+        directories.onNext(listOf(shared, hubspot))
+        result.assertResult(listOf(match(shared.id, "contact-150")))
+    }
+
+    @Test
+    fun `server matches are filtered straight away once the directory list has loaded`() {
+        val directories = BehaviorSubject.createDefault(listOf(shared, hubspot))
+
+        ContactDirectoryRules.filterDeniedMatches(directories, serverMatches).test()
+            .assertResult(listOf(match(shared.id, "contact-150")))
+    }
+
+    @Test
+    fun `no server matches need no directory list`() {
+        val directories = BehaviorSubject.create<List<ContactDirectoryModel>>()
+
+        ContactDirectoryRules.filterDeniedMatches(directories, emptyList()).test()
+            .assertResult(emptyList())
     }
 }
