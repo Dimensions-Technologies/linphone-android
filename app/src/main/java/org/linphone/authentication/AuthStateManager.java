@@ -84,6 +84,11 @@ public class AuthStateManager {
         mPrefs = context.getSharedPreferences(STORE_NAME, Context.MODE_PRIVATE);
         mPrefsLock = new ReentrantLock();
         mCurrentAuthState = new AtomicReference<>();
+
+        // Publish the stored user straight away. Until the state is read, user is
+        // NoAuthenticatedUser, and when a push starts the app nothing reads it until an activity
+        // opens, so directories and the realtime connection never load for the call (WI 36362).
+        getCurrent();
     }
 
     @AnyThread
