@@ -127,6 +127,13 @@ object PhoneFormat {
         }
     }
 
+    /**
+     * As format, but feature codes (e.g. park slots like *3101) are kept as they are, since the
+     * formatter would drop their *. Anything that isn't a number, such as a name, is kept too.
+     */
+    fun formatDisplay(input: String, countryCode: String): String =
+        if (input.startsWith("*")) input else format(input, countryCode)
+
     /** E.164 form for lookups; feature codes and short numbers as they are. */
     fun toE164(input: String, countryCode: String): String {
         val cleaned = input.replace(Regex("[\\s\\-().]"), "")

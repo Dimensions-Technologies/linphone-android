@@ -91,6 +91,7 @@
                     android:maxLines="1"
                     android:ellipsize="end"
                     style="@style/call_list_active_sip_uri_font"
+                    android:visibility="@{data.showsDisplayableAddress ? View.VISIBLE : View.GONE, default=visible}"
                     android:text="@{data.displayableAddress, default=`bilbo.baggins@sip.linphone.org`}"
                     android:textIsSelectable="true"/>
 
@@ -128,6 +129,7 @@
                     android:maxLines="1"
                     android:ellipsize="end"
                     style="@style/call_list_sip_uri_font"
+                    android:visibility="@{data.showsDisplayableAddress ? View.VISIBLE : View.GONE, default=visible}"
                     android:text="@{data.displayableAddress, default=`bilbo.baggins@sip.linphone.org`}"/>
 
             </LinearLayout>

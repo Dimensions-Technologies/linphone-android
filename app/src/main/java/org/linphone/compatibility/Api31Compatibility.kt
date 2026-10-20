@@ -88,9 +88,7 @@ class Api31Compatibility {
                 val roundPicture =
                     CallContactMatchService.avatar(call)
                     ?: ImageUtils.getRoundBitmapFromUri(context, contact?.getThumbnailUri())
-                val displayName = matchedName ?: contact?.name ?: LinphoneUtils.getDisplayName(
-                    call.remoteAddress
-                )
+                val displayName = matchedName ?: contact?.name ?: CallContactMatchService.remoteName(call)
 
                 val person = notificationsManager.getPerson(contact, displayName, roundPicture)
                 Person.Builder()
@@ -207,9 +205,7 @@ class Api31Compatibility {
                 val roundPicture =
                     CallContactMatchService.avatar(call)
                     ?: ImageUtils.getRoundBitmapFromUri(context, contact?.getThumbnailUri())
-                val displayName = matchedName ?: contact?.name ?: LinphoneUtils.getDisplayName(
-                    call.remoteAddress
-                )
+                val displayName = matchedName ?: contact?.name ?: CallContactMatchService.remoteName(call)
 
                 val person = notificationsManager.getPerson(contact, displayName, roundPicture)
                 Person.Builder()

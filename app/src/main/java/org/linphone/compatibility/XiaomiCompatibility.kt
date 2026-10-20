@@ -85,9 +85,7 @@ class XiaomiCompatibility {
                 roundPicture =
                     CallContactMatchService.avatar(call)
                     ?: ImageUtils.getRoundBitmapFromUri(context, contact?.getThumbnailUri())
-                displayName = matchedName ?: contact?.name ?: LinphoneUtils.getDisplayName(
-                    call.remoteAddress
-                )
+                displayName = matchedName ?: contact?.name ?: CallContactMatchService.remoteName(call)
                 address = LinphoneUtils.getDisplayableAddress(call.remoteAddress)
                 info = CallRouteService.notificationRoute(call)?.let {
                     context.getString(R.string.incoming_call_via_route_notification_title, it)
