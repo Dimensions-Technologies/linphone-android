@@ -2,17 +2,28 @@ package org.linphone.services
 
 import android.annotation.SuppressLint
 import android.content.Context
+import android.graphics.Bitmap
 import android.telecom.TelecomManager
+import androidx.core.graphics.drawable.toBitmap
+import coil.imageLoader
+import coil.request.ImageRequest
+import coil.request.SuccessResult
+import coil.transform.CircleCropTransformation
 import io.reactivex.rxjava3.core.Observable
 import io.reactivex.rxjava3.disposables.Disposable
 import io.reactivex.rxjava3.subjects.BehaviorSubject
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
 import org.linphone.LinphoneApplication.Companion.coreContext
 import org.linphone.R
 import org.linphone.core.Address
 import org.linphone.core.Call
 import org.linphone.core.Core
 import org.linphone.core.CoreListenerStub
+import org.linphone.models.UserInfo
+import org.linphone.models.contact.CallAvatarRules
 import org.linphone.models.contact.ContactDirectoryRules
+import org.linphone.models.contact.ContactItemModel
 import org.linphone.models.realtime.ContactMatch
 import org.linphone.models.realtime.RealtimeEventType
 import org.linphone.services.realtime.RealtimeUserService
@@ -29,6 +40,7 @@ import org.linphone.utils.SipIdentity
  *   directory is one the user can't see or is excluded
  * - matches are never removed during a call, and are deduplicated by contact id
  * - the call is named after its first match: full name, else company
+ * - its picture is the single match's avatar, else the internal user's profile image (CallAvatarRules)
  * Unlike the web client, the directory lookup uses the PBX country to compare numbers in E.164 form
  * (the web client passes no country there, so only contacts stored in E.164 match).
  *
@@ -41,12 +53,19 @@ object CallContactMatchService {
     // Matches are kept a while after the call ends, for the missed call notification
     private const val RELEASED_CALL_RETENTION_MS = 60_000L
 
+    private const val AVATAR_SIZE_PX = 256
+
     private class CallMatches {
         val matches: BehaviorSubject<List<ContactMatch>> = BehaviorSubject.createDefault(
             emptyList()
         )
         val lookedUpNumbers = mutableSetOf<String>()
         var number: String = ""
+
+        // The picture for the call's notification, downloaded from avatarUrl
+        var avatarUrl: String? = null
+        var avatar: Bitmap? = null
+        var avatarJob: Job? = null
     }
 
     private lateinit var context: Context
@@ -105,6 +124,14 @@ object CallContactMatchService {
                 { e -> Log.e("[Contact Match] Directory contacts failed", e) }
             )
         )
+
+        // An internal caller's profile image needs the user list, which can also load after a call starts
+        subscriptions.add(
+            DirectoriesService.getInstance(this.context).users.subscribe(
+                { coreContext.handler.post { coreContext.core.calls.forEach(::refreshAvatar) } },
+                { e -> Log.e("[Contact Match] Users failed", e) }
+            )
+        )
     }
 
     /** The call's matches, updated as they arrive. */
@@ -144,6 +171,28 @@ object CallContactMatchService {
         if (number == call.remoteAddress.username) return null
         return number to SipIdentity.displayName(header)
     }
+
+    /**
+     * The internal user the call is with, by extension, for their profile image. None for the user's
+     * own voicemail.
+     */
+    fun otherUser(call: Call): UserInfo? {
+        if (!started || isVoicemail(call)) return null
+        return CallAvatarRules.findUser(
+            DirectoriesService.getInstance(context).currentUsers(),
+            phoneNumber(call)
+        )
+    }
+
+    /** A match's full contact (e.g. for its avatar), if its directory can be read. */
+    suspend fun matchedContact(match: ContactMatch): ContactItemModel? {
+        val directoryId = match.directoryId ?: return null
+        val contactId = match.contactId ?: return null
+        return DirectoriesService.getInstance(context).getContact(directoryId, contactId)
+    }
+
+    /** The call's picture, round, for its notification: null until downloaded, or if it has none. */
+    fun avatar(call: Call): Bitmap? = entryFor(call)?.avatar
 
     private fun formatNumber(number: String) =
         PhoneFormatterService.getInstance(context).formatDisplayNumber(number)
@@ -189,7 +238,12 @@ object CallContactMatchService {
         val changed = entry.number.isNotEmpty() && entry.number != number
         entry.number = number
         // The PBX said who the other party is now: renamed even if they're no contact
-        if (changed) refreshCallerName(call)
+        if (changed) {
+            refreshCallerName(call)
+            refreshAvatar(call)
+        } else if (entry.avatarJob == null) {
+            refreshAvatar(call)
+        }
         if (number.isEmpty() || !entry.lookedUpNumbers.add(number)) return
 
         val match = ContactDirectoryRules.findContactAndDirectoryByPhone(
@@ -262,6 +316,42 @@ object CallContactMatchService {
     private fun update(call: Call, matches: List<ContactMatch>) {
         entryFor(call)?.matches?.onNext(matches)
         refreshCallerName(call)
+        refreshAvatar(call)
+    }
+
+    // Downloads the call's picture for its notification (see CallAvatarRules), then rebuilds it
+    private fun refreshAvatar(call: Call) {
+        val entry = entryFor(call) ?: return
+        entry.avatarJob?.cancel()
+        entry.avatarJob = coreContext.coroutineScope.launch {
+            val contact = entry.matches.value.orEmpty().singleOrNull()?.let { matchedContact(it) }
+            val url = CallAvatarRules.avatarUrl(contact, otherUser(call))
+            if (url == entry.avatarUrl) return@launch
+            // Only kept once downloaded, so a refresh that cancels the download tries again
+            val avatar = url?.let { loadAvatar(it) }
+            entry.avatarUrl = url
+            entry.avatar = avatar
+            Log.i(
+                "[Contact Match] Call ${call.callLog.callId} picture ${if (entry.avatar != null) "loaded" else "cleared"}"
+            )
+            refreshCallerName(call)
+        }
+    }
+
+    private suspend fun loadAvatar(url: String): Bitmap? {
+        val request = ImageRequest.Builder(context)
+            .data(url)
+            .size(AVATAR_SIZE_PX)
+            .transformations(CircleCropTransformation())
+            // Notifications need a software bitmap
+            .allowHardware(false)
+            .build()
+        val result = context.imageLoader.execute(request)
+        if (result !is SuccessResult) {
+            Log.w("[Contact Match] Couldn't load call picture $url")
+            return null
+        }
+        return result.drawable.toBitmap()
     }
 
     // Notifications and the system's call screen are built once per call state, so rebuild them

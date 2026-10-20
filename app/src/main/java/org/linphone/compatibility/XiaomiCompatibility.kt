@@ -82,7 +82,8 @@ class XiaomiCompatibility {
                     coreContext.contactsManager.findContactByAddress(call.remoteAddress)
                 }
                 roundPicture =
-                    ImageUtils.getRoundBitmapFromUri(context, contact?.getThumbnailUri())
+                    CallContactMatchService.avatar(call)
+                    ?: ImageUtils.getRoundBitmapFromUri(context, contact?.getThumbnailUri())
                 displayName = matchedName ?: contact?.name ?: LinphoneUtils.getDisplayName(
                     call.remoteAddress
                 )
