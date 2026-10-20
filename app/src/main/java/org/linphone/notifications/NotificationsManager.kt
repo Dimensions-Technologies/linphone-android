@@ -48,6 +48,7 @@ import org.linphone.contact.getPerson
 import org.linphone.contact.getThumbnailUri
 import org.linphone.core.*
 import org.linphone.services.CallContactMatchService
+import org.linphone.services.CallRouteService
 import org.linphone.utils.*
 import org.linphone.utils.Log
 
@@ -142,7 +143,10 @@ class NotificationsManager(private val context: Context) {
                 }
                 Call.State.Released -> {
                     if (LinphoneUtils.isCallLogMissed(call.callLog)) {
-                        displayMissedCallNotification(call.remoteAddress)
+                        displayMissedCallNotification(
+                            call.remoteAddress,
+                            CallRouteService.notificationRoute(call)
+                        )
                     }
                 }
                 Call.State.OutgoingInit, Call.State.OutgoingProgress, Call.State.OutgoingRinging -> {
@@ -882,9 +886,16 @@ class NotificationsManager(private val context: Context) {
         }
     }
 
-    private fun displayMissedCallNotification(remoteAddress: Address) {
+    // [route]: the route the call came in on, if any (CallRouteService.notificationRoute)
+    private fun displayMissedCallNotification(remoteAddress: Address, route: String?) {
         val missedCallCount: Int = coreContext.core.missedCallsCount
         val body: String
+        // As the web client titles it, for a single missed call
+        val title = if (missedCallCount <= 1 && route != null) {
+            context.getString(R.string.missed_call_via_route_notification_title, route)
+        } else {
+            context.getString(R.string.missed_call_notification_title)
+        }
         if (missedCallCount > 1) {
             body = context.getString(R.string.missed_calls_notification_body)
                 .format(missedCallCount)
@@ -910,7 +921,7 @@ class NotificationsManager(private val context: Context) {
             context,
             context.getString(R.string.notification_channel_missed_call_id)
         )
-            .setContentTitle(context.getString(R.string.missed_call_notification_title))
+            .setContentTitle(title)
             .setContentText(body)
             .setSmallIcon(R.drawable.connect_bar_icon)
             .setAutoCancel(true)

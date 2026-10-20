@@ -172,6 +172,18 @@
                     android:text="@{callsViewModel.currentCallData.displayableAddress, default=`sip:johndoe@sip.linphone.org`}"
                     android:textIsSelectable="true" />
 
+                <TextView
+                    android:id="@+id/route"
+                    style="@style/call_header_subtitle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center"
+                    android:ellipsize="end"
+                    android:gravity="center"
+                    android:maxLines="2"
+                    android:text="@{callsViewModel.currentCallData.routeInfo, default=`Main 1234`}"
+                    android:visibility="@{callsViewModel.currentCallData.hasRouteInfo ? View.VISIBLE : View.GONE, default=gone}" />
+
                 <LinearLayout
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"

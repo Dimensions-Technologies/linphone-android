@@ -53,6 +53,7 @@ class CallLogViewModel(val callLog: CallLog, private val isRelated: Boolean = fa
     var dimensionsAttrTintColor = MutableLiveData<Int>()
 
     val hasContactName = dimensionsContactName.map { x -> !x.isNullOrEmpty() }
+    val hasContactDetails = dimensionsContactNumber.map { x -> !x.isNullOrEmpty() }
 
     val statusIconResource: Int by lazy {
         if (callLog is CallHistoryItemViewModel) {
@@ -228,8 +229,9 @@ class CallLogViewModel(val callLog: CallLog, private val isRelated: Boolean = fa
         }
 
         if (callLog is CallHistoryItemViewModel) {
-            dimensionsContactName.value = callLog.contactName
-            dimensionsContactNumber.value = callLog.formattedNumber
+            // As the web client's history row: the first field, then the rest (the number and route)
+            dimensionsContactName.value = callLog.fields.firstOrNull().orEmpty()
+            dimensionsContactNumber.value = callLog.fields.drop(1).joinToString(" ")
             dimensionsStartTime.value = if (callLog.date.isBlank()) callLog.time else "${callLog.date} ${callLog.time}"
 
             dimensionsContactNumberForegroundStyle.value = if (callLog.call.missedCall) {

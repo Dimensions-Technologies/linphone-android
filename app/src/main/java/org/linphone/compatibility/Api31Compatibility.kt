@@ -33,6 +33,7 @@ import org.linphone.core.Call
 import org.linphone.notifications.Notifiable
 import org.linphone.notifications.NotificationsManager
 import org.linphone.services.CallContactMatchService
+import org.linphone.services.CallRouteService
 import org.linphone.utils.ImageUtils
 import org.linphone.utils.LinphoneUtils
 import org.linphone.utils.Log
@@ -153,6 +154,14 @@ class Api31Compatibility {
                 setOngoing(true)
                 setColor(ContextCompat.getColor(context, R.color.primary_color))
                 setFullScreenIntent(pendingIntent, true)
+                // In place of the call style's own "Incoming call", as the web client titles it
+                if (conferenceInfo == null) {
+                    CallRouteService.notificationRoute(call)?.let {
+                        setContentText(
+                            context.getString(R.string.incoming_call_via_route_notification_title, it)
+                        )
+                    }
+                }
             }
 
             if (!corePreferences.preventInterfaceFromShowingUp) {

@@ -47,6 +47,41 @@ class CtiCallRulesTest {
     }
 
     @Test
+    fun `an incoming callEvent's route, queue and legs are read`() {
+        val json = """{"data":{"calls":{
+            "c1":{"callId":"c1","userId":"u1","state":"ringing","eventType":"PbxOffered",
+                  "direction":"incoming","type":"external","callerNumber":"+441617864355",
+                  "calledNumber":"03301274143","groupName":"Sales","groupNumber":"600",
+                  "routePathName":"Noel CallFlow 1","routePathId":"rp1",
+                  "startTime":"2026-10-19T09:00:00Z",
+                  "relatedCalls":[{"callId":"abc123@10.0.0.1","userId":"u1","state":"ringing"}],
+                  "otherUserIds":[]}}},
+            "timestamp":"2026-10-19T09:00:01Z","userId":"u1","id":"e1","tenantId":"t1"}"""
+
+        val call = Gson().fromJson(json, RealtimeEventCall::class.java).data!!.calls!!.getValue("c1")
+
+        assertEquals("Noel CallFlow 1", call.routePathName)
+        assertEquals("rp1", call.routePathId)
+        assertEquals("Sales", call.groupName)
+        assertEquals("abc123@10.0.0.1", call.relatedCalls!!.single().callId)
+    }
+
+    @Test
+    fun `a SIP call is the CTI call that has its Call-ID among its legs`() {
+        val other = call("ringing").copy(relatedCalls = listOf(CtiRelatedCall(callId = "other")))
+        val mine = call("ringing").copy(
+            routePathName = "Main",
+            relatedCalls = listOf(CtiRelatedCall(callId = "desk"), CtiRelatedCall(callId = "sip-1"))
+        )
+        val calls = mapOf("c1" to other, "c2" to mine)
+
+        assertEquals(mine, CtiCallRules.callForSipCall(calls, "sip-1"))
+        assertNull(CtiCallRules.callForSipCall(calls, "sip-2"))
+        assertNull(CtiCallRules.callForSipCall(calls, ""))
+        assertNull(CtiCallRules.callForSipCall(mapOf("c1" to call("ringing")), "sip-1"))
+    }
+
+    @Test
     fun `cleared calls are left out`() {
         val calls = CtiCallRules.currentCalls(mapOf("c1" to call("cleared")))
 

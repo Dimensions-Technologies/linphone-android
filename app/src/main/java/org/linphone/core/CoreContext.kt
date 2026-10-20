@@ -70,6 +70,7 @@ import org.linphone.mediastream.Version
 import org.linphone.models.UserDevice
 import org.linphone.notifications.NotificationsManager
 import org.linphone.services.CallContactMatchService
+import org.linphone.services.CallRouteService
 import org.linphone.services.ParkingSlotService
 import org.linphone.services.PullCallService
 import org.linphone.services.PushTokenService
@@ -450,6 +451,9 @@ class CoreContext(
 
         // Names calls after the directory or CRM contacts they match
         CallContactMatchService.start(context)
+
+        // Tracks the route and queue each incoming call came in on
+        CallRouteService.start(context)
 
         // Offers to pull a call the user is on at another device
         PullCallService.start(context)

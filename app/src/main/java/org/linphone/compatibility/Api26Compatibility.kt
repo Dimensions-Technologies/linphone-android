@@ -49,6 +49,7 @@ import org.linphone.core.Friend
 import org.linphone.notifications.Notifiable
 import org.linphone.notifications.NotificationsManager
 import org.linphone.services.CallContactMatchService
+import org.linphone.services.CallRouteService
 import org.linphone.telecom.NativeCallWrapper
 import org.linphone.utils.ImageUtils
 import org.linphone.utils.LinphoneUtils
@@ -202,7 +203,9 @@ class Api26Compatibility {
                     call.remoteAddress
                 )
                 address = LinphoneUtils.getDisplayableAddress(call.remoteAddress)
-                info = context.getString(R.string.incoming_call_notification_title)
+                info = CallRouteService.notificationRoute(call)?.let {
+                    context.getString(R.string.incoming_call_via_route_notification_title, it)
+                } ?: context.getString(R.string.incoming_call_notification_title)
             } else {
                 contact = null
                 displayName = conferenceInfo.subject ?: context.getString(R.string.conference)
@@ -234,7 +237,13 @@ class Api26Compatibility {
                 .addPerson(notificationsManager.getPerson(contact, displayName, roundPicture))
                 .setSmallIcon(R.drawable.topbar_call_notification)
                 .setContentTitle(displayName)
-                .setContentText(context.getString(R.string.incoming_call_notification_title))
+                .setContentText(
+                    if (conferenceInfo == null) {
+                        info
+                    } else {
+                        context.getString(R.string.incoming_call_notification_title)
+                    }
+                )
                 .setCategory(NotificationCompat.CATEGORY_CALL)
                 .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
                 .setPriority(NotificationCompat.PRIORITY_HIGH)
