@@ -135,12 +135,22 @@ abstract class GenericFragment<T : ViewDataBinding> : Fragment() {
         _binding = null
     }
 
+    private val backNavigation = BackNavigation(
+        dispatch = { requireActivity().onBackPressedDispatcher.onBackPressed() },
+        fallback = { onBackPressedCallback.handleOnBackPressed() }
+    )
+
     protected fun goBack() {
-        try {
-            requireActivity().onBackPressedDispatcher.onBackPressed()
-        } catch (ise: IllegalStateException) {
-            Log.w("[Generic Fragment] ${getFragmentRealClassName()}.goBack() can't go back: $ise")
-            onBackPressedCallback.handleOnBackPressed()
+        backNavigation.goBack { ise, abandoned ->
+            if (abandoned) {
+                Log.e(
+                    "[Generic Fragment] ${getFragmentRealClassName()}.goBack() can't go back from its fallback either, giving up: $ise"
+                )
+            } else {
+                Log.w(
+                    "[Generic Fragment] ${getFragmentRealClassName()}.goBack() can't go back: $ise"
+                )
+            }
         }
     }
 

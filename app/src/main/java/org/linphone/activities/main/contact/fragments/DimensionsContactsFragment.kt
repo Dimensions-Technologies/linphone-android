@@ -30,6 +30,7 @@ import android.widget.Spinner
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
+import androidx.navigation.NavController
 import androidx.navigation.fragment.NavHostFragment
 import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.ItemTouchHelper
@@ -82,7 +83,21 @@ class DimensionsContactsFragment : MasterFragment<ContactDimensionsFragmentBindi
 
     override fun getLayoutId(): Int = R.layout.contact_dimensions_fragment
 
+    // On a phone the pane covers the list, so close it once it has nothing to show, e.g. when the
+    // details of a deleted contact remove themselves
+    private val closeEmptyPaneListener = NavController.OnDestinationChangedListener { _, destination, _ ->
+        if (destination.id != R.id.emptyContactFragment || !isBindingAvailable()) return@OnDestinationChangedListener
+        if (binding.slidingPane.isSlideable && binding.slidingPane.isOpen) {
+            Log.i("[Contacts] Details pane has nothing to show, closing it")
+            binding.slidingPane.closePane()
+        }
+    }
+
+    private fun contactsNavController() =
+        (childFragmentManager.findFragmentById(R.id.contacts_nav_container) as? NavHostFragment)?.navController
+
     override fun onDestroyView() {
+        contactsNavController()?.removeOnDestinationChangedListener(closeEmptyPaneListener)
         binding.contactsList.adapter = null
         binding.userGroupSpinner.adapter = null
 
@@ -104,6 +119,7 @@ class DimensionsContactsFragment : MasterFragment<ContactDimensionsFragmentBindi
 
         /* Shared view model & sliding pane related */
         setUpSlidingPane(binding.slidingPane)
+        contactsNavController()?.addOnDestinationChangedListener(closeEmptyPaneListener)
 
         useMaterialSharedAxisXForwardAnimation = false
         sharedViewModel.updateContactsAnimationsBasedOnDestination.observe(
@@ -438,10 +454,12 @@ class DimensionsContactsFragment : MasterFragment<ContactDimensionsFragmentBindi
                         )
                         return@launch
                     }
-                    // The list refreshes from the gateway; close the details if they show this contact
+                    // The list refreshes from the gateway; drop the details if they show this contact.
+                    // On a phone they're hidden behind the closed pane, but left in its stack they'd
+                    // be restored without a contact when the Contacts screen is next rebuilt
                     if (friend == sharedViewModel.selectedContact.value) {
                         sharedViewModel.selectedContact.value = null
-                        if (!binding.slidingPane.isSlideable) clearDisplayedContact()
+                        clearDisplayedContact()
                     }
                 }
             },
