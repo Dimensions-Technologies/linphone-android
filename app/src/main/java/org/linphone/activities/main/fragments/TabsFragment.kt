@@ -28,6 +28,7 @@ import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.constraintlayout.widget.Guideline
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.updateLayoutParams
 import androidx.lifecycle.ViewModelProvider
 import androidx.navigation.NavController
 import androidx.navigation.NavDestination
@@ -81,7 +82,13 @@ class TabsFragment : GenericFragment<TabsFragmentBinding>(), NavController.OnDes
                 resources.displayMetrics
             )
 
-            tabsContainer.layoutParams.height = (insets.bottom + contentPixelHeight).toInt()
+            // Set through updateLayoutParams so the view is laid out again: just changing
+            // layoutParams.height keeps the old height until something else triggers a layout, so
+            // after the navigation bar changes (e.g. screen off and on) the tabs sat under it
+            val height = (insets.bottom + contentPixelHeight).toInt()
+            if (tabsContainer.layoutParams.height != height) {
+                tabsContainer.updateLayoutParams { this.height = height }
+            }
 
             //  WindowInsetsCompat.CONSUMED
             windowInsets
