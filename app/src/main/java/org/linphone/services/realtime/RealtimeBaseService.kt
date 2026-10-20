@@ -68,8 +68,8 @@ open class RealtimeBaseService(private val context: Context, private val hubSuff
 
     private val isReadySubject = BehaviorSubject.createDefault(false)
 
-    /** Emits when the network connection changes */
-    private val isOnlineSubject = BehaviorSubject.createDefault(false)
+    /** Tracks every available network, so losing one while another is still up doesn't read as offline */
+    private val networkAvailability = NetworkAvailability()
 
     /** Emits whenever the logged-in user changes */
     private val distinctUser = authStateManager.user
@@ -81,13 +81,17 @@ open class RealtimeBaseService(private val context: Context, private val hubSuff
     private val connectionObs = Observable.combineLatest(
         environmentConfigured.filter { isConfigured -> isConfigured },
         distinctUser,
-        isOnlineSubject
+        networkAvailability.isOnline
     ) { _, user, isOnline -> Pair(user, isOnline) }
         .takeUntil(destroy)
         .subscribe { pair ->
             try {
                 if (pair.first.hasValidId()) {
-                    if (pair.second) ensureConnected()
+                    if (pair.second) {
+                        ensureConnected()
+                    } else {
+                        Log.d("RealtimeBaseService: offline - connect when a network is available.")
+                    }
                 } else {
                     Log.d("RealtimeBaseService: no user - close connection.")
                     hubConnection?.stop()
@@ -100,14 +104,14 @@ open class RealtimeBaseService(private val context: Context, private val hubSuff
     private val networkMonitor = object : ConnectivityManager.NetworkCallback() {
         override fun onAvailable(network: Network) {
             super.onAvailable(network)
-            isOnlineSubject.onNext(true)
-            Log.i("Network connection available")
+            networkAvailability.onAvailable(network)
+            Log.i("Network connection available (${networkAvailability.networkCount} network(s))")
         }
 
         override fun onLost(network: Network) {
             super.onLost(network)
-            isOnlineSubject.onNext(false)
-            Log.w("Network connection lost!")
+            networkAvailability.onLost(network)
+            Log.w("Network connection lost! (${networkAvailability.networkCount} network(s) left)")
         }
     }
 
