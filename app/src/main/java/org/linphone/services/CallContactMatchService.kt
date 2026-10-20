@@ -29,6 +29,7 @@ import org.linphone.models.realtime.ContactMatch
 import org.linphone.models.realtime.RealtimeEventType
 import org.linphone.services.realtime.RealtimeUserService
 import org.linphone.telecom.TelecomHelper
+import org.linphone.utils.LinphoneUtils
 import org.linphone.utils.Log
 import org.linphone.utils.SipIdentity
 
@@ -155,10 +156,13 @@ object CallContactMatchService {
     }
 
     /**
-     * The number to show for the call when the other party isn't its remote address (see
-     * otherPartyNumber), else null.
+     * The name to show for a call that displayName doesn't name and no device contact matches: its
+     * remote address's display name, else its number, formatted when it's a number.
      */
-    fun displayNumber(call: Call): String? = otherPartyNumber(call)?.let { formatNumber(it) }
+    fun remoteName(call: Call): String = formatNumber(LinphoneUtils.getDisplayName(call.remoteAddress))
+
+    /** The other party's number (see phoneNumber), formatted for display; null if it has none. */
+    fun displayNumber(call: Call): String? = phoneNumber(call).takeIf { it.isNotEmpty() }?.let { formatNumber(it) }
 
     // See SipIdentity.otherPartyNumber: its name comes from contact matching on the number
     private fun otherPartyNumber(call: Call): String? = SipIdentity.otherPartyNumber(
@@ -188,8 +192,9 @@ object CallContactMatchService {
     /** The call's picture, round, for its notification: null until downloaded, or if it has none. */
     fun avatar(call: Call): Bitmap? = entryFor(call)?.avatar
 
+    // Not context, which is only set once started
     private fun formatNumber(number: String) =
-        PhoneFormatterService.getInstance(context).formatDisplayNumber(number)
+        PhoneFormatterService.getInstance(coreContext.context).formatDisplayNumber(number)
 
     /** As displayName, for a call that has ended (only its address is left, e.g. for a missed call). */
     fun displayName(address: Address): String? {

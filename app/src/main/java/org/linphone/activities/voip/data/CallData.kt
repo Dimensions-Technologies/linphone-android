@@ -37,6 +37,7 @@ import org.linphone.contact.GenericContactData
 import org.linphone.core.*
 import org.linphone.models.UserInfo
 import org.linphone.models.contact.CallAvatarRules
+import org.linphone.models.contact.CallHeaderRules
 import org.linphone.models.realtime.CallRouteRules
 import org.linphone.models.realtime.ContactMatch
 import org.linphone.services.CallContactMatchService
@@ -53,6 +54,9 @@ open class CallData(val call: Call) : GenericContactData(call.remoteAddress) {
     }
 
     val displayableAddress = MutableLiveData<String>()
+
+    // Whether the number has a line of its own under the name (CallHeaderRules)
+    val showsDisplayableAddress = MediatorLiveData<Boolean>()
 
     // The route and queue an incoming call came in on, one per line (CallRouteRules.callViewInfo)
     val routeInfo = MutableLiveData<String>()
@@ -147,6 +151,10 @@ open class CallData(val call: Call) : GenericContactData(call.remoteAddress) {
             isConferenceCall.value = remoteConferenceSubject.value.orEmpty().isNotEmpty() || conferenceParticipants.value.orEmpty().isNotEmpty()
         }
 
+        showsDisplayableAddress.addSource(contact) { updateShowsNumber() }
+        showsDisplayableAddress.addSource(displayName) { updateShowsNumber() }
+        showsDisplayableAddress.addSource(displayableAddress) { updateShowsNumber() }
+
         update()
     }
 
@@ -183,12 +191,24 @@ open class CallData(val call: Call) : GenericContactData(call.remoteAddress) {
     /**
      * The number and name shown: the remote address's, unless the other party is someone else (a
      * call retrieved from a parking slot, or one the PBX asserts a new identity for, e.g. after a
-     * transfer). Checked on every state change, as the identity can change during the call.
+     * transfer). Both are formatted as the web client's call view does. Checked on every state
+     * change, as the identity can change during the call.
      */
     private fun updateOtherParty() {
         displayableAddress.value = CallContactMatchService.displayNumber(call)
             ?: LinphoneUtils.getDisplayableAddress(call.remoteAddress)
-        CallContactMatchService.displayName(call)?.let { displayName.value = it }
+        displayName.value = CallContactMatchService.displayName(call)
+            ?: CallContactMatchService.remoteName(call)
+    }
+
+    // The name shown is a device contact's, else displayName (see the call layouts)
+    private fun updateShowsNumber() {
+        showsDisplayableAddress.value = CallHeaderRules.showsNumber(
+            call.dir == Call.Dir.Outgoing,
+            CallContactMatchService.isVoicemail(call),
+            contact.value?.name ?: displayName.value,
+            displayableAddress.value
+        )
     }
 
     /**

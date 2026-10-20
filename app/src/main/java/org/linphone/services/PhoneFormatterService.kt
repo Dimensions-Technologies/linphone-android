@@ -10,6 +10,7 @@ import java.util.Locale
 import java.util.concurrent.atomic.AtomicReference
 import org.linphone.authentication.AuthStateManager
 import org.linphone.models.UserInfo
+import org.linphone.models.callsession.PhoneFormat
 import org.linphone.utils.Log
 
 class PhoneFormatterService(val context: Context) : DefaultLifecycleObserver {
@@ -71,14 +72,7 @@ class PhoneFormatterService(val context: Context) : DefaultLifecycleObserver {
             .replace("/\\D/g", "")
     }
 
-    // Like the web client's formatPhoneNumber: short numbers and feature codes are shown as they are.
-    fun formatDisplayNumber(number: String): String {
-        // Feature codes (e.g. park slots like *3101) would lose their * to the formatter
-        if (number.startsWith("*") || !Regex("^[+*#0-9]{5,}$").matches(number)) return number
-        return try {
-            formatPhoneNumber(number)
-        } catch (e: Exception) {
-            number
-        }
-    }
+    // The web client's formatPhoneNumber: national form in the PBX's country, else international;
+    // short numbers, feature codes and names are shown as they are.
+    fun formatDisplayNumber(number: String): String = PhoneFormat.formatDisplay(number, getPbxCountryCode())
 }
