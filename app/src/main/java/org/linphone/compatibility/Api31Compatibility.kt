@@ -85,7 +85,8 @@ class Api31Compatibility {
                     coreContext.contactsManager.findContactByAddress(call.remoteAddress)
                 }
                 val roundPicture =
-                    ImageUtils.getRoundBitmapFromUri(context, contact?.getThumbnailUri())
+                    CallContactMatchService.avatar(call)
+                    ?: ImageUtils.getRoundBitmapFromUri(context, contact?.getThumbnailUri())
                 val displayName = matchedName ?: contact?.name ?: LinphoneUtils.getDisplayName(
                     call.remoteAddress
                 )
@@ -195,7 +196,8 @@ class Api31Compatibility {
                     coreContext.contactsManager.findContactByAddress(call.remoteAddress)
                 }
                 val roundPicture =
-                    ImageUtils.getRoundBitmapFromUri(context, contact?.getThumbnailUri())
+                    CallContactMatchService.avatar(call)
+                    ?: ImageUtils.getRoundBitmapFromUri(context, contact?.getThumbnailUri())
                 val displayName = matchedName ?: contact?.name ?: LinphoneUtils.getDisplayName(
                     call.remoteAddress
                 )

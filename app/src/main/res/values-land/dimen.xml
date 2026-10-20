@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <dimen name="chat_room_emoji_picker_height">200dp</dimen>
+    <dimen name="voip_call_avatar_size">72dp</dimen>
 </resources>

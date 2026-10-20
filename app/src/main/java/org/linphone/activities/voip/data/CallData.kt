@@ -24,6 +24,7 @@ import android.view.View
 import android.widget.Toast
 import androidx.lifecycle.MediatorLiveData
 import androidx.lifecycle.MutableLiveData
+import io.reactivex.rxjava3.core.Observable
 import io.reactivex.rxjava3.disposables.Disposable
 import java.util.*
 import kotlinx.coroutines.*
@@ -34,6 +35,8 @@ import org.linphone.activities.voip.TransferState
 import org.linphone.compatibility.Compatibility
 import org.linphone.contact.GenericContactData
 import org.linphone.core.*
+import org.linphone.models.UserInfo
+import org.linphone.models.contact.CallAvatarRules
 import org.linphone.models.realtime.ContactMatch
 import org.linphone.services.CallContactMatchService
 import org.linphone.services.DirectoriesService
@@ -72,6 +75,7 @@ open class CallData(val call: Call) : GenericContactData(call.remoteAddress) {
     private var timer: Timer? = null
 
     private var matchSubscription: Disposable? = null
+    private var applyMatchesJob: Job? = null
 
     private val listener = object : CallListenerStub() {
         override fun onStateChanged(call: Call, state: Call.State, message: String) {
@@ -143,8 +147,15 @@ open class CallData(val call: Call) : GenericContactData(call.remoteAddress) {
     // this waits for a state change that has it
     private fun subscribeToMatches() {
         if (matchSubscription != null || call.callLog.callId.isNullOrEmpty()) return
-        matchSubscription = CallContactMatchService.matches(call).subscribe(
-            { matches -> scope.launch { applyContactMatches(matches) } },
+        // The user list is needed for an internal caller's picture, and can load after the call starts
+        matchSubscription = Observable.combineLatest(
+            CallContactMatchService.matches(call),
+            DirectoriesService.getInstance(coreContext.context).users.startWithItem(emptyList())
+        ) { matches, _ -> matches }.subscribe(
+            { matches ->
+                applyMatchesJob?.cancel()
+                applyMatchesJob = scope.launch { applyContactMatches(matches) }
+            },
             { e -> Log.e("[Call] Contact matches failed", e) }
         )
     }
@@ -162,27 +173,34 @@ open class CallData(val call: Call) : GenericContactData(call.remoteAddress) {
 
     /**
      * Names the call after its contact matches, as the web client's call view does: the first match's
-     * name, and its full contact (e.g. for the avatar) when exactly one contact matches.
+     * name, and its full contact (e.g. for the avatar) when exactly one contact matches. Its picture is
+     * that contact's avatar, else the internal user's profile image (CallAvatarRules).
      */
     // contact is typed non-null in ContactDataInterface, but null is how "no contact" is shown.
     @SuppressLint("NullSafeMutableLiveData")
     private suspend fun applyContactMatches(matches: List<ContactMatch>) {
         CallContactMatchService.displayName(call)?.let { displayName.value = it }
-        if (matches.isEmpty()) return
+        val user = CallContactMatchService.otherUser(call)
+        val userAvatarUrl = CallAvatarRules.userAvatarUrl(user)
+        // Otherwise a device contact for the number (from contactLookup) is kept
+        if (matches.isEmpty() && userAvatarUrl == null) return
 
-        if (matches.size == 1) {
-            val match = matches.single()
-            val directoryId = match.directoryId ?: return
-            val contactId = match.contactId ?: return
-            val item = DirectoriesService.getInstance(coreContext.context).getContact(
-                directoryId,
-                contactId
-            )
-            // A device contact for the number would otherwise name the call instead
-            contact.value = item?.let { UserGroupViewModel.createFriendFromContactItemModel(it) }
-        } else {
-            contact.value = null
-        }
+        val item = matches.singleOrNull()?.let { CallContactMatchService.matchedContact(it) }
+        val avatarUrl = CallAvatarRules.avatarUrl(item, user)
+        // A device contact for the number would otherwise name the call instead
+        contact.value = when {
+            item != null -> UserGroupViewModel.createFriendFromContactItemModel(item)
+            matches.isEmpty() && user != null -> createUserFriend(user)
+            // Several contacts match: none is the call's contact
+            else -> null
+        }?.also { friend -> avatarUrl?.let { friend.photo = it } }
+    }
+
+    // Just enough of the user for the call screens: their name and profile image
+    private fun createUserFriend(user: UserInfo): Friend {
+        val friend = coreContext.core.createFriend()
+        friend.name = user.displayName
+        return friend
     }
 
     override fun destroy() {

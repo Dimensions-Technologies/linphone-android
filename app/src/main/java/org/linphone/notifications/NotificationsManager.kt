@@ -771,7 +771,12 @@ class NotificationsManager(private val context: Context) {
     }
 
     fun getPerson(friend: Friend?, displayName: String, picture: Bitmap?): Person {
-        return friend?.getPerson()
+        // The picture given (e.g. a call's contact match avatar) wins over the device contact's
+        val person = friend?.getPerson()
+        if (person != null && picture != null) {
+            return person.toBuilder().setIcon(IconCompat.createWithAdaptiveBitmap(picture)).build()
+        }
+        return person
             ?: Person.Builder()
                 .setName(displayName)
                 .setIcon(

@@ -69,6 +69,7 @@
     <dimen name="voip_dialog_button_max_width">137dp</dimen>
     <dimen name="voip_contact_avatar_max_size">180dp</dimen>
     <dimen name="voip_contact_avatar_text_size">80sp</dimen>
+    <dimen name="voip_call_avatar_size">140dp</dimen>
     <dimen name="voip_numpad_button_max_size">64dp</dimen>
     <dimen name="voip_numpad_button_digit_size">32sp</dimen>
     <dimen name="voip_numpad_button_text_size">11sp</dimen>

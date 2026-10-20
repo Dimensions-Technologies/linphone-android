@@ -49,6 +49,12 @@ class DirectoriesService(val context: Context) : DefaultLifecycleObserver {
     private val allUsersSubject = BehaviorSubject.create<List<UserInfo>>()
     private val allUsers = allUsersSubject.map { x -> x }
 
+    /** The tenant's users, once loaded (empty until then). */
+    fun currentUsers(): List<UserInfo> = allUsersSubject.value.orEmpty()
+
+    /** The tenant's users, each time they're fetched. */
+    val users: Observable<List<UserInfo>> = allUsersSubject.hide()
+
     val dialSearchTextSubject = BehaviorSubject.createDefault("")
     val dialSearchText = dialSearchTextSubject
         .map { x -> x }
