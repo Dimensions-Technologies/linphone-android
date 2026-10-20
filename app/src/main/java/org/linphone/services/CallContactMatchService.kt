@@ -24,6 +24,7 @@ import org.linphone.models.UserInfo
 import org.linphone.models.contact.CallAvatarRules
 import org.linphone.models.contact.ContactDirectoryRules
 import org.linphone.models.contact.ContactItemModel
+import org.linphone.models.contact.VoicemailRules
 import org.linphone.models.realtime.ContactMatch
 import org.linphone.models.realtime.RealtimeEventType
 import org.linphone.services.realtime.RealtimeUserService
@@ -196,11 +197,14 @@ object CallContactMatchService {
         return calls.values.lastOrNull { it.number == number }?.matches?.value?.firstOrNull()?.displayName
     }
 
-    // The web client names calls to the user's own number (their voicemail) "Voicemail"
-    private fun isVoicemail(call: Call): Boolean {
-        if (call.dir != Call.Dir.Outgoing) return false
-        val presenceId = PhoneFormatterService.getInstance(context).currentUser?.presenceId
-        return !presenceId.isNullOrEmpty() && phoneNumber(call) == presenceId
+    /** Whether the call is to the user's own voicemail, which is named "Voicemail" (VoicemailRules). */
+    fun isVoicemail(call: Call): Boolean {
+        if (!started) return false
+        return VoicemailRules.isOwnVoicemailCall(
+            call.dir == Call.Dir.Outgoing,
+            phoneNumber(call),
+            PhoneFormatterService.getInstance(context).currentUser?.presenceId
+        )
     }
 
     /**
@@ -317,7 +321,12 @@ object CallContactMatchService {
         val entry = entryFor(call) ?: return
         entry.avatarJob?.cancel()
         entry.avatarJob = coreContext.coroutineScope.launch {
-            val contact = entry.matches.value.orEmpty().singleOrNull()?.let { matchedContact(it) }
+            // The user's own voicemail has no picture, whatever contact (the user themselves) it matches
+            val contact = if (isVoicemail(call)) {
+                null
+            } else {
+                entry.matches.value.orEmpty().singleOrNull()?.let { matchedContact(it) }
+            }
             val url = CallAvatarRules.avatarUrl(contact, otherUser(call))
             if (url == entry.avatarUrl) return@launch
             // Only kept once downloaded, so a refresh that cancels the download tries again

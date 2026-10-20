@@ -10,6 +10,7 @@ import org.linphone.core.ChatRoom
 import org.linphone.core.ConferenceInfo
 import org.linphone.core.ErrorInfo
 import org.linphone.core.Factory
+import org.linphone.models.contact.VoicemailRules
 import org.linphone.services.PhoneFormatterService
 import org.linphone.utils.DateUtils
 import org.linphone.utils.LinphoneUtils
@@ -85,6 +86,11 @@ class CallHistoryItemViewModel(
             } else {
                 call.calledUserName
             }
+        }
+        // As the web client: a call with the user's own extension was to their voicemail
+        val presenceId = PhoneFormatterService.getInstance(coreContext.context).currentUser?.presenceId
+        if (VoicemailRules.isOwnNumber(number, presenceId)) {
+            name = coreContext.context.getString(R.string.contact_match_voicemail)
         }
 
         val route = call.routePathName ?: call.groupName ?: call.huntgroupName ?: ""

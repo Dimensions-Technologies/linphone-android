@@ -180,6 +180,12 @@ open class CallData(val call: Call) : GenericContactData(call.remoteAddress) {
     @SuppressLint("NullSafeMutableLiveData")
     private suspend fun applyContactMatches(matches: List<ContactMatch>) {
         CallContactMatchService.displayName(call)?.let { displayName.value = it }
+        // The user's own voicemail is named "Voicemail", not after the contact (the user themselves)
+        // the number matches
+        if (CallContactMatchService.isVoicemail(call)) {
+            contact.value = null
+            return
+        }
         val user = CallContactMatchService.otherUser(call)
         val userAvatarUrl = CallAvatarRules.userAvatarUrl(user)
         // Otherwise a device contact for the number (from contactLookup) is kept
