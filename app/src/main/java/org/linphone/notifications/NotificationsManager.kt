@@ -790,7 +790,7 @@ class NotificationsManager(private val context: Context) {
         if (corePreferences.preventInterfaceFromShowingUp) return
         when (call.state) {
             Call.State.IncomingEarlyMedia, Call.State.IncomingReceived -> {
-                if (service != null) displayIncomingCallNotification(call, false)
+                if (service != null) displayIncomingCallNotification(call, false, refresh = true)
             }
             Call.State.OutgoingInit, Call.State.OutgoingProgress, Call.State.OutgoingRinging -> {
                 displayCallNotification(call, false)
@@ -800,8 +800,17 @@ class NotificationsManager(private val context: Context) {
         }
     }
 
-    fun displayIncomingCallNotification(call: Call, useAsForeground: Boolean) {
-        if (coreContext.declineCallDueToGsmActiveCall()) {
+    /**
+     * [refresh] rebuilds the notification already shown for this call. It skips the checks for a new
+     * call: once the call is ringing in Telecom, Telecom no longer permits an incoming call, and the
+     * notification may already be the foreground service's (WI 36362).
+     */
+    fun displayIncomingCallNotification(
+        call: Call,
+        useAsForeground: Boolean,
+        refresh: Boolean = false
+    ) {
+        if (!refresh && coreContext.declineCallDueToGsmActiveCall()) {
             Log.w(
                 "[Notifications Manager] Call will be declined, do not show incoming call notification"
             )
@@ -809,7 +818,7 @@ class NotificationsManager(private val context: Context) {
         }
 
         val notifiable = getNotifiableForCall(call)
-        if (notifiable.notificationId == currentForegroundServiceNotificationId) {
+        if (!refresh && notifiable.notificationId == currentForegroundServiceNotificationId) {
             Log.i(
                 "[Notifications Manager] There is already a Service foreground notification for this incoming call, skipping"
             )
