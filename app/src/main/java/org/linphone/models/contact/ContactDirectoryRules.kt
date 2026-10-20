@@ -1,6 +1,8 @@
 package org.linphone.models.contact
 
 import com.google.i18n.phonenumbers.PhoneNumberUtil
+import io.reactivex.rxjava3.core.Observable
+import io.reactivex.rxjava3.core.Single
 import org.linphone.models.realtime.ContactMatch
 
 /**
@@ -156,6 +158,35 @@ object ContactDirectoryRules {
         for (i in 0 until 4) tagFields["phone${i + 1}"] = phones.getOrNull(i).orEmpty()
         return ContactMatch(directory.name, directory.id, false, contact.id, tagFields)
     }
+
+    /**
+     * Whether matches from a directory must be ignored: one the user's directory list doesn't include
+     * (e.g. a server-side matching source), or an excluded type. As the web client's isDirectoryDenied.
+     */
+    fun isDirectoryDenied(directories: List<ContactDirectoryModel>, directoryId: String?): Boolean {
+        val directory = directories.firstOrNull { it.id == directoryId } ?: return true
+        return directory.type in excludedDirectoryTypes
+    }
+
+    fun filterDeniedMatches(
+        directories: List<ContactDirectoryModel>,
+        matches: List<ContactMatch>
+    ): List<ContactMatch> = matches.filter { !isDirectoryDenied(directories, it.directoryId) }
+
+    /**
+     * As filterDeniedMatches, once the directory list has loaded: until then every directory reads as
+     * denied, so matches that arrive early (e.g. a call soon after the app starts) would be lost. As
+     * the web client's filterDeniedMatches, which waits for the directory metadata first.
+     */
+    fun filterDeniedMatches(
+        directories: Observable<List<ContactDirectoryModel>>,
+        matches: List<ContactMatch>
+    ): Single<List<ContactMatch>> =
+        if (matches.isEmpty()) {
+            Single.just(matches)
+        } else {
+            directories.firstOrError().map { filterDeniedMatches(it, matches) }
+        }
 
     /**
      * Contact id to number for the contacts whose line status (BLF) is watched, as on the web client

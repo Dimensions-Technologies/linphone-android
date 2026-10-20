@@ -1,5 +1,6 @@
 package org.linphone.services
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.telecom.TelecomManager
 import io.reactivex.rxjava3.core.Observable
@@ -215,9 +216,28 @@ object CallContactMatchService {
         }
     }
 
+    // The filter completes by itself once the directory list has loaded, so isn't disposed
+    @SuppressLint("CheckResult")
     private fun onServerMatches(callId: String?, matches: List<ContactMatch>) {
         if (callId.isNullOrEmpty()) return
-        val allowed = DirectoriesService.getInstance(context).filterDeniedMatches(matches)
+        val directories = DirectoriesService.getInstance(context)
+        // The directory list can still be loading when a call comes in soon after the app starts;
+        // the matches are filtered once it has loaded
+        if (directories.contactDirectoriesSubject.value == null) {
+            Log.i("[Contact Match] Call $callId: waiting for the directories to filter server matches")
+        }
+        directories.filterDeniedMatches(matches).subscribe(
+            { allowed ->
+                Log.i(
+                    "[Contact Match] Call $callId: server sent ${matches.size} match(es), ${allowed.size} allowed"
+                )
+                coreContext.handler.post { applyServerMatches(callId, allowed) }
+            },
+            { e -> Log.e("[Contact Match] Filtering server matches failed", e) }
+        )
+    }
+
+    private fun applyServerMatches(callId: String, allowed: List<ContactMatch>) {
         if (allowed.isEmpty()) return
 
         val call = coreContext.core.calls.firstOrNull { it.callLog.callId == callId }
