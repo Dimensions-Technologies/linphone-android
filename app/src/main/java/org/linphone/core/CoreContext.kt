@@ -67,6 +67,7 @@ import org.linphone.contact.ContactLoader
 import org.linphone.contact.ContactsManager
 import org.linphone.contact.getContactForPhoneNumberOrAddress
 import org.linphone.mediastream.Version
+import org.linphone.models.SoftphoneDeviceRules
 import org.linphone.models.UserDevice
 import org.linphone.notifications.NotificationsManager
 import org.linphone.services.CallContactMatchService
@@ -1267,7 +1268,20 @@ class CoreContext(
         }
     }
 
+    // With no device there's no SIP account, so the number can't be parsed and the network looks
+    // unreachable; say what's actually wrong instead (WI #36281)
+    fun abortCallIfNoDevice(): Boolean {
+        val devices = DimensionsAccountsManager.getInstance(context).devicesSubject.value?.userDevices
+        if (!SoftphoneDeviceRules.noDeviceConfigured(devices)) return false
+
+        Log.e("[Context] No softphone device set up for the user, abort outgoing call")
+        callErrorMessageResourceId.value = Event(context.getString(R.string.call_error_no_device))
+        return true
+    }
+
     fun startCall(to: String) {
+        if (abortCallIfNoDevice()) return
+
         var stringAddress = to.trim()
         if (android.util.Patterns.PHONE.matcher(to).matches()) {
             val contact = contactsManager.findContactByPhoneNumber(to)
@@ -1299,6 +1313,8 @@ class CoreContext(
         forceZRTP: Boolean = false,
         localAddress: Address? = null
     ) {
+        if (abortCallIfNoDevice()) return
+
         if (!core.isNetworkReachable) {
             Log.e("[Context] Network unreachable, abort outgoing call")
             callErrorMessageResourceId.value = Event(

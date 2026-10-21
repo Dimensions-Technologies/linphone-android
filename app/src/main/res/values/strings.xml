@@ -463,6 +463,7 @@
     <string name="call_error_user_not_found">User hasn\'t been found</string>
     <string name="call_error_incompatible_media_params">Incompatible media parameters</string>
     <string name="call_error_network_unreachable">Network is unreachable</string>
+    <string name="call_error_no_device">You don\'t have a phone device set up on your account, so you can\'t make calls. Contact your administrator.</string>
     <string name="call_error_io_error">Service unavailable or network error</string>
     <string name="call_error_server_timeout">Server timeout</string>
     <string name="call_error_temporarily_unavailable">Temporarily unavailable</string>
@@ -1116,6 +1117,8 @@
     <string name="parking_no_feature_code">Unable to retrieve the feature code for parking calls.</string>
     <string name="parking_banner_text">%s is parked on your extension.</string>
     <string name="parking_banner_action">Pick up</string>
+    <string name="no_device_banner_text">You don\'t have a phone device set up on your account. You won\'t be able to make or receive calls.</string>
+    <string name="no_device_banner_action">Dismiss</string>
     <string name="call_action_park">Park</string>
     <string name="content_description_menu_parking">Parking</string>
     <string name="content_description_park_call">Park the current call on this user\'s extension</string>

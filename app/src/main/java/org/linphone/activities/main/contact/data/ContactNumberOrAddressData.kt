@@ -19,6 +19,7 @@
  */
 package org.linphone.activities.main.contact.data
 
+import org.linphone.LinphoneApplication.Companion.coreContext
 import org.linphone.LinphoneApplication.Companion.corePreferences
 import org.linphone.core.Address
 
@@ -38,6 +39,8 @@ class ContactNumberOrAddressData(
     val hidePlainChat = corePreferences.forceEndToEndEncryptedChat
 
     fun startCall() {
+        // With no device the number couldn't be parsed, so say why rather than doing nothing
+        if (coreContext.abortCallIfNoDevice()) return
         address ?: return
         listener.onCall(address)
     }
