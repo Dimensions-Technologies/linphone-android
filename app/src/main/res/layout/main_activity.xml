@@ -17,6 +17,9 @@
         <variable
             name="parkedCallViewModel"
             type="org.linphone.activities.main.viewmodels.ParkedCallViewModel" />
+        <variable
+            name="noDeviceViewModel"
+            type="org.linphone.activities.main.viewmodels.NoDeviceViewModel" />
     </data>
 
     <androidx.coordinatorlayout.widget.CoordinatorLayout
@@ -61,11 +64,19 @@
                 android:layout_below="@id/pull_call_banner"
                 app:viewModel="@{parkedCallViewModel}" />
 
+            <include
+                android:id="@+id/no_device_banner"
+                layout="@layout/no_device_banner"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_below="@id/parked_call_banner"
+                app:viewModel="@{noDeviceViewModel}" />
+
             <androidx.drawerlayout.widget.DrawerLayout
                 android:id="@+id/side_menu"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
-                android:layout_below="@id/parked_call_banner">
+                android:layout_below="@id/no_device_banner">
 
                 <include
                     android:id="@+id/content"

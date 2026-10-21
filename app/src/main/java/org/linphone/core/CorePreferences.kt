@@ -125,6 +125,13 @@ class CorePreferences constructor(private val context: Context) {
             config.setBool("app", "read_and_agree_terms_and_privacy", value)
         }
 
+    // As the web client's 'no-device-configured' warning, dismissing it hides it for good
+    var noDeviceWarningDismissed: Boolean
+        get() = config.getBool("app", "no_device_warning_dismissed", false)
+        set(value) {
+            config.setBool("app", "no_device_warning_dismissed", value)
+        }
+
     /* UI */
 
     var forcePortrait: Boolean

@@ -76,6 +76,7 @@ import org.linphone.activities.GenericActivity
 import org.linphone.activities.SnackBarActivity
 import org.linphone.activities.main.viewmodels.CallOverlayViewModel
 import org.linphone.activities.main.viewmodels.DialogViewModel
+import org.linphone.activities.main.viewmodels.NoDeviceViewModel
 import org.linphone.activities.main.viewmodels.ParkedCallViewModel
 import org.linphone.activities.main.viewmodels.PullCallViewModel
 import org.linphone.activities.main.viewmodels.SharedMainViewModel
@@ -215,6 +216,7 @@ class MainActivity : GenericActivity(), SnackBarActivity, NavController.OnDestin
         }
 
         binding.parkedCallViewModel = ViewModelProvider(this)[ParkedCallViewModel::class.java]
+        binding.noDeviceViewModel = ViewModelProvider(this)[NoDeviceViewModel::class.java]
 
         sharedViewModel.toggleDrawerEvent.observe(
             this
