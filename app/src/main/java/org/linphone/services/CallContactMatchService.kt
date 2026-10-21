@@ -37,7 +37,8 @@ import org.linphone.utils.SipIdentity
  * Matches live calls to contacts, ported from the web client (call-manager.service.ts "Contact
  * matching" and the Call model):
  * - the other party's number is looked up in the user's directory contacts, once per number the call
- *   has (it can change, e.g. a P-Asserted-Identity update after a transfer); a hit goes first
+ *   has (it can change, e.g. a P-Asserted-Identity update after a transfer, or the PBX's CTI number
+ *   arriving after the INVITE); a hit goes first
  * - contacts the server matches (callMatchEvent, e.g. from a CRM) are added after, unless their
  *   directory is one the user can't see or is excluded
  * - matches are never removed during a call, and are deduplicated by contact id
@@ -213,15 +214,14 @@ object CallContactMatchService {
     }
 
     /**
-     * The other party's number: from a P-Asserted-Identity the PBX sent (it follows transfers),
-     * else the remote address. The web client reads the PAI the same way.
+     * The other party's number, as the web client's: from a P-Asserted-Identity the PBX sent (it
+     * follows transfers), else the call's CTI number, else the remote address (see
+     * CallRouteRules.phoneNumber).
      */
-    fun phoneNumber(call: Call): String {
-        val paiNumber = SipIdentity.userPart(
-            call.remoteParams?.getCustomHeader("P-Asserted-Identity")
-        )
-        return paiNumber ?: call.remoteAddress.username.orEmpty()
-    }
+    fun phoneNumber(call: Call): String = CallRouteService.phoneNumber(call)
+
+    /** Looks the call up again, e.g. once the PBX has sent its CTI number. */
+    fun refresh(call: Call) = lookUp(call)
 
     private fun entryFor(call: Call): CallMatches? {
         if (!started) return null
