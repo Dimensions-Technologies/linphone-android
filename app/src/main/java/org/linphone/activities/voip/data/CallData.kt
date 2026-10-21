@@ -88,6 +88,9 @@ open class CallData(val call: Call) : GenericContactData(call.remoteAddress) {
     private var applyMatchesJob: Job? = null
     private var routeSubscription: Disposable? = null
 
+    // CallRouteService.otherPartyChanges when the call's contact was last set
+    private var otherPartyChanges = 0
+
     private val listener = object : CallListenerStub() {
         override fun onStateChanged(call: Call, state: Call.State, message: String) {
             if (call != this@CallData.call) return
@@ -183,6 +186,9 @@ open class CallData(val call: Call) : GenericContactData(call.remoteAddress) {
                 val info = CallRouteRules.callViewInfo(route, call.dir == Call.Dir.Incoming)
                 routeInfo.postValue(info.joinToString("\n"))
                 hasRouteInfo.postValue(info.isNotEmpty())
+                // The CTI number and name can change who the call shows. Once the route update
+                // is done, as it can also change the call's contact matches.
+                scope.launch { updateOtherParty() }
             },
             { e -> Log.e("[Call] Route failed", e) }
         )
@@ -219,6 +225,13 @@ open class CallData(val call: Call) : GenericContactData(call.remoteAddress) {
     // contact is typed non-null in ContactDataInterface, but null is how "no contact" is shown.
     @SuppressLint("NullSafeMutableLiveData")
     private suspend fun applyContactMatches(matches: List<ContactMatch>) {
+        // The call is with someone else now (e.g. after an attended transfer): a device contact
+        // for its remote address, or the old party's match or user, isn't theirs
+        val changes = CallRouteService.otherPartyChanges(call)
+        if (changes != otherPartyChanges) {
+            otherPartyChanges = changes
+            contact.value = null
+        }
         CallContactMatchService.displayName(call)?.let { displayName.value = it }
         // The user's own voicemail is named "Voicemail", not after the contact (the user themselves)
         // the number matches

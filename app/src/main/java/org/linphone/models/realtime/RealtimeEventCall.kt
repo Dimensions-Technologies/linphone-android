@@ -41,7 +41,9 @@ data class CtiCallData(
     val routePathName: String? = null,
     val routePathId: String? = null,
     // The PBX legs of the call; a softphone's leg has its SIP Call-ID
-    val relatedCalls: List<CtiRelatedCall>? = null
+    val relatedCalls: List<CtiRelatedCall>? = null,
+    // The internal users the call is with, the other party first
+    val otherUserIds: List<String>? = null
 )
 
 @Keep

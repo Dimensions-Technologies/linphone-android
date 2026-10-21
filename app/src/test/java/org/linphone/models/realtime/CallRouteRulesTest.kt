@@ -49,6 +49,35 @@ class CallRouteRulesTest {
     }
 
     @Test
+    fun `the CTI name and internal user are the other party's`() {
+        val incoming = CallRouteRules.update(
+            CallRoute(),
+            CtiCallData(callerName = "Draper 2", calledName = "Stewart", otherUserIds = listOf("u2", "u3")),
+            incoming = true
+        )
+        val outgoing = CallRouteRules.update(
+            CallRoute(),
+            CtiCallData(callerName = "Stewart", calledName = "Draper 2"),
+            incoming = false
+        )
+
+        assertEquals("Draper 2", incoming.ctiName)
+        assertEquals("u2", incoming.otherUserId)
+        assertEquals("Draper 2", outgoing.ctiName)
+    }
+
+    @Test
+    fun `an internal user a later event leaves out is kept`() {
+        val route = CallRouteRules.update(
+            CallRoute(otherUserId = "u2"),
+            CtiCallData(otherUserIds = emptyList()),
+            incoming = true
+        )
+
+        assertEquals("u2", route.otherUserId)
+    }
+
+    @Test
     fun `no CTI call leaves the route as it was`() {
         val previous = CallRoute("Main")
 

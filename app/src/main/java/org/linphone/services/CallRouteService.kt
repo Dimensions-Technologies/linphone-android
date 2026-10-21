@@ -8,6 +8,9 @@ import org.linphone.LinphoneApplication.Companion.coreContext
 import org.linphone.core.Call
 import org.linphone.core.Core
 import org.linphone.core.CoreListenerStub
+import org.linphone.models.contact.ContactDirectoryRules
+import org.linphone.models.realtime.CallParty
+import org.linphone.models.realtime.CallPartyRules
 import org.linphone.models.realtime.CallRoute
 import org.linphone.models.realtime.CallRouteRules
 import org.linphone.models.realtime.CtiCallData
@@ -21,7 +24,8 @@ import org.linphone.utils.SipIdentity
  * The route path and queue each live call came in on, ported from the web client
  * (call-manager.service.ts augmentSipCallData): the PBX's callEvent lists the user's calls, and a
  * call here is the CTI call that has its SIP Call-ID among its relatedCalls. The callEvent can
- * arrive before or after the INVITE, so both apply the latest calls.
+ * arrive before or after the INVITE, so both apply the latest calls. Each update also checks whether
+ * the call's other party has changed (CallPartyRules), e.g. after an attended transfer.
  *
  * Runs on the core's (main) thread; realtime events arrive on SignalR's.
  */
@@ -36,6 +40,7 @@ object CallRouteService {
 
     // By SIP Call-ID
     private val routes = mutableMapOf<String, BehaviorSubject<CallRoute>>()
+    private val parties = mutableMapOf<String, CallParty>()
 
     private val subscriptions = mutableListOf<Disposable>()
 
@@ -45,7 +50,10 @@ object CallRouteService {
             when (state) {
                 Call.State.Released -> {
                     coreContext.handler.postDelayed(
-                        { routes.remove(callId) },
+                        {
+                            routes.remove(callId)
+                            parties.remove(callId)
+                        },
                         RELEASED_CALL_RETENTION_MS
                     )
                 }
@@ -105,12 +113,35 @@ object CallRouteService {
      */
     fun phoneNumber(call: Call): String {
         val route = if (started) call.callLog.callId?.let { routes[it]?.value } else null
-        return CallRouteRules.phoneNumber(
-            SipIdentity.userPart(call.remoteParams?.getCustomHeader("P-Asserted-Identity")),
-            route ?: CallRoute(),
-            call.remoteAddress.username
+        return CallRouteRules.phoneNumber(paiNumber(call), route ?: CallRoute(), call.remoteAddress.username)
+    }
+
+    /** The number the PBX asserted for the call (P-Asserted-Identity), unless it's gone stale. */
+    fun paiNumber(call: Call): String? = CallPartyRules.paiNumber(pai(call), partyOf(call))
+
+    /**
+     * The name to show for a call no contact matches, while its SIP identity still names the party
+     * it had before a transfer (see CallPartyRules.staleIdentityName); else null.
+     */
+    fun staleIdentityName(call: Call): String? {
+        if (!started) return null
+        val route = routes[call.callLog.callId ?: return null]?.value ?: return null
+        return CallPartyRules.staleIdentityName(
+            partyOf(call),
+            call.remoteAddress.asString(),
+            paiNumber(call),
+            route,
+            phoneNumber(call)
         )
     }
+
+    /** How many times the call's other party has changed (see CallPartyRules), e.g. by a transfer. */
+    fun otherPartyChanges(call: Call): Int = partyOf(call).changes
+
+    private fun pai(call: Call) = SipIdentity.userPart(call.remoteParams?.getCustomHeader("P-Asserted-Identity"))
+
+    private fun partyOf(call: Call): CallParty =
+        if (started) call.callLog.callId?.let { parties[it] } ?: CallParty() else CallParty()
 
     private fun subjectFor(call: Call): BehaviorSubject<CallRoute>? {
         if (!started) return null
@@ -123,17 +154,34 @@ object CallRouteService {
         val subject = subjectFor(call) ?: return
         val callId = call.callLog.callId ?: return
         val previous = subject.value ?: CallRoute()
-        val route = CallRouteRules.update(
+        val cti = CtiCallRules.callForSipCall(ctiCalls, callId)
+        val route = CallRouteRules.update(previous, cti, call.dir == Call.Dir.Incoming)
+        val previousParty = parties[callId] ?: CallParty()
+        val countryCode = PhoneFormatterService.getInstance(context).getPbxCountryCode()
+        val party = CallPartyRules.update(
+            previousParty,
             previous,
-            CtiCallRules.callForSipCall(ctiCalls, callId),
-            call.dir == Call.Dir.Incoming
-        )
-        if (route == previous) return
+            route,
+            cti != null,
+            pai(call),
+            call.remoteAddress.username,
+            call.remoteAddress.asString()
+        ) { ContactDirectoryRules.toE164(it, countryCode) }
+        parties[callId] = party
+        if (route == previous && party == previousParty) return
 
-        Log.i("[Call Route] Call $callId came in on $route")
+        if (route != previous) Log.i("[Call Route] Call $callId came in on $route")
+        if (party.stalePaiNumber != previousParty.stalePaiNumber && party.stalePaiNumber.isNotEmpty()) {
+            Log.i("[Call Route] Call $callId: asserted number ${party.stalePaiNumber} has gone stale")
+        }
         subject.onNext(route)
-        // The CTI number can change the number the call is matched on
-        if (route.ctiNumber != previous.ctiNumber) CallContactMatchService.refresh(call)
+        if (party.changes != previousParty.changes) {
+            Log.i("[Call Route] Call $callId is now with someone else: ${party.shownNumber}")
+            CallContactMatchService.otherPartyChanged(call)
+        } else if (route.ctiNumber != previous.ctiNumber || party.stalePaiNumber != previousParty.stalePaiNumber) {
+            // The CTI number, or a stale asserted one, can change the number the call is matched on
+            CallContactMatchService.refresh(call)
+        }
         // The notification is built once per call state, so rebuild it. Posted, so that during a
         // state change it follows the notification that state shows.
         coreContext.handler.post { coreContext.notificationsManager.refreshCallNotification(call) }
