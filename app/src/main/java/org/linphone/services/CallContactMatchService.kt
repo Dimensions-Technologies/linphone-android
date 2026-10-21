@@ -41,7 +41,8 @@ import org.linphone.utils.SipIdentity
  *   arriving after the INVITE); a hit goes first
  * - contacts the server matches (callMatchEvent, e.g. from a CRM) are added after, unless their
  *   directory is one the user can't see or is excluded
- * - matches are never removed during a call, and are deduplicated by contact id
+ * - matches are deduplicated by contact id, and only removed when the call's other party changes
+ *   (CallPartyRules, e.g. after an attended transfer): they're for the old party
  * - the call is named after its first match: full name, else company
  * - its picture is the single match's avatar, else the internal user's profile image (CallAvatarRules)
  * Unlike the web client, the directory lookup uses the PBX country to compare numbers in E.164 form
@@ -147,13 +148,16 @@ object CallContactMatchService {
     /**
      * The name to show for the call, if contact matching gives one: "Voicemail" for the user's own
      * voicemail, else the first match's name, else the other party's number when it isn't the call's
-     * own remote address (see otherPartyNumber). Null to fall back to the SIP or device contact name.
+     * own remote address (see otherPartyNumber), else the CTI name or number while the SIP identity
+     * names the party the call had before a transfer (CallRouteService.staleIdentityName). Null to
+     * fall back to the SIP or device contact name.
      */
     fun displayName(call: Call): String? {
         lookUp(call)
         if (isVoicemail(call)) return context.getString(R.string.contact_match_voicemail)
         return entryFor(call)?.matches?.value?.firstOrNull()?.displayName
             ?: otherPartyNumber(call)?.let { formatNumber(it) }
+            ?: CallRouteService.staleIdentityName(call)?.let { formatNumber(it) }
     }
 
     /**
@@ -165,11 +169,12 @@ object CallContactMatchService {
     /** The other party's number (see phoneNumber), formatted for display; null if it has none. */
     fun displayNumber(call: Call): String? = phoneNumber(call).takeIf { it.isNotEmpty() }?.let { formatNumber(it) }
 
-    // See SipIdentity.otherPartyNumber: its name comes from contact matching on the number
+    // See SipIdentity.otherPartyNumber: its name comes from contact matching on the number. None
+    // while the asserted number is stale (CallRouteService.paiNumber).
     private fun otherPartyNumber(call: Call): String? = SipIdentity.otherPartyNumber(
         call.remoteParams?.getCustomHeader("P-Asserted-Identity"),
         call.remoteAddress.username
-    )
+    )?.takeIf { CallRouteService.paiNumber(call) != null }
 
     /**
      * The internal user the call is with, by extension, for their profile image. None for the user's
@@ -222,6 +227,17 @@ object CallContactMatchService {
 
     /** Looks the call up again, e.g. once the PBX has sent its CTI number. */
     fun refresh(call: Call) = lookUp(call)
+
+    /**
+     * Drops the call's matches, as the web client's Call.update does when its other party changes
+     * (CallPartyRules, e.g. after an attended transfer), then looks it up again for the new party.
+     */
+    fun otherPartyChanged(call: Call) {
+        val entry = entryFor(call) ?: return
+        entry.lookedUpNumbers.clear()
+        update(call, emptyList())
+        lookUp(call)
+    }
 
     private fun entryFor(call: Call): CallMatches? {
         if (!started) return null

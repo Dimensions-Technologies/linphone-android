@@ -1,14 +1,16 @@
 package org.linphone.models.realtime
 
 /**
- * The route path and queue a live call came in on, and the other party's number, from the PBX's
- * callEvent.
+ * The route path and queue a live call came in on, and the other party's number, name and internal
+ * user, from the PBX's callEvent.
  */
 data class CallRoute(
     val routePathName: String = "",
     val routePathId: String = "",
     val queueName: String = "",
-    val ctiNumber: String = ""
+    val ctiNumber: String = "",
+    val ctiName: String = "",
+    val otherUserId: String = ""
 )
 
 /**
@@ -19,16 +21,20 @@ data class CallRoute(
 object CallRouteRules {
     /**
      * The route once [cti] is applied. As the web client's CallSummary.update, a value the PBX
-     * leaves out of a later event keeps the one it sent before.
+     * leaves out of a later event keeps the one it sent before. Except the name, which the web
+     * client reads from the latest event only - after a transfer, the old party's would stick.
      */
     fun update(previous: CallRoute, cti: CtiCallData?, incoming: Boolean): CallRoute {
         if (cti == null) return previous
         val number = if (incoming) cti.callerNumber else cti.calledNumber
+        val name = if (incoming) cti.callerName else cti.calledName
         return CallRoute(
             routePathName = cti.routePathName.orEmpty().ifEmpty { previous.routePathName },
             routePathId = cti.routePathId.orEmpty().ifEmpty { previous.routePathId },
             queueName = cti.groupName.orEmpty().ifEmpty { previous.queueName },
-            ctiNumber = number.orEmpty().ifEmpty { previous.ctiNumber }
+            ctiNumber = number.orEmpty().ifEmpty { previous.ctiNumber },
+            ctiName = name.orEmpty(),
+            otherUserId = cti.otherUserIds?.firstOrNull().orEmpty().ifEmpty { previous.otherUserId }
         )
     }
 
