@@ -67,6 +67,23 @@ class CallRouteRulesTest {
     }
 
     @Test
+    fun `a CTI number arriving after the INVITE becomes the phone number, and stays`() {
+        // WI 36358: contact matching uses this number, as the web client does
+        val beforeCti = CallRoute()
+        assertEquals("1002", CallRouteRules.phoneNumber(null, beforeCti, "1002"))
+
+        val afterCti = CallRouteRules.update(
+            beforeCti,
+            CtiCallData(callerNumber = "+441617864358"),
+            incoming = true
+        )
+        assertEquals("+441617864358", CallRouteRules.phoneNumber(null, afterCti, "1002"))
+
+        val laterEvent = CallRouteRules.update(afterCti, CtiCallData(callerNumber = ""), incoming = true)
+        assertEquals("+441617864358", CallRouteRules.phoneNumber(null, laterEvent, "1002"))
+    }
+
+    @Test
     fun `the call view lists the route path then the queue for an incoming call`() {
         val info = CallRouteRules.callViewInfo(CallRoute("Main", "rp1", "Sales"), incoming = true)
 

@@ -96,12 +96,20 @@ object CallRouteService {
     fun notificationRoute(call: Call): String? {
         if (!started) return null
         val route = routes[call.callLog.callId ?: return null]?.value ?: return null
-        val phoneNumber = CallRouteRules.phoneNumber(
+        return CallRouteRules.notificationRoute(route, phoneNumber(call))
+    }
+
+    /**
+     * The other party's number, as the web client's CallSummary.getPhoneNumber (see
+     * CallRouteRules.phoneNumber). The call can have ended.
+     */
+    fun phoneNumber(call: Call): String {
+        val route = if (started) call.callLog.callId?.let { routes[it]?.value } else null
+        return CallRouteRules.phoneNumber(
             SipIdentity.userPart(call.remoteParams?.getCustomHeader("P-Asserted-Identity")),
-            route,
+            route ?: CallRoute(),
             call.remoteAddress.username
         )
-        return CallRouteRules.notificationRoute(route, phoneNumber)
     }
 
     private fun subjectFor(call: Call): BehaviorSubject<CallRoute>? {
@@ -124,6 +132,8 @@ object CallRouteService {
 
         Log.i("[Call Route] Call $callId came in on $route")
         subject.onNext(route)
+        // The CTI number can change the number the call is matched on
+        if (route.ctiNumber != previous.ctiNumber) CallContactMatchService.refresh(call)
         // The notification is built once per call state, so rebuild it. Posted, so that during a
         // state change it follows the notification that state shows.
         coreContext.handler.post { coreContext.notificationsManager.refreshCallNotification(call) }
