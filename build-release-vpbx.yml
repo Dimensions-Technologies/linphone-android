@@ -17,9 +17,9 @@ steps:
 - task: Cache@2
   displayName: "Restore Gradle cache"
   inputs:
-    # Runs before any step edits build.gradle, so the key matches the committed files. When the key
-    # matches exactly the cache isn't saved again, so it's refreshed whenever the build files change.
-    key: 'gradle | "$(Agent.OS)" | gradle/wrapper/gradle-wrapper.properties | gradle.properties | settings.gradle | build.gradle | app/build.gradle'
+    # Restores the most recent cache and saves a new one under this run's build ID, so the Gradle build
+    # cache keeps up with the code. Only content not already stored is uploaded.
+    key: 'gradle | "$(Agent.OS)" | "$(Build.BuildId)"'
     restoreKeys: |
       gradle | "$(Agent.OS)"
     path: $(GRADLE_USER_HOME)
