@@ -1,8 +1,22 @@
 pool:
   vmImage: 'ubuntu-latest'
 
+variables:
+- name: GRADLE_USER_HOME
+  value: $(Pipeline.Workspace)/.gradle
+
 steps:
 - checkout: self
+
+- task: Cache@2
+  displayName: "Restore Gradle cache"
+  inputs:
+    # Runs before any step edits build.gradle, so the key matches the committed files. When the key
+    # matches exactly the cache isn't saved again, so it's refreshed whenever the build files change.
+    key: 'gradle | "$(Agent.OS)" | gradle/wrapper/gradle-wrapper.properties | gradle.properties | settings.gradle | build.gradle | app/build.gradle'
+    restoreKeys: |
+      gradle | "$(Agent.OS)"
+    path: $(GRADLE_USER_HOME)
 
 - task: JavaToolInstaller@0
   displayName: "Install Java"
@@ -31,6 +45,14 @@ steps:
     javaHomeOption: 'JDKVersion'
     sonarQubeRunAnalysis: false
     spotBugsAnalysis: false
+
+# Stops the Gradle daemon so it releases its cache files before Cache@2 saves them at the end of the job.
+- task: Bash@3
+  displayName: "Stop Gradle daemon"
+  condition: always()
+  inputs:
+    targetType: 'inline'
+    script: './gradlew --stop'
 
 - task: PublishBuildArtifacts@1
   displayName: "Publish SDK"
