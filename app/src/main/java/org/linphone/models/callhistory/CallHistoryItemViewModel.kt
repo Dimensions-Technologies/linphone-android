@@ -67,14 +67,18 @@ class CallHistoryItemViewModel(
             coreContext.context.getString(R.string.microsoft_teams)
         } else {
             if (number.isNotEmpty()) {
-                try {
-                    PhoneFormatterService.getInstance(coreContext.context).formatPhoneNumber(number)
-                } catch (e: Exception) {
-                    number
-                }
+                formatNumber(number)
             } else {
                 coreContext.context.getString(R.string.unknown_formatted_number)
             }
+        }
+    }
+
+    private fun formatNumber(number: String): String {
+        return try {
+            PhoneFormatterService.getInstance(coreContext.context).formatPhoneNumber(number)
+        } catch (e: Exception) {
+            number
         }
     }
 
@@ -99,7 +103,8 @@ class CallHistoryItemViewModel(
             name,
             formattedNumber,
             number,
-            CallHistoryFieldRules.route(call)
+            CallHistoryFieldRules.route(call),
+            ::formatNumber
         ) { route -> coreContext.context.getString(R.string.call_history_via_route, route) }
     }
 

@@ -11,4 +11,11 @@ object CallHeaderRules {
      */
     fun showsNumber(outgoing: Boolean, voicemail: Boolean, name: String?, number: String?): Boolean =
         outgoing && !voicemail && !number.isNullOrEmpty() && number != name
+
+    /**
+     * The number line under the name on an incoming call notification: none when there's no number
+     * or the name is already that number (an unmatched caller).
+     */
+    fun notificationNumber(name: String?, number: String?): String? =
+        number.takeUnless { it.isNullOrEmpty() || it == name }
 }
