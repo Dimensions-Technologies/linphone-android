@@ -43,6 +43,34 @@ object CtiCallRules {
     }
 
     /**
+     * The SIP call (by Call-ID) an id the server gives a call is for, e.g. callMatchEvent's, which is
+     * the PBX call id rather than the softphone leg's Call-ID. As the web client's
+     * call-manager.service.ts findCall, each rule is tried against every call before the next:
+     * the call's own Call-ID, then the id of the CTI call it's a leg of (the web client's
+     * Call.sipCallId; its key or callId here, which have no separate id), then one of that CTI
+     * call's other legs.
+     */
+    fun sipCallIdForServerId(
+        currentCalls: Map<String, CtiCallData>,
+        sipCallIds: List<String>,
+        serverCallId: String
+    ): String? {
+        if (serverCallId.isEmpty()) return null
+        val ids = sipCallIds.filter { it.isNotEmpty() }
+        ids.firstOrNull { it == serverCallId }?.let { return it }
+
+        fun ctiCallOf(sipCallId: String) = currentCalls.entries.firstOrNull { (_, call) ->
+            call.relatedCalls.orEmpty().any { it.callId == sipCallId }
+        }
+        ids.firstOrNull { id ->
+            ctiCallOf(id)?.let { (key, cti) -> serverCallId == key || serverCallId == cti.callId } == true
+        }?.let { return it }
+        return ids.firstOrNull { id ->
+            ctiCallOf(id)?.value?.relatedCalls.orEmpty().any { it.callId == serverCallId }
+        }
+    }
+
+    /**
      * The PBX can report several "-quickcall" legs at once (one per device rung while originating
      * or bridging a call) that are the same call to the user, differing only in PBX bookkeeping.
      * Each group with the same direction, type and numbers is collapsed to its first leg by call id.

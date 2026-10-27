@@ -82,6 +82,66 @@ class CtiCallRulesTest {
     }
 
     @Test
+    fun `a server call id is for the SIP call that's a leg of the CTI call it names`() {
+        // Bug 36366: callMatchEvent names the PBX call (4a1a2103-…), the softphone's INVITE has its
+        // own Call-ID (a45aa719-…); only the callEvent links the two
+        val pbxCallId = "4a1a2103-499a-1240-f1aa-005056a5e8f1"
+        val sipCallId = "a45aa719-0150-4a68-ba46-d66473be96aa"
+        val calls = mapOf(
+            pbxCallId to call("ringing").copy(
+                callId = pbxCallId,
+                relatedCalls = listOf(CtiRelatedCall(callId = "desk-leg"), CtiRelatedCall(callId = sipCallId))
+            ),
+            "other" to call("ringing").copy(callId = "other", relatedCalls = listOf(CtiRelatedCall(callId = "x")))
+        )
+        val sipCalls = listOf(sipCallId)
+
+        assertEquals(sipCallId, CtiCallRules.sipCallIdForServerId(calls, sipCalls, pbxCallId))
+        // Another leg of the same call
+        assertEquals(sipCallId, CtiCallRules.sipCallIdForServerId(calls, sipCalls, "desk-leg"))
+        assertNull(CtiCallRules.sipCallIdForServerId(calls, sipCalls, "other"))
+        assertNull(CtiCallRules.sipCallIdForServerId(calls, sipCalls, "x"))
+    }
+
+    @Test
+    fun `a server call id is for the SIP call with that Call-ID, even without a callEvent`() {
+        assertEquals("sip-1", CtiCallRules.sipCallIdForServerId(emptyMap(), listOf("sip-1"), "sip-1"))
+        assertNull(CtiCallRules.sipCallIdForServerId(emptyMap(), listOf("sip-1"), "c1"))
+        assertNull(CtiCallRules.sipCallIdForServerId(emptyMap(), listOf(""), ""))
+        assertNull(CtiCallRules.sipCallIdForServerId(emptyMap(), emptyList(), "sip-1"))
+    }
+
+    @Test
+    fun `a server call id can be the CTI call's callId rather than its key`() {
+        val calls = mapOf(
+            "key-1" to call("ringing").copy(callId = "c1", relatedCalls = listOf(CtiRelatedCall(callId = "sip-1")))
+        )
+
+        assertEquals("sip-1", CtiCallRules.sipCallIdForServerId(calls, listOf("sip-1"), "c1"))
+        assertEquals("sip-1", CtiCallRules.sipCallIdForServerId(calls, listOf("sip-1"), "key-1"))
+        assertNull(CtiCallRules.sipCallIdForServerId(calls, listOf("sip-2"), "c1"))
+    }
+
+    @Test
+    fun `a server call id is matched rule by rule across all calls, as the web client's findCall`() {
+        // sip-b's Call-ID is also a leg of sip-a's CTI call, and c2's id is a leg of sip-a's too;
+        // sip-a comes first, but an earlier rule matching a later call wins
+        val calls = mapOf(
+            "c1" to call("ringing").copy(
+                callId = "c1",
+                relatedCalls = listOf(CtiRelatedCall(callId = "sip-a"), CtiRelatedCall(callId = "sip-b"), CtiRelatedCall(callId = "c2"))
+            ),
+            "c2" to call("ringing").copy(callId = "c2", relatedCalls = listOf(CtiRelatedCall(callId = "sip-c")))
+        )
+        val sipCalls = listOf("sip-a", "sip-c", "sip-b")
+
+        // Own Call-ID beats being another leg of sip-a's CTI call
+        assertEquals("sip-b", CtiCallRules.sipCallIdForServerId(calls, sipCalls, "sip-b"))
+        // The CTI call's id beats being another leg of sip-a's CTI call
+        assertEquals("sip-c", CtiCallRules.sipCallIdForServerId(calls, sipCalls, "c2"))
+    }
+
+    @Test
     fun `cleared calls are left out`() {
         val calls = CtiCallRules.currentCalls(mapOf("c1" to call("cleared")))
 
