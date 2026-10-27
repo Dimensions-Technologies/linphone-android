@@ -30,7 +30,6 @@ import io.reactivex.rxjava3.disposables.Disposable
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import org.linphone.R
 import org.linphone.activities.main.MainActivity
 import org.linphone.activities.main.fragments.SecureFragment
@@ -97,18 +96,12 @@ class AboutFragment : SecureFragment<AboutFragmentBinding>() {
             }
         }
 
-        binding.setUploadLogsClickListener {
-            val activity = requireActivity() as MainActivity
+        DiagnosticsService.clearSendToSupportResult()
+        binding.setSendToSupportClickListener {
             val context = requireContext().applicationContext
+            // Not tied to the fragment, so leaving About doesn't cancel the upload
             CoroutineScope(Dispatchers.IO).launch {
-                val result = try {
-                    DiagnosticsService.uploadDiagnostics(context)
-                    "Logs uploaded to server"
-                } catch (e: Exception) {
-                    Log.e("[About] Failed to upload logs, ${e.message}")
-                    "Failed to upload logs! " + e.message
-                }
-                withContext(Dispatchers.Main) { activity.showSnackBar(result) }
+                DiagnosticsService.sendToSupport(context)
             }
         }
 

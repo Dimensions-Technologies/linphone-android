@@ -14,7 +14,7 @@
             name="weblateClickListener"
             type="android.view.View.OnClickListener"/>
         <variable
-            name="uploadLogsClickListener"
+            name="sendToSupportClickListener"
             type="android.view.View.OnClickListener"/>
         <variable
             name="clearLogsClickListener"
@@ -167,6 +167,43 @@
                             android:paddingBottom="14sp"/>
                     </LinearLayout>
 
+                    <TextView
+                        style="@style/settings_category_font"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginHorizontal="10dp"
+                        android:text="@string/about_diagnostics_title" />
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:layout_gravity="center"
+                        android:layout_marginHorizontal="10dp"
+                        android:layout_marginTop="5dp"
+                        android:gravity="center_horizontal">
+
+                        <Button
+                            android:id="@+id/send_to_support_btn"
+                            android:layout_width="fill_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:enabled="@{viewModel.sendToSupportEnabled}"
+                            android:onClick="@{sendToSupportClickListener}"
+                            android:text="@{viewModel.sendToSupportLabel}" />
+
+                        <android.widget.Space
+                            android:layout_width="10dp"
+                            android:layout_height="match_parent"/>
+
+                        <Button
+                            android:id="@+id/clear_logs_btn"
+                            android:layout_width="fill_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:onClick="@{clearLogsClickListener}"
+                            android:text="@{@string/about_logging_clear}" />
+                    </LinearLayout>
+
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="match_parent"
@@ -181,35 +218,6 @@
                             linphone:listener="@{viewModel.sipLogModeListener}"
                             linphone:checked="@={viewModel.sipLogMode}"/>
 
-                    </LinearLayout>
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="match_parent"
-                        android:layout_gravity="center"
-                        android:layout_marginHorizontal="10dp"
-                        android:layout_marginTop="15dp"
-                        android:gravity="center_horizontal">
-
-                        <Button
-                            android:id="@+id/upload_logs_btn"
-                            android:layout_width="fill_parent"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:onClick="@{uploadLogsClickListener}"
-                            android:text="@{@string/about_logging_upload}" />
-
-                        <android.widget.Space
-                            android:layout_width="10dp"
-                            android:layout_height="match_parent"/>
-
-                        <Button
-                            android:id="@+id/clear_logs_btn"
-                            android:layout_width="fill_parent"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:onClick="@{clearLogsClickListener}"
-                            android:text="@{@string/about_logging_clear}" />
                     </LinearLayout>
 
 

@@ -58,8 +58,16 @@
     <string name="about_weblate_translation">Help us translate &appName;</string>
     <string name="about_siplogging_title">Enable detailed SIP logging</string>
     <string name="about_siplogging_subtitle">May cause app instability. Requires restart.</string>
-    <string name="about_logging_upload">Upload logs</string>
+    <string name="about_diagnostics_title">Diagnostics</string>
+    <string name="about_send_to_support">Send to support</string>
+    <string name="about_send_to_support_sending">Sending…</string>
+    <string name="about_send_to_support_sent">Sent to support</string>
+    <string name="about_send_to_support_failed">Send failed - retry</string>
     <string name="about_logging_clear">Clear logs</string>
+    <string name="login_send_to_support">Send diagnostic info to support</string>
+    <string name="login_send_to_support_sending">Sending diagnostic info to support…</string>
+    <string name="login_send_to_support_sent">Diagnostic info sent to support.</string>
+    <string name="login_send_to_support_failed">Unable to send diagnostic info to support.</string>
 
 
     <!-- Logs -->
@@ -1009,7 +1017,6 @@
     <string name="content_description_menu_chat">Conversations</string>
     <string name="content_description_dialer_erase">Remove last character</string>
     <string name="content_description_add_contact">Create contact</string>
-    <string name="content_description_upload_logs">Upload logs</string>
     <string name="content_description_go_to_contact">Go to contact details</string>
     <string name="content_description_show_all_calls">Show all calls</string>
     <string name="content_description_show_missed_calls">Only show missed calls</string>
