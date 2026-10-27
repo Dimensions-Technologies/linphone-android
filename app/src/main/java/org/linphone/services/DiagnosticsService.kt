@@ -3,6 +3,8 @@ package org.linphone.services
 import android.content.Context
 import android.media.AudioManager
 import android.os.Build
+import androidx.lifecycle.LiveData
+import androidx.lifecycle.MutableLiveData
 import java.io.BufferedWriter
 import java.io.File
 import java.io.FileWriter
@@ -25,12 +27,54 @@ import timber.log.Timber
 class DiagnosticsService {
 
     companion object {
-        private val LOG_FILE_TIME_FORMAT = SimpleDateFormat("yyyy-MM-dd_HH-mm-ss", Locale.US)
+        private val sendToSupportGuard = SendToSupportGuard()
 
-        private fun getUploadName(context: Context): String {
-            val userId = AuthStateManager.getInstance(context).getUser().id
-            val timestamp = LOG_FILE_TIME_FORMAT.format(Date())
-            return "${userId}_$timestamp.zip"
+        // Shared by About and the sign-in screen, so an upload started on one shows on the other
+        private val sendToSupportStateData = MutableLiveData(SendToSupportState.IDLE)
+        val sendToSupportState: LiveData<SendToSupportState> = sendToSupportStateData
+
+        /**
+         * android_{tenantId}_{yyyyMMdd-HHmmss}.zip, in local time, matching the web client's
+         * webrtc_… and the portals' names so support can find a tenant's uploads together. The
+         * server doesn't record who uploaded a file, so the name is all support has to go on.
+         */
+        fun supportFileName(tenantId: String?, now: Date, timeZone: TimeZone = TimeZone.getDefault()): String {
+            val tenant = (tenantId ?: "").lowercase(Locale.ROOT)
+                .replace(Regex("[^a-z0-9]+"), "-")
+                .trim('-')
+                .ifEmpty { "unknown-tenant" }
+            val format = SimpleDateFormat("yyyyMMdd-HHmmss", Locale.US)
+            format.timeZone = timeZone
+            return "android_${tenant}_${format.format(now)}.zip"
+        }
+
+        /**
+         * Uploads the logs zip to the support team's container. Taps while an upload is running
+         * are ignored, and taps soon after a successful one report it as sent again.
+         */
+        suspend fun sendToSupport(context: Context) {
+            val sent = sendToSupportGuard.run {
+                sendToSupportStateData.postValue(SendToSupportState.SENDING)
+                try {
+                    uploadDiagnostics(context)
+                    Log.i("[Diagnostics] Logs sent to support")
+                    true
+                } catch (e: Exception) {
+                    Log.e("[Diagnostics] Failed to send logs to support, ${e.message}")
+                    false
+                }
+            } ?: return
+
+            sendToSupportStateData.postValue(
+                if (sent) SendToSupportState.SENT else SendToSupportState.FAILED
+            )
+        }
+
+        // A screen opened later starts from the plain button, not an old result
+        fun clearSendToSupportResult() {
+            if (sendToSupportStateData.value != SendToSupportState.SENDING) {
+                sendToSupportStateData.value = SendToSupportState.IDLE
+            }
         }
 
         fun clearLogs(context: Context) {
@@ -81,7 +125,7 @@ class DiagnosticsService {
             return zipFile
         }
 
-        suspend fun uploadDiagnostics(context: Context) {
+        private suspend fun uploadDiagnostics(context: Context) {
             val zipFile = getLogsZip(context)
 
             val body = zipFile
@@ -92,7 +136,8 @@ class DiagnosticsService {
                     zipFile.length().toInt()
                 )
 
-            val uploadName = getUploadName(context)
+            // The user may not be loaded on the sign-in screen, which the file name allows for
+            val uploadName = supportFileName(AuthStateManager.getInstance(context).getUser()?.tenantId, Date())
 
             val response = APIClientService(context).getUCGatewayService().postClientDiagnostics(
                 uploadName,

@@ -34,7 +34,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.withContext
 import kotlinx.coroutines.rx3.awaitFirst
 import net.openid.appauth.AuthState
 import net.openid.appauth.AuthorizationException
@@ -55,6 +54,7 @@ import org.linphone.environment.DimensionsEnvironmentService
 import org.linphone.environment.DimensionsEnvironmentService.Companion.getInstance
 import org.linphone.environment.EnvironmentSelectionAdapter
 import org.linphone.services.DiagnosticsService
+import org.linphone.services.SendToSupportState
 import org.linphone.services.UserService
 import org.linphone.utils.CallUriIntents
 import org.linphone.utils.Log
@@ -135,7 +135,9 @@ class LoginActivity : AppCompatActivity() {
             )
         }
         findViewById<View>(R.id.start_auth).setOnClickListener { _: View? -> startAuth() }
-        findViewById<View>(R.id.send_logs).setOnClickListener { _: View? -> uploadLogs() }
+        findViewById<View>(R.id.send_logs).setOnClickListener { _: View? -> sendLogsToSupport() }
+        DiagnosticsService.clearSendToSupportResult()
+        DiagnosticsService.sendToSupportState.observe(this) { showSendToSupportState(it) }
         MultiTapDetector(findViewById(R.id.login_scrollview)) { nTaps, isComplete ->
             toggleDevMode(nTaps, isComplete)
         }
@@ -347,7 +349,7 @@ class LoginActivity : AppCompatActivity() {
     }
 
     @MainThread
-    fun uploadLogs() {
+    fun sendLogsToSupport() {
         val dimensionsEnvironment = getInstance(applicationContext).getCurrentEnvironment()
         if (dimensionsEnvironment == null) {
             Snackbar
@@ -358,23 +360,24 @@ class LoginActivity : AppCompatActivity() {
                 ).show()
         } else {
             CoroutineScope(Dispatchers.IO).launch {
-                val result = try {
-                    DiagnosticsService.uploadDiagnostics(applicationContext)
-                    "Logs uploaded to server"
-                } catch (e: Exception) {
-                    Log.e("[LoginActivity] Failed to upload logs, ${e.message}")
-                    "Failed to upload logs! " + e.message
-                }
-                withContext(Dispatchers.Main) {
-                    Snackbar
-                        .make(
-                            findViewById(R.id.login_coordinator),
-                            result,
-                            Snackbar.LENGTH_SHORT
-                        ).show()
-                }
+                DiagnosticsService.sendToSupport(applicationContext)
             }
         }
+    }
+
+    // A status line rather than a snackbar, so the result stays on screen as on the web client
+    @MainThread
+    private fun showSendToSupportState(state: SendToSupportState) {
+        val status = findViewById<TextView>(R.id.send_logs_status)
+        val message = when (state) {
+            SendToSupportState.SENDING -> R.string.login_send_to_support_sending
+            SendToSupportState.SENT -> R.string.login_send_to_support_sent
+            SendToSupportState.FAILED -> R.string.login_send_to_support_failed
+            else -> null
+        }
+        status.visibility = if (message == null) View.GONE else View.VISIBLE
+        message?.let { status.setText(it) }
+        findViewById<View>(R.id.send_logs).isEnabled = state != SendToSupportState.SENDING
     }
 
     /**
