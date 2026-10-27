@@ -3,11 +3,18 @@ package org.linphone.models.callhistory
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
+import org.linphone.models.callsession.PhoneFormat
 
 class CallHistoryFieldRulesTest {
 
     private fun fields(name: String?, formattedNumber: String, number: String, route: String?) =
-        CallHistoryFieldRules.fields(name, formattedNumber, number, route) { "via $it" }
+        CallHistoryFieldRules.fields(
+            name,
+            formattedNumber,
+            number,
+            route,
+            { PhoneFormat.format(it, "GB") }
+        ) { "via $it" }
 
     @Test
     fun `a call has its name, number and route`() {
@@ -32,6 +39,34 @@ class CallHistoryFieldRulesTest {
     @Test
     fun `a name that is the number isn't repeated`() {
         assertEquals(listOf("2001"), fields("2001", "2001", "2001", null))
+    }
+
+    @Test
+    fun `an outgoing call named after the number as dialled shows it once, formatted`() {
+        assertEquals(
+            listOf("0161 786 4357"),
+            fields("01617864357", "0161 786 4357", "01617864357", null)
+        )
+        assertEquals(
+            listOf("0161 786 4357"),
+            fields("+441617864357", "0161 786 4357", "01617864357", null)
+        )
+    }
+
+    @Test
+    fun `a name that is a different number is kept`() {
+        assertEquals(
+            listOf("0161 786 4355", "0161 786 4357"),
+            fields("0161 786 4355", "0161 786 4357", "01617864357", null)
+        )
+    }
+
+    @Test
+    fun `a name containing the number is kept`() {
+        assertEquals(
+            listOf("Reception 01617864357", "0161 786 4357"),
+            fields("Reception 01617864357", "0161 786 4357", "01617864357", null)
+        )
     }
 
     @Test

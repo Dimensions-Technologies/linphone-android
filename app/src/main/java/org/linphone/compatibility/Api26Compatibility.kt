@@ -31,6 +31,7 @@ import android.media.AudioAttributes
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.telecom.CallAudioState
+import android.view.View
 import android.view.WindowManager
 import android.view.inputmethod.EditorInfo
 import android.widget.RemoteViews
@@ -46,6 +47,7 @@ import org.linphone.R
 import org.linphone.contact.getThumbnailUri
 import org.linphone.core.Call
 import org.linphone.core.Friend
+import org.linphone.models.contact.CallHeaderRules
 import org.linphone.notifications.Notifiable
 import org.linphone.notifications.NotificationsManager
 import org.linphone.services.CallContactMatchService
@@ -167,7 +169,7 @@ class Api26Compatibility {
             val contact: Friend?
             val roundPicture: Bitmap?
             val displayName: String
-            val address: String
+            val address: String?
             val info: String
 
             val remoteContact = call.remoteContact
@@ -200,7 +202,12 @@ class Api26Compatibility {
                     CallContactMatchService.avatar(call)
                     ?: ImageUtils.getRoundBitmapFromUri(context, contact?.getThumbnailUri())
                 displayName = matchedName ?: contact?.name ?: CallContactMatchService.remoteName(call)
-                address = LinphoneUtils.getDisplayableAddress(call.remoteAddress)
+                // Formatted as the name is, and not repeated under it for an unmatched caller
+                address = CallHeaderRules.notificationNumber(
+                    displayName,
+                    CallContactMatchService.displayNumber(call)
+                        ?: LinphoneUtils.getDisplayableAddress(call.remoteAddress)
+                )
                 info = CallRouteService.notificationRoute(call)?.let {
                     context.getString(R.string.incoming_call_via_route_notification_title, it)
                 } ?: context.getString(R.string.incoming_call_notification_title)
@@ -220,7 +227,11 @@ class Api26Compatibility {
                 R.layout.call_incoming_notification_heads_up
             )
             notificationLayoutHeadsUp.setTextViewText(R.id.caller, displayName)
-            notificationLayoutHeadsUp.setTextViewText(R.id.sip_uri, address)
+            notificationLayoutHeadsUp.setTextViewText(R.id.sip_uri, address.orEmpty())
+            notificationLayoutHeadsUp.setViewVisibility(
+                R.id.sip_uri,
+                if (address == null) View.GONE else View.VISIBLE
+            )
             notificationLayoutHeadsUp.setTextViewText(R.id.incoming_call_info, info)
 
             if (roundPicture != null) {

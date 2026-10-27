@@ -32,6 +32,7 @@ import org.linphone.R
 import org.linphone.contact.getThumbnailUri
 import org.linphone.core.Call
 import org.linphone.core.Friend
+import org.linphone.models.contact.CallHeaderRules
 import org.linphone.notifications.Notifiable
 import org.linphone.notifications.NotificationsManager
 import org.linphone.services.CallContactMatchService
@@ -53,7 +54,7 @@ class XiaomiCompatibility {
             val contact: Friend?
             val roundPicture: Bitmap?
             val displayName: String
-            val address: String
+            val address: String?
             val info: String
 
             val remoteContact = call.remoteContact
@@ -86,7 +87,12 @@ class XiaomiCompatibility {
                     CallContactMatchService.avatar(call)
                     ?: ImageUtils.getRoundBitmapFromUri(context, contact?.getThumbnailUri())
                 displayName = matchedName ?: contact?.name ?: CallContactMatchService.remoteName(call)
-                address = LinphoneUtils.getDisplayableAddress(call.remoteAddress)
+                // Formatted as the name is, and not repeated under it for an unmatched caller
+                address = CallHeaderRules.notificationNumber(
+                    displayName,
+                    CallContactMatchService.displayNumber(call)
+                        ?: LinphoneUtils.getDisplayableAddress(call.remoteAddress)
+                )
                 info = CallRouteService.notificationRoute(call)?.let {
                     context.getString(R.string.incoming_call_via_route_notification_title, it)
                 } ?: context.getString(R.string.incoming_call_notification_title)
