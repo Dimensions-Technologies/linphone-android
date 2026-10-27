@@ -83,6 +83,8 @@ object CallRouteService {
                     coreContext.handler.post {
                         ctiCalls = calls
                         coreContext.core.calls.forEach(::apply)
+                        // Server matches for a call can arrive before the callEvent that links it
+                        CallContactMatchService.applyPendingServerMatches()
                     }
                 },
                 { e -> Log.e("[Call Route] callEvent failed", e) }
@@ -114,6 +116,17 @@ object CallRouteService {
     fun phoneNumber(call: Call): String {
         val route = if (started) call.callLog.callId?.let { routes[it]?.value } else null
         return CallRouteRules.phoneNumber(paiNumber(call), route ?: CallRoute(), call.remoteAddress.username)
+    }
+
+    /** The live call an id the server gives a call (e.g. in callMatchEvent) is for (CtiCallRules.sipCallIdForServerId). */
+    fun callForServerId(serverCallId: String): Call? {
+        val calls = coreContext.core.calls
+        val sipCallId = CtiCallRules.sipCallIdForServerId(
+            if (started) ctiCalls else emptyMap(),
+            calls.mapNotNull { it.callLog.callId },
+            serverCallId
+        ) ?: return null
+        return calls.firstOrNull { it.callLog.callId == sipCallId }
     }
 
     /** The number the PBX asserted for the call (P-Asserted-Identity), unless it's gone stale. */

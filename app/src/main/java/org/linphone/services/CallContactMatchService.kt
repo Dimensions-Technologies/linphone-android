@@ -75,8 +75,11 @@ object CallContactMatchService {
     private lateinit var context: Context
     private var started = false
 
-    // By SIP Call-ID, which is also the id the server uses in callMatchEvent
+    // By SIP Call-ID
     private val calls = mutableMapOf<String, CallMatches>()
+
+    // By the id the server gives the call in callMatchEvent: the PBX call id, which the callEvent
+    // links to the SIP Call-ID (CallRouteService.callForServerId)
     private val pendingServerMatches = mutableMapOf<String, List<ContactMatch>>()
 
     private var subscriptions = mutableListOf<Disposable>()
@@ -92,7 +95,10 @@ object CallContactMatchService {
                     )
                 }
                 Call.State.End, Call.State.Error -> {}
-                else -> lookUp(call)
+                else -> {
+                    lookUp(call)
+                    applyPendingServerMatches()
+                }
             }
         }
     }
@@ -242,12 +248,7 @@ object CallContactMatchService {
     private fun entryFor(call: Call): CallMatches? {
         if (!started) return null
         val callId = call.callLog.callId ?: return null
-        return calls.getOrPut(callId) {
-            CallMatches().also { entry ->
-                // Server matches that arrived before the call
-                pendingServerMatches.remove(callId)?.let { entry.matches.onNext(it) }
-            }
-        }
+        return calls.getOrPut(callId) { CallMatches() }
     }
 
     private fun lookUp(call: Call) {
@@ -312,8 +313,10 @@ object CallContactMatchService {
     private fun applyServerMatches(callId: String, allowed: List<ContactMatch>) {
         if (allowed.isEmpty()) return
 
-        val call = coreContext.core.calls.firstOrNull { it.callLog.callId == callId }
+        val call = callForServerId(callId)
         if (call == null) {
+            // The call, or the callEvent that links its PBX call id to it, hasn't arrived yet
+            Log.i("[Contact Match] Call $callId: no call yet for the server matches, keeping them")
             pendingServerMatches[callId] = pendingServerMatches[callId].orEmpty() + allowed
             coreContext.handler.postDelayed(
                 { pendingServerMatches.remove(callId) },
@@ -321,7 +324,21 @@ object CallContactMatchService {
             )
             return
         }
+        addServerMatches(call, callId, allowed)
+    }
 
+    /** Applies server matches whose call has arrived since, or has since been linked by a callEvent. */
+    fun applyPendingServerMatches() {
+        if (!started) return
+        for (callId in pendingServerMatches.keys.toList()) {
+            val call = callForServerId(callId) ?: continue
+            pendingServerMatches.remove(callId)?.let { addServerMatches(call, callId, it) }
+        }
+    }
+
+    private fun callForServerId(callId: String): Call? = CallRouteService.callForServerId(callId)
+
+    private fun addServerMatches(call: Call, callId: String, allowed: List<ContactMatch>) {
         val current = entryFor(call)?.matches?.value.orEmpty()
         val existingIds = current.map { it.contactId }.toSet()
         val added = allowed.filter { it.contactId !in existingIds }.distinctBy { it.contactId }
