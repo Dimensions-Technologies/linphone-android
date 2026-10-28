@@ -35,8 +35,10 @@ import org.linphone.models.DimensionsEnvironment
 import org.linphone.models.realtime.EventSubscription
 import org.linphone.models.realtime.RealtimeEventCall
 import org.linphone.models.realtime.RealtimeEventCallMatch
+import org.linphone.models.realtime.RealtimeEventCallerId
 import org.linphone.models.realtime.RealtimeEventPresence
 import org.linphone.models.realtime.RealtimeEventType
+import org.linphone.models.realtime.SetUserCliRequest
 import org.linphone.models.realtime.SubscriptionData
 import org.linphone.models.realtime.SubscriptionRequest
 import org.linphone.models.realtime.SubscriptionState
@@ -126,6 +128,7 @@ open class RealtimeBaseService(private val context: Context, private val hubSuff
     // Not LiveData: every event matters, and postValue would drop all but the last of a burst
     val callMatchEvent: PublishSubject<RealtimeEventCallMatch> = PublishSubject.create()
     val callEvent: PublishSubject<RealtimeEventCall> = PublishSubject.create()
+    val callerIdEvent: PublishSubject<RealtimeEventCallerId> = PublishSubject.create()
 
     init {
         Log.i("RealtimeBaseService: Monitor network...")
@@ -247,6 +250,22 @@ open class RealtimeBaseService(private val context: Context, private val hubSuff
             RealtimeEventCall::class.java
         )
 
+        connection.on(
+            RealtimeEventType.CallerIdEvent.eventName,
+            { data: RealtimeEventCallerId ->
+                Log.d(
+                    "RealtimeBaseService.callerIdEvent: ${data.data?.callerId?.callerNumber} of ${data.data?.callerIds?.size}"
+                )
+                callerIdEvent.onNext(data)
+            },
+            RealtimeEventCallerId::class.java
+        )
+
+        // The hub answers setUserCliRequest; the new caller ID itself comes in callerIdEvent
+        connection.on(RealtimeEventType.SetUserCliResponse.eventName, { message: Any ->
+            Log.d("RealtimeBaseService.${RealtimeEventType.SetUserCliResponse.eventName}: $message")
+        }, Any::class.java)
+
         hubConnection = connection
 
         environmentConfigured.onNext(true)
@@ -319,6 +338,9 @@ open class RealtimeBaseService(private val context: Context, private val hubSuff
             throw Exception("realtime invoke called with no hubconnection")
         }
     }
+
+    /** Changes the user's outgoing caller ID, as the web client does. callerIdEvent then sends the new one. */
+    fun setUserCli(request: SetUserCliRequest): Completable = Completable.defer { invoke("setUserCli", request) }
 
     private suspend fun tryReconnect() {
         if (reconnectContext == null) reconnectContext = ReconnectContext(0.0)
