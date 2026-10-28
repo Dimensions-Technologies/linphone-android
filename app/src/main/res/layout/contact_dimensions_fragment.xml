@@ -127,6 +127,19 @@
 
                 </LinearLayout>
 
+                <!-- Cached matches are shown; the gateway search may still add more -->
+                <ProgressBar
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:layout_alignParentBottom="true"
+                    android:layout_centerHorizontal="true"
+                    android:layout_marginBottom="24dp"
+                    android:contentDescription="@string/contacts_searching"
+                    android:indeterminate="true"
+                    android:indeterminateTint="?attr/accentColor"
+                    android:indeterminateDrawable="@drawable/icon_spinner_rotating"
+                    android:visibility="@{viewModel.directorySearchInProgress &amp;&amp; !viewModel.contactsList.empty ? View.VISIBLE : View.GONE}" />
+
                 <include
                     layout="@layout/wait_layout"
                     app:visibility="@{viewModel.fetchInProgress}"/>

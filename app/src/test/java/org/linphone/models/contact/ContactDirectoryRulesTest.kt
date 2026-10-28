@@ -430,4 +430,93 @@ class ContactDirectoryRulesTest {
         ContactDirectoryRules.filterDeniedMatches(directories, emptyList()).test()
             .assertResult(emptyList())
     }
+
+    private fun searchContact(id: String, vararg fields: Pair<String, String>) = ContactItemModel(
+        id,
+        "dir-Personal",
+        fields.map { (fieldId, value) -> FieldItemModel(fieldId, value) }
+    )
+
+    @Test
+    fun `cached search matches any field, ignoring case`() {
+        val byName = searchContact("c1", "fullName" to "Stewart Draper")
+        val byCompany = searchContact("c2", "fullName" to "Pat Jones", "companyName" to "DRAPER Ltd")
+        val byPhone = searchContact("c3", "fullName" to "Sam Smith", "phone1" to "+441234567890")
+        val noMatch = searchContact("c4", "fullName" to "Alex Brown", "phone1" to "+449876543210")
+        val cached = listOf(byName, byCompany, byPhone, noMatch)
+
+        assertEquals(listOf(byName, byCompany), ContactDirectoryRules.searchCachedContacts(cached, "draper"))
+        assertEquals(listOf(byPhone), ContactDirectoryRules.searchCachedContacts(cached, "4567"))
+        assertEquals(emptyList<ContactItemModel>(), ContactDirectoryRules.searchCachedContacts(cached, "nobody"))
+    }
+
+    @Test
+    fun `merged search keeps cached matches first and adds only new gateway matches`() {
+        val first = searchContact("c1", "fullName" to "Draper One")
+        val second = searchContact("c2", "fullName" to "Draper Two")
+        // Beyond the first 100 cached contacts, so only the gateway finds it
+        val beyondCache = searchContact("c150", "fullName" to "Draper Hundred-and-fifty")
+        // The gateway's copy of a cached contact: same id, so it's a duplicate
+        val secondFromServer = searchContact("c2", "fullName" to "Draper Two")
+
+        val merged = ContactDirectoryRules.mergeSearchResults(
+            listOf(first, second),
+            listOf(beyondCache, secondFromServer, first)
+        )
+
+        assertEquals(listOf("c1", "c2", "c150"), merged.map { it.id })
+        assertTrue(merged[1] === second)
+    }
+
+    @Test
+    fun `selector order puts Personal first, then the other directories by name`() {
+        val sales = directory(name = "Sales")
+        val bulk = directory(name = "bulk test")
+        val accounts = directory(name = "Accounts")
+
+        val order = ContactDirectoryRules.selectorOrder(listOf(sales, personal, bulk, accounts))
+
+        assertEquals(listOf("Personal", "Accounts", "bulk test", "Sales"), order.map { it.name })
+    }
+
+    @Test
+    fun `selector order puts directories the selector doesn't list at the end, by name`() {
+        val zz = directory(name = "ZZ Over100")
+        val users = directory(name = "User Contact Directory").copy(type = "UserContactDirectory")
+        val hubspot = directory(name = "Hubspot").copy(type = "HubspotContactDirectory")
+        val accounts = directory(name = "Accounts")
+
+        val order = ContactDirectoryRules.selectorOrder(listOf(users, zz, hubspot, personal, accounts))
+
+        assertEquals(
+            listOf("Personal", "Accounts", "ZZ Over100", "Hubspot", "User Contact Directory"),
+            order.map { it.name }
+        )
+    }
+
+    @Test
+    fun `search sections follow the selector order, then users, then device contacts`() {
+        val accounts = directory(name = "Accounts")
+        val sales = directory(name = "Sales")
+        val order = ContactDirectoryRules.selectorOrder(listOf(sales, accounts, personal))
+
+        val personalRank = ContactDirectoryRules.searchSectionRank(order, personal.id, isUser = false)
+        val accountsRank = ContactDirectoryRules.searchSectionRank(order, accounts.id, isUser = false)
+        val salesRank = ContactDirectoryRules.searchSectionRank(order, sales.id, isUser = false)
+        val unknownRank = ContactDirectoryRules.searchSectionRank(order, "dir-gone", isUser = false)
+        val userRank = ContactDirectoryRules.searchSectionRank(order, null, isUser = true)
+        val deviceRank = ContactDirectoryRules.searchSectionRank(order, null, isUser = false)
+
+        assertEquals(
+            listOf(personalRank, accountsRank, salesRank, unknownRank, userRank, deviceRank),
+            listOf(personalRank, accountsRank, salesRank, unknownRank, userRank, deviceRank).sorted().distinct()
+        )
+    }
+
+    @Test
+    fun `merged search with nothing cached is the gateway's matches`() {
+        val fromServer = listOf(searchContact("c150", "fullName" to "Draper"))
+
+        assertEquals(fromServer, ContactDirectoryRules.mergeSearchResults(emptyList(), fromServer))
+    }
 }

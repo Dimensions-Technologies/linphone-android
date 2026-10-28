@@ -83,6 +83,10 @@ class ContactViewModel(friend: Friend) : MessageNotifierViewModel(), ContactData
 
     var fullName = ""
 
+    // The header the row is listed under in search results (its directory, users or device
+    // contacts); null outside a search, where rows are headed by their first letter
+    var searchSection: String? = null
+
     val displayOrganization = corePreferences.displayOrganization
 
     val numbersAndAddresses = MutableLiveData<ArrayList<ContactNumberOrAddressData>>()

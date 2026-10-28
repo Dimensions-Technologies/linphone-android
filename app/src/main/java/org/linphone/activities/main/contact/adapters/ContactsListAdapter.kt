@@ -108,14 +108,17 @@ class ContactsListAdapter(
         }
     }
 
+    // Search results are headed by their section (directory, users, device contacts), other lists
+    // by first letter
+    private fun headerKey(contact: ContactViewModel): String =
+        contact.searchSection ?: contact.fullName.firstOrNull().toString()
+
     override fun displayHeaderForPosition(position: Int): Boolean {
         if (position >= itemCount) return false
-        val contact = getItem(position)
-        val firstLetter = contact.fullName.firstOrNull().toString()
+        val key = headerKey(getItem(position))
         val previousPosition = position - 1
         return if (previousPosition >= 0) {
-            val previousItemFirstLetter = getItem(previousPosition).fullName.firstOrNull().toString()
-            !firstLetter.equals(previousItemFirstLetter, ignoreCase = true)
+            !key.equals(headerKey(getItem(previousPosition)), ignoreCase = true)
         } else {
             true
         }
@@ -123,7 +126,7 @@ class ContactsListAdapter(
 
     override fun getHeaderViewForPosition(context: Context, position: Int): View {
         val contact = getItem(position)
-        val firstLetter = AppUtils.getInitials(contact.fullName, 1)
+        val firstLetter = contact.searchSection ?: AppUtils.getInitials(contact.fullName, 1)
         val binding: GenericListHeaderBinding = DataBindingUtil.inflate(
             LayoutInflater.from(context),
             R.layout.generic_list_header,
