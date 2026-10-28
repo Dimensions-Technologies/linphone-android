@@ -73,6 +73,7 @@ import org.linphone.notifications.NotificationsManager
 import org.linphone.services.CallContactMatchService
 import org.linphone.services.CallRouteService
 import org.linphone.services.CallWaitingService
+import org.linphone.services.CallerIdService
 import org.linphone.services.ParkingSlotService
 import org.linphone.services.PullCallService
 import org.linphone.services.PushTokenService
@@ -469,6 +470,9 @@ class CoreContext(
 
         // Watches the user's parking slots
         ParkingSlotService.start()
+
+        // Keeps the user's outgoing caller ID up to date
+        CallerIdService.start()
 
         // Keeps the user's voicemail boxes up to date
         VoicemailBoxService.start()

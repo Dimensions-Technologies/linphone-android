@@ -19,10 +19,16 @@
     "queueControlEnabled": true,
     "agentControlDisplayed": false,
     "exposePersonalParkingSlotsEnabled": true,
-    "exposeAllParkingSlotsEnabled": false
+    "exposeAllParkingSlotsEnabled": false,
+    "externalCallIdEnabled": true,
+    "defaultExternalCallerIdEnabled": false
   },
   "parkingSlotCollection": [
     { "name": "Reception", "number": "101", "enabled": true },
     { "name": "Warehouse", "number": "102", "enabled": false }
-  ]
+  ],
+  "externalCallerIdPolicy": [
+    { "name": "Sales", "callerId": "441111" }
+  ],
+  "defaultExternalCallerIdLabel": "Main Office"
 }

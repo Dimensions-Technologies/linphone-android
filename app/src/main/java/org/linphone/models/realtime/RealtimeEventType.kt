@@ -4,6 +4,7 @@ enum class RealtimeEventType(val eventName: String) {
     ConnectEvent("connectEvent"),
     SubscribeResponse("subscribeResponse"),
     UnSubscribeResponse("unSubscribeResponse"),
+    SetUserCliResponse("setUserCliResponse"),
     TileUpdate("tileUpdate"),
     ConfigChanged("configChanged"),
     RegisterTileConfirmation("registerTileConfirmation"),
@@ -11,5 +12,6 @@ enum class RealtimeEventType(val eventName: String) {
     PresenceEvent("presenceEvent"),
     CallHistoryEvent("callHistoryEvent"),
     CallMatchEvent("callMatchEvent"),
-    CallEvent("callEvent")
+    CallEvent("callEvent"),
+    CallerIdEvent("callerIdEvent")
 }

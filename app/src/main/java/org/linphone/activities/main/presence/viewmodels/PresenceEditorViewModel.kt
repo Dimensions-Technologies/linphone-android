@@ -8,6 +8,7 @@ import io.reactivex.rxjava3.core.Observable
 import io.reactivex.rxjava3.disposables.Disposable
 import kotlinx.coroutines.launch
 import org.linphone.LinphoneApplication.Companion.coreContext
+import org.linphone.R
 import org.linphone.authentication.AuthStateManager
 import org.linphone.core.ConsolidatedPresence
 import org.linphone.models.AuthenticatedUser
@@ -16,8 +17,13 @@ import org.linphone.models.realtime.PresenceIconState
 import org.linphone.models.realtime.PresenceProfile
 import org.linphone.models.realtime.SetPresenceModel
 import org.linphone.services.CallWaitingService
+import org.linphone.services.CallerIdChoice
+import org.linphone.services.CallerIdOption
+import org.linphone.services.CallerIdRules
+import org.linphone.services.CallerIdService
 import org.linphone.services.PresenceProfileService
 import org.linphone.services.PresenceService
+import org.linphone.services.UserService
 import org.linphone.utils.Log
 
 class PresenceEditorViewModel : ViewModel() {
@@ -38,6 +44,11 @@ class PresenceEditorViewModel : ViewModel() {
 
     val callWaitingEnabled = MutableLiveData(false)
 
+    // Shown when the user's client profile allows it, as on the web client
+    val callerIdAvailable = MutableLiveData(false)
+
+    val callerIdChoice = MutableLiveData<CallerIdChoice>()
+
     private var presenceSubscription: Disposable? = null
 
     private val callWaitingSubscription = CallWaitingService.state.subscribe(
@@ -47,6 +58,31 @@ class PresenceEditorViewModel : ViewModel() {
         },
         { error -> Log.e("callWaitingSubscription", error) }
     )
+
+    private val callerIdSubscription = Observable.combineLatest(
+        UserService.getInstance(coreContext.context).user,
+        CallerIdService.callerIds,
+        CallerIdService.current
+    ) { user, callerIds, current ->
+        val profile = user.clientProfileSettings
+        val choice = CallerIdRules.choice(
+            callerIds,
+            user.externalCallerIdPolicy,
+            profile.defaultExternalCallerIdEnabled,
+            user.defaultExternalCallerIdLabel.takeUnless { it.isNullOrEmpty() }
+                ?: coreContext.context.getString(R.string.presence_editor_caller_id_default),
+            current
+        )
+        Pair(profile.externalCallIdEnabled, choice)
+    }
+        .distinctUntilChanged()
+        .subscribe(
+            { (available, choice) ->
+                callerIdAvailable.postValue(available)
+                callerIdChoice.postValue(choice)
+            },
+            { error -> Log.e("callerIdSubscription", error) }
+        )
 
     init {
 
@@ -124,8 +160,13 @@ class PresenceEditorViewModel : ViewModel() {
         viewModelScope.launch { CallWaitingService.setEnabled(enabled) }
     }
 
+    fun setCallerId(option: CallerIdOption) {
+        CallerIdService.setCurrent(option)
+    }
+
     override fun onCleared() {
         callWaitingSubscription.dispose()
+        callerIdSubscription.dispose()
         super.onCleared()
     }
 }

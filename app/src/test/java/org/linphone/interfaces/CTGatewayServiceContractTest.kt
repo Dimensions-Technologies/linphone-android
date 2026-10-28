@@ -13,6 +13,7 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
+import org.linphone.models.ExternalCallerId
 import org.linphone.models.PbxFeatureCode
 import org.linphone.models.PbxParkingSlot
 import org.linphone.models.UserDeviceSettings
@@ -86,6 +87,10 @@ class CTGatewayServiceContractTest {
         assertFalse(user.clientProfileSettings.agentControlDisplayed)
         assertTrue(user.clientProfileSettings.exposePersonalParkingSlotsEnabled)
         assertFalse(user.clientProfileSettings.exposeAllParkingSlotsEnabled)
+        assertTrue(user.clientProfileSettings.externalCallIdEnabled)
+        assertFalse(user.clientProfileSettings.defaultExternalCallerIdEnabled)
+        assertEquals(listOf(ExternalCallerId("Sales", "441111")), user.externalCallerIdPolicy)
+        assertEquals("Main Office", user.defaultExternalCallerIdLabel)
         assertEquals(
             listOf(
                 PbxParkingSlot("Reception", "101", true),

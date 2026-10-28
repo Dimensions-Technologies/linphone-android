@@ -160,6 +160,36 @@
 
         </RelativeLayout>
 
+        <!-- After presence, as in the web client's user menu -->
+        <LinearLayout
+            android:id="@+id/callerIdLayout"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="15dp"
+            android:orientation="vertical"
+            android:visibility="@{viewModel.callerIdAvailable ? View.VISIBLE : View.GONE, default=gone}"
+            >
+
+            <TextView
+                android:id="@+id/callerIdLabel"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/presence_editor_caller_id"
+                style="@style/standard_text_font"
+                android:paddingStart="5dp"
+                android:paddingEnd="16dp"
+                android:labelFor="@id/callerIdSpinner"
+                />
+
+            <Spinner
+                android:id="@+id/callerIdSpinner"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:padding="17dp"
+                />
+
+        </LinearLayout>
+
         <RelativeLayout
             android:id="@+id/callWaitingRelativeLayout"
             android:layout_width="match_parent"

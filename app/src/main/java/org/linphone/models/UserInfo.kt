@@ -50,7 +50,14 @@ data class UserInfo(
     val clientProfileSettings: ClientProfileSettings = ClientProfileSettings(),
 
     @SerializedName("parkingSlotCollection")
-    val parkingSlotCollection: List<PbxParkingSlot>? = emptyList()
+    val parkingSlotCollection: List<PbxParkingSlot>? = emptyList(),
+
+    @SerializedName("externalCallerIdPolicy")
+    val externalCallerIdPolicy: List<ExternalCallerId>? = emptyList(),
+
+    // The name to show for the account's own caller ID, the "Default" choice
+    @SerializedName("defaultExternalCallerIdLabel")
+    val defaultExternalCallerIdLabel: String? = null
 ) {
     companion object {
         const val STORE_NAME: String = "user"
