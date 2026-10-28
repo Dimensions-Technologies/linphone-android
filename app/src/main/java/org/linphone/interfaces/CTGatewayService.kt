@@ -9,6 +9,7 @@ import org.linphone.models.DeviceSummary
 import org.linphone.models.PbxFeatureCode
 import org.linphone.models.TenantBrandingDefinition
 import org.linphone.models.UserDevice
+import org.linphone.models.UserDeviceSettings
 import org.linphone.models.UserInfo
 import org.linphone.models.UserSession
 import org.linphone.models.callhistory.CallRecordingInfo
@@ -50,6 +51,11 @@ interface CTGatewayService {
     // Every device the user has, PBX handsets included
     @GET("api/v1.0/users/me/devices?includePbxDevices=true")
     suspend fun getAllUserDevices(): Response<List<DeviceSummary>>
+
+    // No device id, as on the web client. The gateway applies it to all the user's softphone
+    // devices: on QA, saving it from the app changed the web (UCB) device as well.
+    @PUT("api/v1.0/usersettings/device")
+    suspend fun putUserDeviceSettings(@Body settings: UserDeviceSettings): Response<Void>
 
     @GET("api/v1.0/users/me")
     suspend fun getUserInfo(): Response<UserInfo>

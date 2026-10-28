@@ -72,6 +72,7 @@ import org.linphone.models.UserDevice
 import org.linphone.notifications.NotificationsManager
 import org.linphone.services.CallContactMatchService
 import org.linphone.services.CallRouteService
+import org.linphone.services.CallWaitingService
 import org.linphone.services.ParkingSlotService
 import org.linphone.services.PullCallService
 import org.linphone.services.PushTokenService
@@ -225,6 +226,13 @@ class CoreContext(
             if (state == Call.State.IncomingReceived || state == Call.State.IncomingEarlyMedia) {
                 if (declineCallDueToGsmActiveCall()) {
                     call.decline(Reason.Busy)
+                    return
+                }
+
+                // The web client rejects with JsSIP's default, 480 Temporarily Unavailable
+                if (CallWaitingService.shouldReject(core.callsNb - 1)) {
+                    Log.w("[Context] Call waiting is off and another call is in progress, rejecting the call")
+                    call.decline(Reason.TemporarilyUnavailable)
                     return
                 }
 

@@ -1,0 +1,32 @@
+[
+  {
+    "deviceId": "dev-mobile",
+    "pbxId": "pbx-1",
+    "sipUsername": "user1040",
+    "sipPassword": "secret",
+    "sipRealm": "realm.example.com",
+    "sipPort": 5061,
+    "sipOutboundProxy": "",
+    "remoteSipHost": "sip.example.com",
+    "sipOutboundProxyPort": 0,
+    "sipTransport": "tls",
+    "sipRegisterTimeout": 3600,
+    "primaryDns": "",
+    "secondaryDns": "",
+    "callWaitingEnabled": true
+  },
+  {
+    "deviceId": "dev-mobile-2",
+    "pbxId": "pbx-1",
+    "sipUsername": "user1040b",
+    "sipPassword": "secret",
+    "sipRealm": "realm.example.com",
+    "sipPort": 5061,
+    "sipOutboundProxy": "",
+    "remoteSipHost": "sip.example.com",
+    "sipOutboundProxyPort": 0,
+    "sipTransport": "tls",
+    "primaryDns": "",
+    "secondaryDns": ""
+  }
+]

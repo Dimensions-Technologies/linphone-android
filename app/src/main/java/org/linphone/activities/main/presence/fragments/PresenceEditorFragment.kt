@@ -6,16 +6,23 @@ import android.widget.AdapterView
 import android.widget.ArrayAdapter
 import android.widget.Spinner
 import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.lifecycleScope
 import com.google.gson.GsonBuilder
 import io.reactivex.rxjava3.disposables.Disposable
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import org.linphone.LinphoneApplication.Companion.coreContext
 import org.linphone.R
 import org.linphone.activities.*
 import org.linphone.activities.main.presence.viewmodels.PresenceEditorViewModel
+import org.linphone.authentication.AuthStateManager
 import org.linphone.databinding.FragmentPresenceEditorBinding
 import org.linphone.models.realtime.PresenceProfile
 import org.linphone.services.PresenceProfileService
 import org.linphone.services.UserService
+import org.linphone.utils.Event
 import org.linphone.utils.Log
 
 class PresenceEditorFragment : GenericFragment<FragmentPresenceEditorBinding>() {
@@ -68,6 +75,32 @@ class PresenceEditorFragment : GenericFragment<FragmentPresenceEditorBinding>() 
                 Log.e("setApplyProfileClickListener", e)
             }
         }
+
+        binding.setLogoutClickListener {
+            logout()
+        }
+    }
+
+    private fun logout() {
+        val context = requireContext()
+        val authManager = AuthStateManager.getInstance(context)
+        sharedViewModel.togglePresenceDrawerEvent.value = Event(true)
+
+        // Removing the user session is a network call, so keep it off the main thread. It needs
+        // the current access token, so the auth state is only cleared once it has finished.
+        lifecycleScope.launch {
+            // SIP is unregistered at the same time, and before the accounts are cleared, so the
+            // push token can be taken out of the Contact first
+            val sipUnregistration = launch { coreContext.unregisterForLogout() }
+            withContext(Dispatchers.IO) {
+                withTimeoutOrNull(LOGOUT_SESSION_REMOVAL_TIMEOUT_MS) {
+                    UserService.getInstance(context).removeUserSession()
+                } ?: Log.w("Timed out removing user session during logout")
+            }
+            sipUnregistration.join()
+            authManager.logout(context)
+            Log.i("DONE")
+        }
     }
 
     private fun updateSpinnerAdapter(presenceProfiles: List<PresenceProfile>) {
@@ -105,5 +138,9 @@ class PresenceEditorFragment : GenericFragment<FragmentPresenceEditorBinding>() 
                 viewModel.applyPresence()
             }
         }
+    }
+
+    companion object {
+        private const val LOGOUT_SESSION_REMOVAL_TIMEOUT_MS = 5_000L
     }
 }
