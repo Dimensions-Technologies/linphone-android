@@ -3,8 +3,10 @@ package org.linphone.activities.main.presence.viewmodels
 import androidx.databinding.ObservableField
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import io.reactivex.rxjava3.core.Observable
 import io.reactivex.rxjava3.disposables.Disposable
+import kotlinx.coroutines.launch
 import org.linphone.LinphoneApplication.Companion.coreContext
 import org.linphone.authentication.AuthStateManager
 import org.linphone.core.ConsolidatedPresence
@@ -13,6 +15,7 @@ import org.linphone.models.UserInfo
 import org.linphone.models.realtime.PresenceIconState
 import org.linphone.models.realtime.PresenceProfile
 import org.linphone.models.realtime.SetPresenceModel
+import org.linphone.services.CallWaitingService
 import org.linphone.services.PresenceProfileService
 import org.linphone.services.PresenceService
 import org.linphone.utils.Log
@@ -31,7 +34,19 @@ class PresenceEditorViewModel : ViewModel() {
 
     val statusMessage = MutableLiveData<String>()
 
+    val callWaitingAvailable = MutableLiveData(false)
+
+    val callWaitingEnabled = MutableLiveData(false)
+
     private var presenceSubscription: Disposable? = null
+
+    private val callWaitingSubscription = CallWaitingService.state.subscribe(
+        { state ->
+            callWaitingAvailable.postValue(state.available)
+            callWaitingEnabled.postValue(state.enabled)
+        },
+        { error -> Log.e("callWaitingSubscription", error) }
+    )
 
     init {
 
@@ -100,5 +115,17 @@ class PresenceEditorViewModel : ViewModel() {
         } catch (e: Exception) {
             Log.e("applyPresence", e)
         }
+    }
+
+    fun setCallWaitingEnabled(enabled: Boolean) {
+        if (enabled == callWaitingEnabled.value) return
+        // Shown straight away. A failed save sends the old state back, which undoes it.
+        callWaitingEnabled.value = enabled
+        viewModelScope.launch { CallWaitingService.setEnabled(enabled) }
+    }
+
+    override fun onCleared() {
+        callWaitingSubscription.dispose()
+        super.onCleared()
     }
 }

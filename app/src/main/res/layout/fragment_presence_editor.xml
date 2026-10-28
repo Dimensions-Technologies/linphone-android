@@ -14,6 +14,10 @@
         <variable
             name="applyProfileClickListener"
             type="android.view.View.OnClickListener"/>
+
+        <variable
+            name="logoutClickListener"
+            type="android.view.View.OnClickListener"/>
     </data>
 
     <LinearLayout
@@ -128,7 +132,7 @@
 
         <RelativeLayout
             android:layout_width="match_parent"
-            android:layout_height="match_parent"
+            android:layout_height="wrap_content"
             >
 
             <EditText
@@ -156,21 +160,20 @@
 
         </RelativeLayout>
 
-<!--        set to gone till we add this functionality-->
         <RelativeLayout
             android:id="@+id/callWaitingRelativeLayout"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginEnd="10dp"
-            android:layout_marginStart="10dp"
-            android:visibility="gone"
+            android:layout_marginTop="15dp"
+            android:visibility="@{viewModel.callWaitingAvailable ? View.VISIBLE : View.GONE, default=gone}"
             >
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:layout_alignParentStart="true">
+                android:layout_alignParentStart="true"
+                android:layout_toStartOf="@id/callWaitingSwitch">
 
                 <TextView
                     android:id="@+id/callWaitingLabel"
@@ -195,13 +198,44 @@
             </LinearLayout>
 
             <androidx.appcompat.widget.SwitchCompat
+                android:id="@+id/callWaitingSwitch"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_alignParentEnd="true"
+                android:layout_centerVertical="true"
                 android:layout_marginEnd="10dp"
+                android:contentDescription="@string/presence_editor_call_waiting"
+                android:checked="@{viewModel.callWaitingEnabled}"
+                android:onCheckedChanged="@{(view, checked) -> viewModel.setCallWaitingEnabled(checked)}"
                 />
 
         </RelativeLayout>
+
+        <!-- Last item under the avatar, as in the web client's user menu -->
+        <LinearLayout
+            android:id="@+id/logout"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="15dp"
+            android:onClick="@{logoutClickListener}">
+
+            <ImageView
+                android:layout_width="45dp"
+                android:layout_height="45dp"
+                android:contentDescription="@null"
+                android:padding="10dp"
+                android:src="@drawable/icon_logout"
+                app:tint="@color/red_color" />
+
+            <TextView
+                style="@style/standard_text_font"
+                android:layout_width="match_parent"
+                android:layout_height="45dp"
+                android:gravity="center_vertical"
+                android:paddingStart="5dp"
+                android:paddingEnd="16dp"
+                android:text="@string/log_out" />
+        </LinearLayout>
 
     </LinearLayout>
 </layout>

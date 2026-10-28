@@ -26,9 +26,6 @@
             name="helpClickListener"
             type="android.view.View.OnClickListener"/>
         <variable
-            name="logoutClickListener"
-            type="android.view.View.OnClickListener"/>
-        <variable
             name="conferencesClickListener"
             type="android.view.View.OnClickListener"/>
         <variable
@@ -313,31 +310,6 @@
                             android:gravity="center_vertical"
                             android:paddingLeft="5dp"
                             android:paddingRight="16dp" />
-                    </LinearLayout>
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="match_parent"
-                        android:layout_marginVertical="15dp"
-                        android:onClick="@{logoutClickListener}"
-                        android:visibility="@{viewModel.showLogout ? View.VISIBLE : View.GONE}">
-
-                        <ImageView
-                            android:layout_width="45dp"
-                            android:layout_height="45dp"
-                            android:contentDescription="Logout"
-                            android:padding="10dp"
-                            android:src="@drawable/icon_logout"
-                            app:tint="@color/red_color" />
-
-                        <TextView
-                            style="@style/standard_text_font"
-                            android:layout_width="match_parent"
-                            android:layout_height="45dp"
-                            android:gravity="center_vertical"
-                            android:paddingLeft="5dp"
-                            android:paddingRight="16dp"
-                            android:text="@string/log_out" />
                     </LinearLayout>
 
                 </LinearLayout>

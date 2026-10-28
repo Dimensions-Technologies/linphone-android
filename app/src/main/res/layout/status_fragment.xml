@@ -84,9 +84,9 @@
                 android:layout_centerInParent="true">
             </ImageView>
 
+            <!-- Always shown, with the placeholder until the photo loads, as it's the way to log out -->
             <RelativeLayout
                 android:id="@+id/relAvatarLayout"
-                android:visibility="@{viewModel.userImageUrl == null ? View.GONE : View.VISIBLE, default=visible}"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_alignParentEnd="true"
@@ -115,7 +115,6 @@
                     android:adjustViewBounds="true"
                     android:contentDescription="@null"
                     android:src="@drawable/avatar_border"
-                    android:visibility="@{viewModel.userImageUrl == null ? View.GONE : View.VISIBLE, default=visible}"
                     />
 
                 <ImageView

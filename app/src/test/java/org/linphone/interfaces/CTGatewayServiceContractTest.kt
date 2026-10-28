@@ -15,6 +15,7 @@ import org.junit.Before
 import org.junit.Test
 import org.linphone.models.PbxFeatureCode
 import org.linphone.models.PbxParkingSlot
+import org.linphone.models.UserDeviceSettings
 import org.linphone.models.callhistory.CallTypes
 import org.linphone.models.callhistory.PbxType
 import org.linphone.models.contact.ContactDirectoryRules
@@ -280,6 +281,33 @@ class CTGatewayServiceContractTest {
         assertEquals(listOf("dev-mobile", "dev-desk"), devices.map { it.deviceId })
         assertEquals("UCM", devices[0].model)
         assertEquals("Reception desk phone", devices[1].deviceName)
+    }
+
+    @Test
+    fun `doGetUserDevices maps each softphone device's call waiting setting`() {
+        enqueueFixture("users-softphone-devices.json")
+
+        val devices = gateway.doGetUserDevices("user-1").execute().body()!!
+
+        assertRequest(
+            "GET",
+            "/api/v1.0/users/user-1/devices?manufacturer=Softphones&model=UCM&model=KZSM"
+        )
+        assertEquals(true, devices[0].callWaitingEnabled)
+        assertNull("absent stays null", devices[1].callWaitingEnabled)
+    }
+
+    @Test
+    fun `putUserDeviceSettings sends the call waiting setting with no device id`() = runBlocking {
+        server.enqueue(MockResponse().setResponseCode(204))
+
+        val response = gateway.putUserDeviceSettings(UserDeviceSettings(callWaitingEnabled = false))
+
+        assertTrue(response.isSuccessful)
+        val recorded = server.takeRequest()
+        assertEquals("PUT", recorded.method)
+        assertEquals("/api/v1.0/usersettings/device", recorded.path)
+        assertEquals("{\"callWaitingEnabled\":false}", recorded.body.readUtf8())
     }
 
     @Test

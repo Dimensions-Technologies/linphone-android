@@ -37,8 +37,6 @@ import java.io.File
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import kotlinx.coroutines.withTimeoutOrNull
 import org.linphone.LinphoneApplication.Companion.coreContext
 import org.linphone.LinphoneApplication.Companion.corePreferences
 import org.linphone.R
@@ -48,7 +46,6 @@ import org.linphone.activities.main.MainActivity
 import org.linphone.activities.main.settings.SettingListenerStub
 import org.linphone.activities.main.sidemenu.viewmodels.SideMenuViewModel
 import org.linphone.activities.main.viewmodels.DialogViewModel
-import org.linphone.authentication.AuthStateManager
 import org.linphone.core.Factory
 import org.linphone.databinding.SideMenuFragmentBinding
 import org.linphone.services.UserService
@@ -140,11 +137,6 @@ class SideMenuFragment : GenericFragment<SideMenuFragmentBinding>() {
             CoroutineScope(Dispatchers.IO).launch {
                 UrlHelper.openHelp(requireContext())
             }
-        }
-
-        binding.setLogoutClickListener {
-            sharedViewModel.toggleDrawerEvent.value = Event(true)
-            logout()
         }
 
         binding.setConferencesClickListener {
@@ -318,31 +310,5 @@ class SideMenuFragment : GenericFragment<SideMenuFragmentBinding>() {
         )
 
         dialog.show()
-    }
-
-    private fun logout() {
-        val context = requireContext()
-        val authManager = AuthStateManager.getInstance(context)
-        sharedViewModel.toggleDrawerEvent.value = Event(true)
-
-        // Removing the user session is a network call, so keep it off the main thread. It needs
-        // the current access token, so the auth state is only cleared once it has finished.
-        lifecycleScope.launch {
-            // SIP is unregistered at the same time, and before the accounts are cleared, so the
-            // push token can be taken out of the Contact first
-            val sipUnregistration = launch { coreContext.unregisterForLogout() }
-            withContext(Dispatchers.IO) {
-                withTimeoutOrNull(LOGOUT_SESSION_REMOVAL_TIMEOUT_MS) {
-                    UserService.getInstance(context).removeUserSession()
-                } ?: Log.w("Timed out removing user session during logout")
-            }
-            sipUnregistration.join()
-            authManager.logout(context)
-            Log.i("DONE")
-        }
-    }
-
-    companion object {
-        private const val LOGOUT_SESSION_REMOVAL_TIMEOUT_MS = 5_000L
     }
 }
