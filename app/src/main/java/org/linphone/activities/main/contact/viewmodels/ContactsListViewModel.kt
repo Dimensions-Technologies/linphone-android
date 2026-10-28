@@ -31,8 +31,11 @@ import kotlin.collections.ArrayList
 import kotlinx.coroutines.*
 import org.linphone.LinphoneApplication.Companion.coreContext
 import org.linphone.LinphoneApplication.Companion.corePreferences
+import org.linphone.R
 import org.linphone.contact.ContactsUpdatedListenerStub
 import org.linphone.core.*
+import org.linphone.models.contact.ContactDirectoryRules
+import org.linphone.models.search.UserDataModel
 import org.linphone.services.DirectoriesService
 import org.linphone.utils.Event
 import org.linphone.utils.Log
@@ -59,7 +62,8 @@ class ContactsListViewModel : ViewModel() {
     private var fastFetchJob: Job? = null
 
     // True while the gateway directory search for the current filter hasn't returned yet, so the
-    // list can show "Searching…" rather than an empty-list message.
+    // list can show "Searching…" rather than an empty-list message, or a small spinner under the
+    // cached matches already shown.
     val directorySearchInProgress = MutableLiveData<Boolean>()
     private var directorySearchTimeoutJob: Job? = null
 
@@ -101,9 +105,29 @@ class ContactsListViewModel : ViewModel() {
 
         val combinedResults = magicSearch + contactSearch
 
-        return@combineLatest ArrayList<ContactViewModel>(
-            combinedResults.sortedBy { r -> r.fullName }
-        )
+        return@combineLatest ArrayList<ContactViewModel>(groupSearchResults(combinedResults))
+    }
+
+    // Grouped as in the contacts selector (directories, then users, then device contacts), each
+    // group by name, with each row given its group's header
+    private fun groupSearchResults(results: List<ContactViewModel>): List<ContactViewModel> {
+        val directories = DirectoriesService.getInstance(coreContext.context).contactDirectoriesSubject.value.orEmpty()
+        val order = ContactDirectoryRules.selectorOrder(directories)
+        val usersSection = coreContext.context.getString(R.string.contacts_usersGroup)
+        val deviceSection = coreContext.context.getString(R.string.contacts_androidContactsGroup)
+
+        val ranked = results.map { result ->
+            val userData = result.contact.value?.userData as? UserDataModel
+            val directoryId = userData?.contact?.directoryId?.takeIf { it.isNotEmpty() }
+            val isUser = userData?.user != null
+            result.searchSection = when {
+                directoryId != null -> directories.firstOrNull { it.id == directoryId }?.name.orEmpty()
+                isUser -> usersSection
+                else -> deviceSection
+            }
+            ContactDirectoryRules.searchSectionRank(order, directoryId, isUser) to result
+        }
+        return ranked.sortedWith(compareBy({ it.first }, { it.second.fullName })).map { it.second }
     }
 
     val moreResultsAvailableEvent: MutableLiveData<Event<Boolean>> by lazy {
@@ -153,7 +177,8 @@ class ContactsListViewModel : ViewModel() {
                 try {
                     processContactSearchResults(
                         r.results,
-                        r.searchText
+                        r.searchText,
+                        r.isComplete
                     )
                 } catch (e: Exception) {
                     Log.e("searchSubscription", e)
@@ -297,7 +322,7 @@ class ContactsListViewModel : ViewModel() {
         }
     }
 
-    private fun processContactSearchResults(results: UserGroupViewModel, searchText: String) {
+    private fun processContactSearchResults(results: UserGroupViewModel, searchText: String, isComplete: Boolean) {
         CoroutineScope(Dispatchers.Main).launch {
             Log.i("processContactSearchResults Processing ${results.count()} results")
 
@@ -311,8 +336,9 @@ class ContactsListViewModel : ViewModel() {
 
             contactSearchResultsSubject.onNext(list)
 
-            // Ignore results for older search text; they don't end the current search.
-            if (searchText == filter.value.orEmpty()) {
+            // Ignore results for older search text; they don't end the current search. Nor do the
+            // cached matches shown while the gateway search is still running.
+            if (isComplete && searchText == filter.value.orEmpty()) {
                 directorySearchTimeoutJob?.cancel()
                 // postValue, so this lands after the contactsList.postValue triggered above and the
                 // empty-list message can't flash up for a frame before the results appear.

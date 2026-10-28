@@ -3,6 +3,7 @@ package org.linphone.models.contact
 import com.google.i18n.phonenumbers.PhoneNumberUtil
 import io.reactivex.rxjava3.core.Observable
 import io.reactivex.rxjava3.core.Single
+import java.text.Collator
 import org.linphone.models.realtime.ContactMatch
 
 /**
@@ -108,6 +109,53 @@ object ContactDirectoryRules {
     }
 
     fun isPhoneFieldId(id: String) = id.startsWith("phone")
+
+    /**
+     * The cached contacts with any field containing the search text, ignoring case, as the web
+     * client's searchDirectoryLocally. Shown straight away while the gateway search runs.
+     */
+    fun searchCachedContacts(contacts: List<ContactItemModel>, searchText: String): List<ContactItemModel> {
+        val lower = searchText.lowercase()
+        return contacts.filter { contact -> contact.fields.any { it.value.lowercase().contains(lower) } }
+    }
+
+    /**
+     * A directory's cached matches followed by the gateway's matches that aren't among them (by
+     * contact id), as the web client's mergeSearchResults. The cache only holds the first 100
+     * contacts of each directory, so the gateway can find more.
+     */
+    /**
+     * The directories in the contacts selector's order (UserGroupService.mergeUserGroups): Personal
+     * first, then the other listed directories by name. Search results are grouped by directory in
+     * this order; directories the selector doesn't list (e.g. the users directory) go at the end, by name.
+     */
+    fun selectorOrder(directories: List<ContactDirectoryModel>): List<ContactDirectoryModel> {
+        val collator = Collator.getInstance()
+        val byName = Comparator<ContactDirectoryModel> { a, b -> collator.compare(a.name, b.name) }
+        val personal = findPersonalDirectory(directories)
+        val listed = otherListedDirectories(directories).sortedWith(byName)
+        val unlisted = directories.filter { it !== personal && it !in listed }.sortedWith(byName)
+        return listOfNotNull(personal) + listed + unlisted
+    }
+
+    /**
+     * Where a search result is listed: its directory's place in [order], then users, then device
+     * contacts last (as in the selector). A directory not in [order] goes after the known ones.
+     */
+    fun searchSectionRank(order: List<ContactDirectoryModel>, directoryId: String?, isUser: Boolean): Int =
+        when {
+            directoryId != null -> order.indexOfFirst { it.id == directoryId }.takeIf { it >= 0 } ?: order.size
+            isUser -> order.size + 1
+            else -> order.size + 2
+        }
+
+    fun mergeSearchResults(
+        local: List<ContactItemModel>,
+        server: List<ContactItemModel>
+    ): List<ContactItemModel> {
+        val localIds = local.map { it.id }.toSet()
+        return local + server.filter { it.id !in localIds }
+    }
 
     /**
      * The first contact with a phone field matching the number, compared in E.164 form using the PBX

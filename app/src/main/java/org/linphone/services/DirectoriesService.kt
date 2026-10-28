@@ -8,6 +8,7 @@ import io.reactivex.rxjava3.core.Observable
 import io.reactivex.rxjava3.core.Single
 import io.reactivex.rxjava3.disposables.Disposable
 import io.reactivex.rxjava3.functions.BiFunction
+import io.reactivex.rxjava3.schedulers.Schedulers
 import io.reactivex.rxjava3.subjects.BehaviorSubject
 import io.reactivex.rxjava3.subjects.PublishSubject
 import java.util.concurrent.TimeUnit
@@ -60,8 +61,13 @@ class DirectoriesService(val context: Context) : DefaultLifecycleObserver {
         .map { x -> x }
 
     // Directory search results, tagged with the search text they were made for so callers can tell
-    // whether the results belong to the text currently being searched.
-    data class DirectorySearchResult(val searchText: String, val results: UserGroupViewModel)
+    // whether the results belong to the text currently being searched. isComplete is false for the
+    // cached matches shown while the gateway search is still running.
+    data class DirectorySearchResult(
+        val searchText: String,
+        val results: UserGroupViewModel,
+        val isComplete: Boolean = true
+    )
 
     val searchResults: Observable<DirectorySearchResult>
         get() = dialSearchText
@@ -71,7 +77,7 @@ class DirectoriesService(val context: Context) : DefaultLifecycleObserver {
                 if (text.length >= 3) {
                     Log.i("searchResults($text)")
                     search(PhoneFormatterService.getInstance(context).getSearchNumber(text))
-                        .map { DirectorySearchResult(searchText, it) }
+                        .map { (results, isComplete) -> DirectorySearchResult(searchText, results, isComplete) }
                 } else {
                     Observable.just(DirectorySearchResult(searchText, UserGroupViewModel.empty()))
                 }
@@ -346,16 +352,18 @@ class DirectoriesService(val context: Context) : DefaultLifecycleObserver {
             })
     }
 
-    private fun search(searchText: String): Observable<UserGroupViewModel> {
-        return Observable.zip(
+    // The results, and whether the gateway directory searches have all returned. combineLatest, not
+    // zip: the directory search emits twice (cached matches, then with the gateway's added).
+    private fun search(searchText: String): Observable<Pair<UserGroupViewModel, Boolean>> {
+        return Observable.combineLatest(
             searchAllDirectories(searchText),
             searchAllUsers(searchText),
             BiFunction {
-                    contacts, directories ->
+                    contacts, users ->
                 return@BiFunction mergeSearchItems(
-                    contacts,
-                    directories
-                )
+                    contacts.contacts,
+                    users
+                ) to contacts.isComplete
             }
         )
     }
@@ -385,17 +393,42 @@ class DirectoriesService(val context: Context) : DefaultLifecycleObserver {
         return UserGroupViewModel(userGroupModel)
     }
 
-    private fun searchAllDirectories(searchText: String): Observable<List<ContactItemModel>> {
-        return contactDirectories.map { params ->
-            val contactItemLists = params.map { param ->
-                // TODO: this needs reworking as its not parallel
-                searchDirectory(param.id, searchText)
+    // isComplete is false while the gateway searches are still outstanding (contacts holds cached matches only)
+    private data class DirectoryContactsSearch(val contacts: List<ContactItemModel>, val isComplete: Boolean)
+
+    private fun searchAllDirectories(searchText: String): Observable<DirectoryContactsSearch> {
+        return contactDirectories.switchMap { directories ->
+            // The cached contacts only hold the first 100 of each directory - show their matches
+            // straight away, then add any further matches the gateway finds, as the web client does
+            val cached = UserGroupService.getInstance(context).currentDirectoryContacts()
+                .associate { (directory, contacts) -> directory.id to contacts }
+            val local = directories.map { directory ->
+                ContactDirectoryRules.searchCachedContacts(cached[directory.id].orEmpty(), searchText)
             }
-            contactItemLists.flatten()
+            if (directories.isEmpty()) {
+                return@switchMap Observable.just(DirectoryContactsSearch(emptyList(), true))
+            }
+
+            val searches = directories.mapIndexed { i, directory ->
+                Observable.fromCallable {
+                    ContactDirectoryRules.mergeSearchResults(local[i], searchDirectory(directory.id, searchText))
+                }
+                    .subscribeOn(Schedulers.io())
+                    .onErrorReturn { e ->
+                        // Keep the cached matches rather than losing them to one failed directory
+                        Log.e(e, "Error searching directory ${directory.id}.")
+                        local[i]
+                    }
+            }
+            Observable.zip(searches) { results ->
+                @Suppress("UNCHECKED_CAST")
+                DirectoryContactsSearch(results.flatMap { it as List<ContactItemModel> }, true)
+            }
+                .startWithItem(DirectoryContactsSearch(local.flatten(), false))
         }
             .onErrorResumeNext { e: Throwable ->
                 Log.e(e, "Error searching directories.")
-                Observable.just(listOf())
+                Observable.just(DirectoryContactsSearch(listOf(), true))
             }
     }
 
