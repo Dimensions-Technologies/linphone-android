@@ -23,7 +23,6 @@ import android.annotation.SuppressLint
 import android.annotation.TargetApi
 import android.content.ComponentName
 import android.content.Context
-import android.graphics.drawable.Icon
 import android.net.Uri
 import android.os.Bundle
 import android.telecom.PhoneAccount
@@ -46,6 +45,14 @@ class TelecomHelper private constructor(context: Context) {
     companion object : SingletonHolder<TelecomHelper, Context>(::TelecomHelper)
 
     private val telecomManager: TelecomManager = context.getSystemService(Context.TELECOM_SERVICE) as TelecomManager
+
+    /**
+     * True once Telecom holds our phone account, either found already registered or registered
+     * here. When false, Telecom rejects every incoming call on the account (WI #36796). Declared
+     * before [account] because its initialiser sets this.
+     */
+    var isAccountRegistered: Boolean = false
+        private set
 
     private var account: PhoneAccount = initPhoneAccount(context)
 
@@ -136,6 +143,7 @@ class TelecomHelper private constructor(context: Context) {
         if (newAccount != null) {
             Log.i("[Telecom Helper] Updating account object: $newAccount")
             account = newAccount
+            isAccountRegistered = true
         }
     }
 
@@ -160,6 +168,7 @@ class TelecomHelper private constructor(context: Context) {
             Log.i("[Telecom Helper] Phone account not found, let's create it")
             return createAccount(context)
         }
+        isAccountRegistered = true
         return account
     }
 
@@ -176,27 +185,48 @@ class TelecomHelper private constructor(context: Context) {
 
         val address = Uri.parse(identity)
             ?: throw Exception("[Telecom Helper] Identity address for phone account is null!")
-        val account = PhoneAccount.builder(accountHandle, context.getString(R.string.app_name))
+        val builder = PhoneAccount.builder(accountHandle, context.getString(R.string.app_name))
             .setAddress(address)
-            .setIcon(Icon.createWithResource(context, R.drawable.linphone_logo_tinted))
             .setCapabilities(PhoneAccount.CAPABILITY_SELF_MANAGED)
             .setHighlightColor(context.getColor(R.color.primary_color))
             .setShortDescription(context.getString(R.string.app_description))
             .setSupportedUriSchemes(listOf(PhoneAccount.SCHEME_SIP))
-            .build()
 
-        try {
-            telecomManager.registerPhoneAccount(account)
-            Log.i("[Telecom Helper] Phone account created: $account")
-        } catch (uoe: UnsupportedOperationException) {
-            Log.e("[Telecom Helper] Unsupported Operation Exception: $uoe")
-        } catch (e: Exception) {
-            Log.e("[Telecom Helper] Exception: $e")
+        // A resource icon can be turned into a full-density bitmap by the OS and rejected as too
+        // big (WI #36796), so hand Telecom a small bitmap that's already been size checked.
+        val icon = PhoneAccountIcon.get(context)
+        if (icon != null) {
+            val account = builder.setIcon(icon).build()
+            if (registerPhoneAccount(account)) return account
+            Log.w("[Telecom Helper] Retrying phone account registration without an icon")
         }
+        val account = builder.setIcon(null).build()
+        registerPhoneAccount(account)
         return account
     }
 
+    private fun registerPhoneAccount(account: PhoneAccount): Boolean {
+        return try {
+            telecomManager.registerPhoneAccount(account)
+            Log.i("[Telecom Helper] Phone account created: $account")
+            isAccountRegistered = true
+            true
+        } catch (uoe: UnsupportedOperationException) {
+            Log.e("[Telecom Helper] Unsupported Operation Exception: $uoe")
+            false
+        } catch (e: Exception) {
+            Log.e("[Telecom Helper] Exception: $e")
+            false
+        }
+    }
+
     private fun onIncomingCall(call: Call) {
+        if (!isAccountRegistered) {
+            Log.w(
+                "[Telecom Helper] Phone account isn't registered, leaving incoming call to the app's own notification"
+            )
+            return
+        }
         Log.i(
             "[Telecom Helper] Incoming call received from ${call.remoteAddress.asStringUriOnly()}, using account handle ${account.accountHandle}"
         )

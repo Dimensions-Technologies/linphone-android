@@ -438,6 +438,16 @@ class CoreContext(
                 Log.i(
                     "[Context] Telecom Helper created, account is ${if (telecomHelper.isAccountEnabled()) "enabled" else "disabled"}"
                 )
+                if (!telecomHelper.isAccountRegistered) {
+                    // Telecom would reject every incoming call on an unregistered account (WI #36796)
+                    Log.e(
+                        "[Context] Telecom phone account couldn't be registered, falling back to calls without Telecom Manager"
+                    )
+                    telecomHelper.destroy()
+                    TelecomHelper.destroy()
+                    core.config.setBool("audio", "android_disable_audio_focus_requests", false)
+                    corePreferences.useTelecomManager = false
+                }
             } else {
                 Log.w("[Context] Can't create Telecom Helper, permissions have been revoked")
                 corePreferences.useTelecomManager = false
@@ -1157,7 +1167,12 @@ class CoreContext(
                 return true
             }
         } else {
-            if (TelecomHelper.exists()) {
+            if (TelecomHelper.exists() && !TelecomHelper.get().isAccountRegistered) {
+                // Telecom isn't handling calls, so it can't be the reason to refuse one (WI #36796)
+                Log.w(
+                    "[Context] Telecom phone account isn't registered, not refusing the call on its behalf"
+                )
+            } else if (TelecomHelper.exists()) {
                 if (!TelecomHelper.get().isIncomingCallPermitted() ||
                     TelecomHelper.get().isInManagedCall()
                 ) {

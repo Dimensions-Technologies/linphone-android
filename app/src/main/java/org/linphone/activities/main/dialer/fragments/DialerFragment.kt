@@ -334,7 +334,16 @@ class DialerFragment : SecureFragment<DialerFragmentBinding>() {
         if (!TelecomHelper.exists()) {
             Log.i("[Dialer] Creating Telecom Helper")
             if (Compatibility.hasTelecomManagerFeature(requireContext())) {
-                TelecomHelper.create(requireContext())
+                val telecomHelper = TelecomHelper.create(requireContext())
+                if (!telecomHelper.isAccountRegistered) {
+                    // Telecom would reject every incoming call on an unregistered account (WI #36796)
+                    Log.e(
+                        "[Dialer] Telecom phone account couldn't be registered, leaving Telecom Manager off"
+                    )
+                    telecomHelper.destroy()
+                    TelecomHelper.destroy()
+                    return
+                }
             } else {
                 Log.w(
                     "[Dialer] Telecom Helper can't be created, device doesn't support connection service!"
