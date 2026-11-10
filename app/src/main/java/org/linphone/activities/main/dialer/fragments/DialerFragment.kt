@@ -31,6 +31,7 @@ import android.content.res.Configuration
 import android.net.Uri
 import android.os.Bundle
 import android.view.View
+import android.view.ViewGroup
 import android.widget.TextView
 import androidx.lifecycle.ViewModelProvider
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
@@ -41,6 +42,7 @@ import org.linphone.LinphoneApplication.Companion.corePreferences
 import org.linphone.R
 import org.linphone.activities.GenericActivity
 import org.linphone.activities.main.MainActivity
+import org.linphone.activities.main.dialer.DialpadFitter
 import org.linphone.activities.main.dialer.viewmodels.DialerViewModel
 import org.linphone.activities.main.fragments.SecureFragment
 import org.linphone.activities.main.viewmodels.DialogViewModel
@@ -63,6 +65,14 @@ class DialerFragment : SecureFragment<DialerFragmentBinding>() {
 
     private var uploadLogsInitiatedByUs = false
 
+    private var dialpadFitter: DialpadFitter? = null
+
+    override fun onDestroyView() {
+        dialpadFitter?.stop()
+        dialpadFitter = null
+        super.onDestroyView()
+    }
+
     override fun getLayoutId(): Int = R.layout.dialer_fragment
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
@@ -74,6 +84,15 @@ class DialerFragment : SecureFragment<DialerFragmentBinding>() {
         binding.viewModel = viewModel
 
         binding.fragment = this
+
+        // Portrait layout only: the others lay out their keypad differently
+        val content = binding.dialerContent
+        val uriField = binding.uriField
+        val numpad = binding.dialpad?.root as? ViewGroup
+        val callButton = binding.callButton
+        if (content != null && uriField != null && numpad != null && callButton != null) {
+            dialpadFitter = DialpadFitter(binding.root, content, uriField, numpad, callButton).also { it.start() }
+        }
 
         useMaterialSharedAxisXForwardAnimation = false
         sharedViewModel.updateDialerAnimationsBasedOnDestination.observe(

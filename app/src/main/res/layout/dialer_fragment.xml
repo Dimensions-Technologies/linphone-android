@@ -29,6 +29,7 @@
         android:onClick="@{() -> fragment.clearFocus() }">
 
         <com.google.android.flexbox.FlexboxLayout
+            android:id="@+id/dialer_content"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:layout_marginBottom="30dp"
@@ -37,6 +38,7 @@
             app:justifyContent="flex_end">
 
             <RelativeLayout
+                android:id="@+id/uri_field"
                 android:layout_width="264dp"
                 android:layout_height="@dimen/main_activity_top_bar_size"
                 android:layout_alignParentTop="true"
@@ -102,6 +104,7 @@
                 app:keyListener="@{viewModel.onKeyClick}" />
 
             <RelativeLayout
+                android:id="@+id/call_button"
                 style="@style/numpad_button"
                 android:backgroundTint="@color/primary_color">
 
