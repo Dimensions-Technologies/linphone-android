@@ -44,6 +44,29 @@ class SipIdentityTest {
     }
 
     @Test
+    fun `a withheld caller's number is never asserted (WI 36896)`() {
+        // A withheld caller retrieved from park: the PBX hides the number only by the display name
+        val pai = "\"anonymous\" <sip:+447866266719@192.168.200.121>"
+        assertEquals("anonymous", SipIdentity.assertedNumber(pai))
+        assertEquals("anonymous", SipIdentity.otherPartyNumber(pai, "*31034"))
+        assertEquals(
+            "Anonymous",
+            SipIdentity.assertedNumber("Anonymous <sip:+447866266719@pbx.example.com>")
+        )
+    }
+
+    @Test
+    fun `an identified caller's asserted number is the PAI's user part`() {
+        assertEquals(
+            "+447921910119",
+            SipIdentity.assertedNumber("\"Chris R\" <sip:+447921910119@pbx.example.com>")
+        )
+        assertEquals("1024", SipIdentity.assertedNumber("<sip:1024@pbx.example.com>"))
+        assertNull(SipIdentity.assertedNumber(null))
+        assertNull(SipIdentity.assertedNumber("tel:+447921910119"))
+    }
+
+    @Test
     fun `no other party when the PAI is the remote address or missing`() {
         assertNull(
             SipIdentity.otherPartyNumber("\"Chris R\" <sip:1024@pbx.example.com>", "1024")

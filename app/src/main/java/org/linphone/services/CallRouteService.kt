@@ -151,7 +151,7 @@ object CallRouteService {
     /** How many times the call's other party has changed (see CallPartyRules), e.g. by a transfer. */
     fun otherPartyChanges(call: Call): Int = partyOf(call).changes
 
-    private fun pai(call: Call) = SipIdentity.userPart(call.remoteParams?.getCustomHeader("P-Asserted-Identity"))
+    private fun pai(call: Call) = SipIdentity.assertedNumber(call.remoteParams?.getCustomHeader("P-Asserted-Identity"))
 
     private fun partyOf(call: Call): CallParty =
         if (started) call.callLog.callId?.let { parties[it] } ?: CallParty() else CallParty()
