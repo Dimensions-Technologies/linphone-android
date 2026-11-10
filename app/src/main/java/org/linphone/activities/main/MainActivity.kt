@@ -95,6 +95,7 @@ import org.linphone.core.CoreListenerStub
 import org.linphone.core.CorePreferences
 import org.linphone.databinding.MainActivityBinding
 import org.linphone.models.AuthenticatedUser
+import org.linphone.services.ContactsAccessService
 import org.linphone.services.UserService
 import org.linphone.utils.AppUtils
 import org.linphone.utils.CallUriIntents
@@ -291,6 +292,10 @@ class MainActivity : GenericActivity(), SnackBarActivity, NavController.OnDestin
 
         if (intent != null) {
             if (CallUriIntents.isCallUri(intent.action, intent.data?.scheme)) {
+                handleIntentParams(intent)
+            } else if (intent.hasExtra("Dialer") || intent.hasExtra("Contacts")) {
+                // The call screen's request to open the dialer or Contacts for a new call or a
+                // transfer, while this activity is already running
                 handleIntentParams(intent)
             } else {
                 handleAuthIntent(intent)
@@ -620,10 +625,16 @@ class MainActivity : GenericActivity(), SnackBarActivity, NavController.OnDestin
                 navigateToDialer()
             }
             intent.hasExtra("Contacts") -> {
-                Log.i("[Main Activity] Found contacts intent extra, go to contacts list")
                 val isTransfer = intent.getBooleanExtra("Transfer", false)
                 sharedViewModel.pendingCallTransfer = isTransfer
-                navigateToContacts()
+                if (ContactsAccessService.isAvailableNow) {
+                    Log.i("[Main Activity] Found contacts intent extra, go to contacts list")
+                    navigateToContacts()
+                } else {
+                    // No Contacts licence or permission (or not known yet): the dialer instead
+                    Log.i("[Main Activity] Found contacts intent extra but Contacts isn't available, go to dialer")
+                    navigateToDialer()
+                }
             }
             else -> {
                 val core = coreContext.core

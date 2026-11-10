@@ -31,6 +31,7 @@ import org.linphone.LinphoneApplication.Companion.corePreferences
 import org.linphone.R
 import org.linphone.core.*
 import org.linphone.services.CallHistoryService
+import org.linphone.services.ContactsAccessService
 import org.linphone.services.ParkingSlotService
 import org.linphone.services.VoicemailBoxService
 import org.linphone.utils.AppUtils
@@ -55,6 +56,11 @@ class TabsViewModel : ViewModel() {
     // the boundaries (see tabAnchors).
     val showParking = MutableLiveData(false)
     val parkingOccupiedCount = MutableLiveData(0)
+
+    // The Favourites and Contacts tabs are shown only when the user can use Contacts (licence and
+    // permission, as the web client's nav menu), hidden the same way as Parking. No value (hidden)
+    // until it's known.
+    val showContacts = MutableLiveData<Boolean>()
 
     val historyMissedCountTranslateY = MutableLiveData<Float>()
     val chatUnreadCountTranslateY = MutableLiveData<Float>()
@@ -92,6 +98,12 @@ class TabsViewModel : ViewModel() {
             { e -> Log.e("[Tabs] Parking slots failed", e) }
         )
 
+    private val contactsSubscription: Disposable = ContactsAccessService.isAvailable
+        .subscribe(
+            { available -> showContacts.postValue(available) },
+            { e -> Log.e("[Tabs] Contacts access failed", e) }
+        )
+
     init {
         missedCallCountSubscription = callHistoryService.missedCallCount.subscribe { c ->
             missedCallsCount.postValue(c)
@@ -99,12 +111,23 @@ class TabsViewModel : ViewModel() {
     }
 
     companion object {
-        // The boundaries between the tabs, anchor1 to anchor5. Without Parking, its tab (between
-        // anchor4 and anchor5) has no width.
-        fun tabAnchors(withParking: Boolean): List<Float> = if (withParking) {
-            listOf(1 / 6F, 2 / 6F, 3 / 6F, 4 / 6F, 5 / 6F)
-        } else {
-            listOf(0.2F, 0.4F, 0.6F, 0.8F, 0.8F)
+        // The boundaries between the tabs, anchor1 to anchor5: Favourites, Contacts, History, Dialer,
+        // Parking, Voicemail. A hidden tab has no width - Favourites and Contacts (before anchor1 and
+        // between anchor1 and anchor2) without Contacts, Parking (anchor4 to anchor5) without slots.
+        fun tabAnchors(withParking: Boolean, withContacts: Boolean): List<Float> {
+            val widths = listOf(
+                if (withContacts) 1F else 0F, // Favourites
+                if (withContacts) 1F else 0F, // Contacts
+                1F, // History
+                1F, // Dialer
+                if (withParking) 1F else 0F // Parking
+            )
+            val tabCount = widths.sum() + 1 // and Voicemail
+            var edge = 0F
+            return widths.map { width ->
+                edge += width
+                edge / tabCount
+            }
         }
     }
 
@@ -196,6 +219,7 @@ class TabsViewModel : ViewModel() {
 
     override fun onCleared() {
         parkingSubscription.dispose()
+        contactsSubscription.dispose()
         voicemailSubscription.dispose()
         coreContext.core.removeListener(listener)
         super.onCleared()

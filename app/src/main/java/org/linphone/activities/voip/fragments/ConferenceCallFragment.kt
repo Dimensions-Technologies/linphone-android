@@ -271,11 +271,8 @@ class ConferenceCallFragment : GenericFragment<VoipConferenceCallFragmentBinding
             it.consume { isCallTransfer ->
                 val intent = Intent()
                 intent.setClass(requireContext(), MainActivity::class.java)
-                if (corePreferences.skipDialerForNewCallAndTransfer) {
-                    intent.putExtra("Contacts", true)
-                } else {
-                    intent.putExtra("Dialer", true)
-                }
+                // Contacts, as on iOS; MainActivity opens the dialer instead when Contacts isn't available
+                intent.putExtra("Contacts", true)
                 intent.putExtra("Transfer", isCallTransfer)
                 intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                 startActivity(intent)

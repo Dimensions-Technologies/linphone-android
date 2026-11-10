@@ -32,6 +32,7 @@ import org.linphone.contact.ContactsUpdatedListenerStub
 import org.linphone.core.*
 import org.linphone.models.callhistory.CallHistoryItemViewModel
 import org.linphone.services.CallHistoryService
+import org.linphone.services.ContactsAccessService
 import org.linphone.services.DirectoriesService
 import org.linphone.services.TransferService
 import org.linphone.services.VoicemailBoxService
@@ -75,6 +76,9 @@ class CallLogsListViewModel : ViewModel() {
 
     // Whether the context menu's call can be added as a contact (checked as the menu opens)
     val canAddContact = MutableLiveData(false)
+
+    // Adding a contact saves into Contacts, so it's offered only when the user can use Contacts
+    private var contactsAllowed = false
 
     val transferState = TransferService.getInstance().transferState
 
@@ -134,6 +138,12 @@ class CallLogsListViewModel : ViewModel() {
                     }
                 },
                 { error -> Log.e(error, "Failed to check voicemail availability.") }
+            )
+        ContactsAccessService.isAvailable
+            .takeUntil(destroy)
+            .subscribe(
+                { available -> contactsAllowed = available },
+                { error -> Log.e(error, "Failed to check the Contacts licence and permission.") }
             )
         VoicemailBoxService.newCount
             .takeUntil(destroy)
@@ -270,7 +280,8 @@ class CallLogsListViewModel : ViewModel() {
     // As on the web client: an unmatched external number, and a directory to add it to. Calls are
     // matched to directory contacts as the history is formatted (CallHistoryContactMatcher).
     private fun canAddContact(call: CallHistoryItemViewModel): Boolean =
-        call.canAddContact &&
+        contactsAllowed &&
+            call.canAddContact &&
             DirectoriesService.getInstance(coreContext.context).contributorDirectories().isNotEmpty()
 
     fun hideContextMenu(skipAnimation: Boolean) {

@@ -64,8 +64,11 @@ class TabsFragment : GenericFragment<TabsFragmentBinding>(), NavController.OnDes
         }
         binding.viewModel = viewModel
 
-        viewModel.showParking.observe(viewLifecycleOwner) { showParking ->
-            setTabAnchors(TabsViewModel.tabAnchors(showParking))
+        viewModel.showParking.observe(viewLifecycleOwner) { updateTabAnchors() }
+        viewModel.showContacts.observe(viewLifecycleOwner) { showContacts ->
+            updateTabAnchors()
+            // Contacts can be taken away (licence or permission) while it, or Favourites, is shown
+            if (!showContacts && isOnContactsTab()) navigateToDialer()
         }
 
         // Only the portrait layout has a tabs_container to grow by the navigation bar height. The
@@ -190,6 +193,20 @@ class TabsFragment : GenericFragment<TabsFragmentBinding>(), NavController.OnDes
             }
             navigateToParking()
         }
+    }
+
+    private fun updateTabAnchors() {
+        setTabAnchors(
+            TabsViewModel.tabAnchors(
+                withParking = viewModel.showParking.value == true,
+                withContacts = viewModel.showContacts.value == true
+            )
+        )
+    }
+
+    private fun isOnContactsTab(): Boolean = when (findNavController().currentDestination?.id) {
+        R.id.dimensionsContactsFragment, R.id.favouritesFragment -> true
+        else -> false
     }
 
     /**

@@ -23,6 +23,7 @@ data class CustomerLicence(
 
     companion object {
         const val VOICEMAIL_ENABLED = "customer.ucwebclient.voicemail.enabled"
+        const val CONTACTS_ENABLED = "customer.ucwebclient.contacts.enabled"
         const val RECORDING_TRANSCRIPTION = "customer.recordingtranscription"
         const val RECORDING_ANALYTICS = "customer.recordinganalytics"
         const val CALL_TAGGING = "customer.tagging.calls"
