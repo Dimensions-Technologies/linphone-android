@@ -540,7 +540,6 @@
         <item quantity="other">%1$d 未读消息</item>
     </plurals>
     <string name="call_error_temporarily_unavailable">暂时不可用</string>
-    <string name="call_error_generic">错误：%s</string>
     <string name="assistant_general_terms">使用条款</string>
     <string name="assistant_privacy_policy">隐私政策</string>
     <string name="assistant_read_and_agree_terms">我接受 Belledonne Communications 的 %1$s 和 %2$s</string>

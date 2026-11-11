@@ -577,7 +577,6 @@
     <string name="call_settings_ring_during_early_media_title">在收到早期媒體資料時就響鈴</string>
     <string name="content_description_cancel_reply">取消回覆</string>
     <string name="content_description_hide_numpad">隱藏數字鍵</string>
-    <string name="call_error_generic">錯誤：%s</string>
     <string name="call_action_participants_list">與會者清單</string>
     <string name="conference_organizer">主辦人</string>
     <string name="call_context_action_pause">暫停通話</string>

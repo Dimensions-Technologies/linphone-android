@@ -131,12 +131,6 @@ class MasterCallLogsFragment : MasterFragment<HistoryMasterFragmentBinding, Call
         binding.voicemailViewModel = voicemailViewModel
         setUpVoicemail()
 
-        // Opened on the Voicemail tab (from the voicemail button)
-        if (arguments?.getString(TAB_ARGUMENT) == TAB_VOICEMAIL) {
-            arguments?.remove(TAB_ARGUMENT)
-            listViewModel.showVoicemail()
-        }
-
         /* Shared view model & sliding pane related */
 
         setUpSlidingPane(binding.slidingPane)
@@ -353,10 +347,7 @@ class MasterCallLogsFragment : MasterFragment<HistoryMasterFragmentBinding, Call
             it.consume { call -> addContact(call.number) }
         }
 
-        callHistoryService.updateMissedCallTimestamp()
-
-        coreContext.core.resetMissedCallsCount()
-        coreContext.notificationsManager.dismissMissedCallNotification()
+        markMissedCallsSeen()
 
         onChildPanelClosed.observe(viewLifecycleOwner) {
             sharedViewModel.selectedHistoryItem.postValue(null)
@@ -370,6 +361,14 @@ class MasterCallLogsFragment : MasterFragment<HistoryMasterFragmentBinding, Call
             ViewModelProvider(this)[TabsViewModel::class.java]
         }
         tabsViewModel.updateMissedCallCount()
+    }
+
+    // Missed calls up to now stop counting on the History badge (and on the other clients, which
+    // share the timestamp through the gateway)
+    private fun markMissedCallsSeen() {
+        callHistoryService.updateMissedCallTimestamp()
+        coreContext.core.resetMissedCallsCount()
+        coreContext.notificationsManager.dismissMissedCallNotification()
     }
 
     override fun deleteItems(indexesOfItemToDelete: ArrayList<Int>) {
@@ -406,7 +405,12 @@ class MasterCallLogsFragment : MasterFragment<HistoryMasterFragmentBinding, Call
             it.consume { filter ->
                 when (filter) {
                     CallLogsFilter.VOICEMAIL -> listViewModel.showVoicemail()
-                    else -> listViewModel.showAllCallLogs()
+                    else -> {
+                        listViewModel.showAllCallLogs()
+                        // Pressing History again counts as seeing the missed calls, as on the web
+                        // client, so calls missed while the screen was open stop counting
+                        markMissedCallsSeen()
+                    }
                 }
             }
         }
@@ -417,9 +421,6 @@ class MasterCallLogsFragment : MasterFragment<HistoryMasterFragmentBinding, Call
                 if (listFilter != null && filter != listFilter) scrollToTopOnNextList = true
                 listFilter = filter
             }
-            // Not cleared as the screen goes: the tabs only read it while the call history is
-            // shown, and each call history screen sets it as it opens
-            sharedViewModel.isVoicemailTabShown.value = filter == CallLogsFilter.VOICEMAIL
             // Leaving the tab leaves no controls on screen, so stop what it was playing
             if (filter != CallLogsFilter.VOICEMAIL) stopVoicemail()
         }
@@ -589,10 +590,5 @@ class MasterCallLogsFragment : MasterFragment<HistoryMasterFragmentBinding, Call
                 }
                 .show()
         }
-    }
-
-    companion object {
-        const val TAB_ARGUMENT = "Tab"
-        const val TAB_VOICEMAIL = "voicemail"
     }
 }

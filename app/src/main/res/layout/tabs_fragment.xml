@@ -21,9 +21,6 @@
             name="chatClickListener"
             type="android.view.View.OnClickListener"/>
         <variable
-            name="voicemailClickListener"
-            type="android.view.View.OnClickListener"/>
-        <variable
             name="parkingClickListener"
             type="android.view.View.OnClickListener"/>
         <variable
@@ -70,14 +67,6 @@
             android:layout_height="wrap_content"
             android:orientation="vertical"
             layout_constraintGuide_percent="@{viewModel.anchor4, default=0.8}" />
-
-        <!-- Same as guideline4 while the Parking tab is hidden -->
-        <androidx.constraintlayout.widget.Guideline
-            android:id="@+id/guideline5"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:orientation="vertical"
-            layout_constraintGuide_percent="@{viewModel.anchor5, default=0.8}" />
 
         <ImageView
             android:id="@+id/favourites"
@@ -126,8 +115,8 @@
             android:layout_marginTop="5dp"
             android:gravity="center"
             android:translationY="@{viewModel.historyMissedCountTranslateY}"
-            android:background="@{viewModel.missedCallsCount == 0 ? @drawable/hidden_unread_message_count_bg : @drawable/unread_message_count_bg}"
-            android:text="@{viewModel.missedCallsCount == 0 ? `` : String.valueOf(viewModel.missedCallsCount)}"
+            android:background="@{viewModel.historyBadgeCount == 0 ? @drawable/hidden_unread_message_count_bg : @drawable/unread_message_count_bg}"
+            android:text="@{viewModel.historyBadgeCount == 0 ? `` : String.valueOf(viewModel.historyBadgeCount)}"
             app:layout_constraintStart_toStartOf="@id/guideline2"
             app:layout_constraintEnd_toEndOf="@id/guideline3"
             app:layout_constraintTop_toTopOf="parent" />
@@ -188,7 +177,7 @@
             android:src="@drawable/icon_parking"
             app:tint="@color/tab_icon_color"
             app:layout_constraintStart_toStartOf="@id/guideline4"
-            app:layout_constraintEnd_toEndOf="@id/guideline5" />
+            app:layout_constraintEnd_toEndOf="parent" />
 
         <TextView
             android:id="@+id/parking_occupied_count"
@@ -200,38 +189,8 @@
             android:gravity="center"
             android:background="@{viewModel.parkingOccupiedCount == 0 ? @drawable/hidden_unread_message_count_bg : @drawable/unread_message_count_bg}"
             android:text="@{viewModel.parkingOccupiedCount == 0 ? `` : String.valueOf(viewModel.parkingOccupiedCount)}"
-            app:layout_constraintRight_toLeftOf="@id/guideline5"
+            app:layout_constraintRight_toRightOf="parent"
             app:layout_constraintTop_toTopOf="parent" />
-
-        <ImageView
-            android:id="@+id/voicemail"
-            android:layout_width="0dp"
-            android:layout_height="match_parent"
-            android:layout_centerInParent="true"
-            app:tint="@color/tab_icon_color"
-            android:contentDescription="@string/content_description_menu_voicemail"
-            android:onClick="@{voicemailClickListener}"
-            android:padding="15dp"
-            android:src="@drawable/footer_voicemail"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintHorizontal_bias="0.0"
-            app:layout_constraintStart_toStartOf="@id/guideline5"
-            tools:layout_editor_absoluteY="0dp" />
-
-        <TextView
-            android:id="@+id/voicemail_unread_count"
-            style="@style/unread_count_font"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="@dimen/tabs_fragment_badge_offset"
-            android:layout_marginTop="5dp"
-            android:gravity="center"
-            android:translationY="@{viewModel.voicemailUnreadCountTranslateY}"
-            android:background="@{viewModel.unreadVoicemailsCount == 0 ? @drawable/hidden_unread_message_count_bg : @drawable/unread_message_count_bg}"
-            android:text="@{viewModel.unreadVoicemailsCount == 0 ? `` : String.valueOf(viewModel.unreadVoicemailsCount)}"
-            app:layout_constraintStart_toStartOf="@id/guideline5"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintTop_toTopOf="parent"/>
 
         <View
             android:id="@+id/selector"

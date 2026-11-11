@@ -276,7 +276,6 @@
     <string name="call_error_network_unreachable">Verkkoon ei yhteyttä</string>
     <string name="call_error_server_timeout">Palvelimen aikakatkaisu</string>
     <string name="call_error_temporarily_unavailable">Väliaikaisesti ei käytettävissä</string>
-    <string name="call_error_generic">Virhe: %s</string>
     <string name="call_video_update_requested_dialog">Vastaanottaja haluaa laittaa videon päälle</string>
     <string name="call_action_participants_list">Osallistujalista</string>
     <string name="call_action_chat">Keskustelu</string>

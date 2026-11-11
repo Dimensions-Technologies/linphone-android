@@ -253,7 +253,6 @@
     <string name="call_error_network_unreachable">Síť není dostupná</string>
     <string name="call_error_server_timeout">Časový limit serveru</string>
     <string name="call_error_temporarily_unavailable">Dočasně nedostupné</string>
-    <string name="call_error_generic">Chyba: %s</string>
     <string name="call_action_participants_list">Seznam účastníků</string>
     <string name="call_action_chat">Chat</string>
     <string name="call_action_calls_list">Seznam hovorů</string>

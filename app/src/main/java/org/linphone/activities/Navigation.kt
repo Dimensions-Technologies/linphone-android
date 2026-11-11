@@ -123,20 +123,6 @@ internal fun TabsFragment.navigateToCallHistory() {
     )
 }
 
-internal fun TabsFragment.navigateToVoicemail() {
-    val action = when (findNavController().currentDestination?.id) {
-        R.id.dimensionsContactsFragment -> R.id.action_dimensionsContactsFragment_to_masterCallLogsFragment
-        R.id.dialerFragment -> R.id.action_dialerFragment_to_masterCallLogsFragment
-        R.id.masterChatRoomsFragment -> R.id.action_masterChatRoomsFragment_to_masterCallLogsFragment
-        else -> R.id.action_global_masterCallLogsFragment
-    }
-    findNavController().navigate(
-        action,
-        bundleOf(MasterCallLogsFragment.TAB_ARGUMENT to MasterCallLogsFragment.TAB_VOICEMAIL),
-        popupTo(R.id.masterCallLogsFragment, true)
-    )
-}
-
 internal fun TabsFragment.navigateToFavourites() {
     findNavController().navigate(
         R.id.action_global_favouritesFragment,

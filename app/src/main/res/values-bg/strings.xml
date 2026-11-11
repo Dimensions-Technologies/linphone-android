@@ -210,7 +210,6 @@
     <string name="call_error_io_error">Услугата не е достъпна или грешка с мрежата</string>
     <string name="call_error_server_timeout">Отказ поради прекомерни заявки</string>
     <string name="call_error_temporarily_unavailable">Временно недостъпно</string>
-    <string name="call_error_generic">Грешка: %s</string>
     <string name="call_action_participants_list">Списък с участници</string>
     <string name="call_action_chat">Чат</string>
     <string name="call_action_calls_list">Списък с обаждания</string>

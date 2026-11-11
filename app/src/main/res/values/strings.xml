@@ -476,7 +476,7 @@
     <string name="call_error_io_error">Service unavailable or network error</string>
     <string name="call_error_server_timeout">Server timeout</string>
     <string name="call_error_temporarily_unavailable">Temporarily unavailable</string>
-    <string name="call_error_generic">Error: %s</string>
+    <string name="call_error_failed">Call failed</string>
     <string name="call_video_update_requested_dialog">Correspondent would like to turn the video on</string>
     <string name="call_action_participants_list">Participants list</string>
     <string name="call_action_chat">Chat</string>
@@ -1072,7 +1072,6 @@
     <string name="content_description_presence_offline">User is offline</string>
     <string name="content_description_presence_do_not_disturb">User is asking not to be disturbed</string>
     <string name="content_description_emoji_picker">Toggle emoji picker visibility</string>
-    <string name="content_description_menu_voicemail">Voicemail</string>
     <string name="no_device_configured">No mobile device configured</string>
     <!-- TODO: Remove or change this placeholder text -->
     <string name="hello_blank_fragment">Hello blank fragment</string>
