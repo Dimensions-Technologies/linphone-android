@@ -25,7 +25,6 @@ import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import io.reactivex.rxjava3.core.Observable
 import io.reactivex.rxjava3.disposables.Disposable
-import java.util.Locale
 import org.linphone.LinphoneApplication.Companion.coreContext
 import org.linphone.LinphoneApplication.Companion.corePreferences
 import org.linphone.R
@@ -41,15 +40,16 @@ class TabsViewModel : ViewModel() {
     private val callHistoryService = CallHistoryService.getInstance(coreContext.context)
 
     val unreadMessagesCount = MutableLiveData<Int>()
-    val unreadVoicemailsCount = MutableLiveData<Int>()
-    val missedCallsCount = MutableLiveData<Int>()
 
-    // Boundaries between the tabs: five, or six with Parking (between anchor4 and anchor5)
+    // Voicemail is a switch inside History (as on iOS), so History's badge counts the missed calls
+    // and the new voicemails
+    val historyBadgeCount = MutableLiveData<Int>()
+
+    // Boundaries between the tabs: four, or five with Parking (after anchor4)
     val anchor1 = MutableLiveData<Float>()
     val anchor2 = MutableLiveData<Float>()
     val anchor3 = MutableLiveData<Float>()
     val anchor4 = MutableLiveData<Float>()
-    val anchor5 = MutableLiveData<Float>()
 
     // The Parking tab is shown only when the user has parking slots. It's hidden by giving it no
     // width rather than by visibility, which the tabs' MotionLayout would reset; TabsFragment moves
@@ -64,26 +64,21 @@ class TabsViewModel : ViewModel() {
 
     val historyMissedCountTranslateY = MutableLiveData<Float>()
     val chatUnreadCountTranslateY = MutableLiveData<Float>()
-    val voicemailUnreadCountTranslateY = MutableLiveData<Float>()
 
-    private var missedCallCountSubscription: Disposable? = null
-
-    // With visual voicemail the voicemail button opens the Voicemail tab, and its badge counts the
-    // mailbox's new messages; without it, the button dials voicemail and the badge is SIP MWI's count
-    var isVisualVoicemailAvailable = false
-        private set
-    private var mwiVoicemailCount = 0
-
-    private val voicemailSubscription: Disposable = Observable.combineLatest(
-        VoicemailBoxService.isAvailable,
-        VoicemailBoxService.newCount
-    ) { available, count -> Pair(available, count) }
+    // New voicemails count only while History has its Voicemail switch (licence, permission and an
+    // enabled mailbox). Without it there's nothing in History to clear them; the status bar's
+    // voicemail icon still shows the SIP MWI count.
+    private val historyBadgeSubscription: Disposable = Observable.combineLatest(
+        callHistoryService.missedCallCount.startWithItem(0),
+        // Missed calls show straight away, before the user and mailboxes have loaded
+        VoicemailBoxService.isAvailable.startWithItem(false),
+        VoicemailBoxService.newCount.startWithItem(0)
+    ) { missed, voicemailAvailable, newVoicemails ->
+        historyBadgeCount(missed, voicemailAvailable, newVoicemails)
+    }
         .subscribe(
-            { (available, count) ->
-                isVisualVoicemailAvailable = available
-                unreadVoicemailsCount.postValue(if (available) count else mwiVoicemailCount)
-            },
-            { e -> Log.e("[Tabs] Voicemail failed", e) }
+            { count -> historyBadgeCount.postValue(count) },
+            { e -> Log.e("[Tabs] History badge failed", e) }
         )
 
     private val parkingSubscription: Disposable = Observable.combineLatest(
@@ -104,16 +99,10 @@ class TabsViewModel : ViewModel() {
             { e -> Log.e("[Tabs] Contacts access failed", e) }
         )
 
-    init {
-        missedCallCountSubscription = callHistoryService.missedCallCount.subscribe { c ->
-            missedCallsCount.postValue(c)
-        }
-    }
-
     companion object {
-        // The boundaries between the tabs, anchor1 to anchor5: Favourites, Contacts, History, Dialer,
-        // Parking, Voicemail. A hidden tab has no width - Favourites and Contacts (before anchor1 and
-        // between anchor1 and anchor2) without Contacts, Parking (anchor4 to anchor5) without slots.
+        // The boundaries between the tabs, anchor1 to anchor4: Favourites, Contacts, History, Dialer,
+        // Parking. A hidden tab has no width - Favourites and Contacts (before anchor1 and between
+        // anchor1 and anchor2) without Contacts, Parking (after anchor4) without slots.
         fun tabAnchors(withParking: Boolean, withContacts: Boolean): List<Float> {
             val widths = listOf(
                 if (withContacts) 1F else 0F, // Favourites
@@ -122,13 +111,17 @@ class TabsViewModel : ViewModel() {
                 1F, // Dialer
                 if (withParking) 1F else 0F // Parking
             )
-            val tabCount = widths.sum() + 1 // and Voicemail
+            val tabCount = widths.sum()
             var edge = 0F
-            return widths.map { width ->
+            // The last boundary is the end of the bar
+            return widths.dropLast(1).map { width ->
                 edge += width
                 edge / tabCount
             }
         }
+
+        fun historyBadgeCount(missedCalls: Int, voicemailAvailable: Boolean, newVoicemails: Int): Int =
+            missedCalls + if (voicemailAvailable) newVoicemails else 0
     }
 
     private val bounceAnimator: ValueAnimator by lazy {
@@ -140,7 +133,6 @@ class TabsViewModel : ViewModel() {
                 val value = it.animatedValue as Float
                 historyMissedCountTranslateY.value = -value
                 chatUnreadCountTranslateY.value = -value
-                voicemailUnreadCountTranslateY.value = -value
             }
             interpolator = LinearInterpolator()
             duration = 250
@@ -178,28 +170,6 @@ class TabsViewModel : ViewModel() {
                 updateUnreadChatCount()
             }
         }
-
-        override fun onNotifyReceived(
-            core: Core,
-            event: Event,
-            notifiedEvent: String,
-            body: Content?
-        ) {
-            if (body?.type == "application" && body.subtype == "simple-message-summary" && body.size > 0) {
-                val data = body.utf8Text?.lowercase(Locale.getDefault())
-                val voiceMail = data?.split("voice-message: ")
-                if ((voiceMail?.size ?: 0) >= 2) {
-                    val toParse = voiceMail!![1].split("/", limit = 0)
-                    try {
-                        val unreadCount: Int = toParse[0].toInt()
-                        mwiVoicemailCount = unreadCount
-                        if (!isVisualVoicemailAvailable) unreadVoicemailsCount.value = unreadCount
-                    } catch (nfe: NumberFormatException) {
-                        Log.e("[Status Fragment] $nfe")
-                    }
-                }
-            }
-        }
     }
 
     init {
@@ -209,7 +179,6 @@ class TabsViewModel : ViewModel() {
         anchor2.value = 0.4F
         anchor3.value = 0.6F
         anchor4.value = 0.8F
-        anchor5.value = 0.8F
 
         updateUnreadChatCount()
         updateMissedCallCount()
@@ -220,7 +189,7 @@ class TabsViewModel : ViewModel() {
     override fun onCleared() {
         parkingSubscription.dispose()
         contactsSubscription.dispose()
-        voicemailSubscription.dispose()
+        historyBadgeSubscription.dispose()
         coreContext.core.removeListener(listener)
         super.onCleared()
     }
@@ -231,9 +200,5 @@ class TabsViewModel : ViewModel() {
 
     fun updateUnreadChatCount() {
         unreadMessagesCount.value = if (corePreferences.disableChat) 0 else coreContext.core.unreadChatMessageCountFromActiveLocals
-    }
-
-    fun dialVoicemail() {
-        coreContext.dialVoicemail()
     }
 }

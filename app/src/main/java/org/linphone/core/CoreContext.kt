@@ -302,24 +302,9 @@ class CoreContext(
                     Log.w(
                         "[Context] Call error reason is ${call.errorInfo.protocolCode} / ${call.errorInfo.reason} / ${call.errorInfo.phrase}"
                     )
-                    val toastMessage = when (call.errorInfo.reason) {
-                        Reason.Busy -> context.getString(R.string.call_error_user_busy)
-                        Reason.IOError -> context.getString(R.string.call_error_io_error)
-                        Reason.NotAcceptable -> context.getString(
-                            R.string.call_error_incompatible_media_params
-                        )
-                        Reason.NotFound -> context.getString(R.string.call_error_user_not_found)
-                        Reason.ServerTimeout -> context.getString(
-                            R.string.call_error_server_timeout
-                        )
-                        Reason.TemporarilyUnavailable -> context.getString(
-                            R.string.call_error_temporarily_unavailable
-                        )
-                        else -> context.getString(R.string.call_error_generic).format(
-                            "${call.errorInfo.protocolCode} / ${call.errorInfo.phrase}"
-                        )
+                    CallErrorPolicy.message(call.dir, call.errorInfo.reason)?.let { message ->
+                        callErrorMessageResourceId.value = Event(context.getString(message))
                     }
-                    callErrorMessageResourceId.value = Event(toastMessage)
                 } else if (state == Call.State.End &&
                     call.dir == Call.Dir.Outgoing &&
                     call.errorInfo.reason == Reason.Declined &&

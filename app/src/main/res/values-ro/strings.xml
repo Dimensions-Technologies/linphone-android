@@ -295,7 +295,6 @@
     <string name="call_error_network_unreachable">Rețeaua este inaccesibilă</string>
     <string name="call_error_server_timeout">Timpul de așteptare al serverului</string>
     <string name="call_error_temporarily_unavailable">Temporar indisponibil</string>
-    <string name="call_error_generic">Eroare: %s</string>
     <string name="call_video_update_requested_dialog">Corespondentul ar dori să pornească videoclipul</string>
     <string name="call_action_participants_list">Lista participanților</string>
     <string name="call_action_chat">Chat</string>

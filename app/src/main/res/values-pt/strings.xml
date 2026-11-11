@@ -146,7 +146,6 @@
     <string name="call_error_io_error">Serviço indisponível ou erro de rede</string>
     <string name="call_error_server_timeout">Tempo limite do servidor</string>
     <string name="call_error_temporarily_unavailable">Temporariamente indisponível</string>
-    <string name="call_error_generic">Erro: %s</string>
     <string name="call_stats_audio">Áudio</string>
     <string name="call_stats_video">Vídeo</string>
     <string name="call_stats_codec">Codec:</string>

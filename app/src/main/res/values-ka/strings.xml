@@ -205,7 +205,6 @@
     <string name="call_notification_active">მიმდინარე ზარი</string>
     <string name="call_error_user_busy">მომხმარებელი დაკავებულია</string>
     <string name="call_error_io_error">სერვერი მიუწვდომელია ან ქსელის შეცდომა</string>
-    <string name="call_error_generic">შეცდომა: %s</string>
     <string name="call_action_calls_list">ზარების სია</string>
     <string name="call_error_temporarily_unavailable">დროებით მიუწვდომელი</string>
     <string name="call_action_chat">საუბარი</string>

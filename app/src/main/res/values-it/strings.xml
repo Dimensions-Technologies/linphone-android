@@ -254,7 +254,6 @@
     <string name="app_description">il client SIP &lt;i&gt;libero&lt;/i&gt;</string>
     <string name="conference_schedule_edit">Modifica meeting</string>
     <string name="conference_admin_unset">%s non è più admin</string>
-    <string name="call_error_generic">Errore: %s</string>
     <string name="call_context_action_hangup">Termina chiamata</string>
     <string name="call_screenshot_taken">Snapshot acquisito: %s</string>
     <string name="call_stats_decoder_name">Decoder:</string>

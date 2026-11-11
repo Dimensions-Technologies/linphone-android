@@ -52,11 +52,8 @@ class SharedMainViewModel : ViewModel() {
     /* Call history */
     val selectedHistoryItem = MutableLiveData<CallHistoryItemViewModel>()
 
-    // Whether the call history is showing its Voicemail tab, which the voicemail tab highlights
-    val isVoicemailTabShown = MutableLiveData(false)
-
-    // The History or voicemail button, pressed while the call history is shown: switch it to
-    // that tab rather than opening the call history again
+    // The History tab, pressed while the call history is shown: switch it to that switch (History,
+    // Missed or Voicemail) rather than opening the call history again
     val callHistoryTabEvent = MutableLiveData<Event<CallLogsFilter>>()
     val selectedCallLogGroup = MutableLiveData<GroupedCallLogData>()
 

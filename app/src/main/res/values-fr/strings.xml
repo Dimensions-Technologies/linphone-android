@@ -544,7 +544,6 @@
     <string name="call_settings_redirect_to_voice_mail_declined_calls_title">Rediriger les appels déclinés vers la boîte vocale</string>
     <string name="call_error_server_timeout">Délai d\'attente serveur expiré</string>
     <string name="call_error_temporarily_unavailable">Temporairement indisponible</string>
-    <string name="call_error_generic">Erreur : %s</string>
     <string name="call_settings_pause_calls_lost_audio_focus_title">Mettre en pause les appels quand le focus audio est perdu</string>
     <string name="content_description_cancel_forward">Annuler le transfert de message</string>
     <string name="content_description_cancel_sharing">Annuler le partage</string>

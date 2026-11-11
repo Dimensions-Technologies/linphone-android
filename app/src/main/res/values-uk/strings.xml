@@ -157,7 +157,6 @@
     <string name="call_error_network_unreachable">Мережа недоступна</string>
     <string name="call_error_io_error">Служба недоступна або помилка мережі</string>
     <string name="call_error_server_timeout">Час очікування сервера</string>
-    <string name="call_error_generic">Помилка: %s</string>
     <string name="call_video_update_requested_dialog">Співрозмовник хоче увімкнути відео</string>
     <string name="call_action_chat">Чат</string>
     <string name="call_action_calls_list">Список дзвінків</string>

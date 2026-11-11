@@ -125,7 +125,6 @@
     <string name="call_error_network_unreachable">Сеть недоступна</string>
     <string name="call_error_io_error">Служба недоступна или ошибка сети</string>
     <string name="call_error_server_timeout">Тайм-аут сервера</string>
-    <string name="call_error_generic">Ошибка: %s</string>
     <string name="call_video_update_requested_dialog">Собеседник хочет включить видео</string>
     <string name="call_stats_audio">Аудио</string>
     <string name="call_stats_video">Видео</string>

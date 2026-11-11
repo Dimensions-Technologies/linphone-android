@@ -93,7 +93,7 @@
             android:layout_width="@dimen/tabs_fragment_selector_size"
             motion:layout_constraintLeft_toLeftOf="parent"
             motion:layout_constraintTop_toTopOf="@id/guideline4"
-            motion:layout_constraintBottom_toBottomOf="@id/guideline5" />
+            motion:layout_constraintBottom_toBottomOf="parent" />
 
     </ConstraintSet>
 

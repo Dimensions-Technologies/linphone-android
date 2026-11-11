@@ -437,7 +437,6 @@
     <string name="chat_settings_auto_download_summary">Akár fájlok letöltéséhez csatolt beérkezett csevegő üzenetek önműködően vagy sem</string>
     <string name="call_error_server_timeout">Kiszolgálói időtúllépés</string>
     <string name="call_error_temporarily_unavailable">Átmenetileg nem érhető el</string>
-    <string name="call_error_generic">Hiba: %s</string>
     <string name="assistant_validate_account_2">Miután elkészült, jöjjön vissza ide és kattintson a gombra.</string>
     <string name="assistant_create_account_part_2">Érvényesítési kódot tartalmazó SMS-t küldtünk a telefonszámára:</string>
     <string name="assistant_link_phone_number">Telefonszámát összekapcsolja a következő felhasználónévvel:</string>

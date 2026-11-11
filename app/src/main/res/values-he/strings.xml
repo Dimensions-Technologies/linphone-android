@@ -185,7 +185,6 @@
     <string name="call_error_io_error">שרות לא זמין או תקלת רשת</string>
     <string name="call_error_server_timeout">שרת לא עונה</string>
     <string name="call_error_temporarily_unavailable">זמנית השרות לא פעיל</string>
-    <string name="call_error_generic">שגיאה: %s</string>
     <string name="call_action_participants_list">רשימת משתתפים</string>
     <string name="call_action_chat">התכתבות</string>
     <string name="call_action_calls_list">רשימת שיחות</string>
