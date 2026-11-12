@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <data>
+
+        <variable
+            name="item"
+            type="org.linphone.activities.main.history.data.HistoryListItem" />
+
+        <variable
+            name="directionColors"
+            type="org.linphone.utils.BrandColors.DirectionColors" />
+
+        <variable
+            name="clickListener"
+            type="android.view.View.OnClickListener" />
+    </data>
+
+    <!-- One call of an open group, indented under it with a bar, as iOS's: how it went, its time
+         and direction -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="?attr/selectableItemBackground"
+        android:contentDescription="@{item.description}"
+        android:gravity="center_vertical"
+        android:minHeight="40dp"
+        android:onClick="@{clickListener}"
+        android:orientation="horizontal"
+        android:paddingStart="52dp"
+        android:paddingEnd="16dp"
+        app:tooltip="@{item.label}">
+
+        <View
+            android:layout_width="3dp"
+            android:layout_height="match_parent"
+            android:layout_marginEnd="11dp"
+            android:background="?attr/dividerColor" />
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:alpha="0.75"
+            android:ellipsize="end"
+            android:singleLine="true"
+            android:text="@{item.label, default=`Incoming via Sales · 4m 12s`}"
+            android:textColor="?attr/primaryTextColor"
+            android:textSize="14sp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:alpha="0.75"
+            android:text="@{item.time, default=`10:37`}"
+            android:textColor="?attr/primaryTextColor"
+            android:textSize="14sp" />
+
+        <ImageView
+            android:layout_width="18dp"
+            android:layout_height="18dp"
+            android:layout_marginStart="10dp"
+            android:contentDescription="@null"
+            app:historyDirection="@{item.direction}"
+            app:historyDirectionColors="@{directionColors}" />
+    </LinearLayout>
+</layout>

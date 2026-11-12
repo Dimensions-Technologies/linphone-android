@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layout xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <data>
+
+        <variable
+            name="title"
+            type="String" />
+    </data>
+
+    <!-- A day heading of the History list, as iOS's and the web client's: small capitals on the
+         theme's light colour -->
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="28dp"
+        android:background="?attr/lightToolbarBackgroundColor"
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_vertical"
+            android:letterSpacing="0.06"
+            android:text="@{title, default=`Today`}"
+            android:textAllCaps="true"
+            android:textColor="?attr/primaryTextColor"
+            android:textSize="12sp"
+            android:textStyle="bold" />
+    </FrameLayout>
+</layout>

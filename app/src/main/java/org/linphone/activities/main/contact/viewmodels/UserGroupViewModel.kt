@@ -6,6 +6,8 @@ import org.linphone.activities.main.contact.data.ContactAdditionalData
 import org.linphone.core.Factory
 import org.linphone.core.Friend
 import org.linphone.core.SubscribePolicy
+import org.linphone.environment.DimensionsEnvironmentService
+import org.linphone.models.contact.CallAvatarRules
 import org.linphone.models.contact.ContactDirectoryModel
 import org.linphone.models.contact.ContactItemModel
 import org.linphone.models.contact.DirectoryFieldTypes
@@ -53,10 +55,13 @@ class UserGroupViewModel(
                 )
             friend.addPhoneNumberWithLabel(phoneNumberWithLabel)
 
-            if (user.profileImagePath.isNotBlank()) {
-                // TODO #25806 - When converted to ContactViewModel the photo doesn't appear to be taken into account
-                friend.photo = user.profileImagePath
-            }
+            // The user groups give the picture's path under the environment's resources, as iOS and
+            // the web client turn into its URL. Shown through getPictureUri, as the user isn't an
+            // Android contact.
+            CallAvatarRules.profileImageUrl(
+                user.profileImagePath,
+                DimensionsEnvironmentService.getInstance(coreContext.context).getCurrentEnvironment()?.resourcesBlobUrl
+            )?.let { friend.photo = it }
 
             // Disable short term presence
             friend.isSubscribesEnabled = false

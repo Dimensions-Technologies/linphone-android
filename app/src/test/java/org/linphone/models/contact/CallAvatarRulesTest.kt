@@ -11,6 +11,7 @@ class CallAvatarRulesTest {
         id = "user-1034",
         displayName = "Noel Ramsay",
         presenceId = "1034",
+        email = "noel@dimensions.team",
         profileImageUrl = "https://images.example/users/noel.png"
     )
     private val bob = UserInfo(id = "user-1033", displayName = "Bob", presenceId = "1033")
@@ -66,5 +67,34 @@ class CallAvatarRulesTest {
     fun `no user for a call without a number`() {
         val noExtension = UserInfo(id = "user-x", presenceId = "")
         assertNull(CallAvatarRules.findUser(listOf(noExtension), ""))
+    }
+
+    @Test
+    fun `a user group's picture path is the 64px image under the environment's resources`() {
+        // As iOS's ContactAvatarLookup
+        assertEquals(
+            "https://resource.xarios.dev/images/a3c6/profile-images/66a0_64.png",
+            CallAvatarRules.profileImageUrl("a3c6/profile-images/66a0.png", "https://resource.xarios.dev")
+        )
+        assertEquals(
+            "https://resource.xarios.dev/images/a3c6/profile-images/66a0_64.png",
+            CallAvatarRules.profileImageUrl("/a3c6/profile-images/66a0.png", "https://resource.xarios.dev/")
+        )
+        // Already a URL, as the user search gives
+        assertEquals(
+            "https://images.example/users/noel_36.png",
+            CallAvatarRules.profileImageUrl("https://images.example/users/noel_36.png", "https://resource.xarios.dev")
+        )
+        assertNull(CallAvatarRules.profileImageUrl("", "https://resource.xarios.dev"))
+        assertNull(CallAvatarRules.profileImageUrl("a3c6/profile-images/66a0.png", null))
+    }
+
+    @Test
+    fun `history finds users by extension or by the email a Teams call gives`() {
+        // As iOS's ContactAvatarLookup
+        assertEquals(noel, CallAvatarRules.findUserByNumberOrEmail(users, "1034"))
+        assertEquals(noel, CallAvatarRules.findUserByNumberOrEmail(users, " Noel@Dimensions.team "))
+        assertNull(CallAvatarRules.findUserByNumberOrEmail(users, "bob@dimensions.team"))
+        assertNull(CallAvatarRules.findUserByNumberOrEmail(users, ""))
     }
 }

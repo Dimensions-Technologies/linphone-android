@@ -188,7 +188,6 @@ object VoicemailBoxService {
                         box,
                         VoicemailRules.withCachedTranscriptions(messages, before),
                         page.body()?.nextStartKey,
-                        before?.collapsed ?: false,
                         before?.collapsedFolders ?: emptyList()
                     )
                 } catch (e: Exception) {
@@ -198,7 +197,6 @@ object VoicemailBoxService {
                         box,
                         emptyList(),
                         null,
-                        before?.collapsed ?: false,
                         before?.collapsedFolders ?: emptyList()
                     )
                 }
@@ -310,8 +308,6 @@ object VoicemailBoxService {
         }
     }
 
-    fun toggleBox(boxId: String) = update { VoicemailRules.toggledBox(it, boxId) }
-
     fun toggleFolder(boxId: String, folder: String) = update {
         VoicemailRules.toggledFolder(
             it,
@@ -332,7 +328,7 @@ object VoicemailBoxService {
 
     private fun api() = APIClientService(context).getUCGatewayService()
 
-    // Cache: the user's boxes and collapsed state, shown at startup until live data arrives
+    // Cache: the user's boxes and collapsed folders, shown at startup until live data arrives
 
     // Kept: R8 otherwise strips the type of data, and Gson reads the boxes back as maps (ClassCastException)
     @Keep

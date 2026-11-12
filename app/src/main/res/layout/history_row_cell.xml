@@ -1,0 +1,180 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <data>
+
+        <import type="android.view.View" />
+
+        <variable
+            name="item"
+            type="org.linphone.activities.main.history.data.HistoryListItem" />
+
+        <variable
+            name="directionColors"
+            type="org.linphone.utils.BrandColors.DirectionColors" />
+
+        <variable
+            name="clickListener"
+            type="android.view.View.OnClickListener" />
+
+        <variable
+            name="countClickListener"
+            type="android.view.View.OnClickListener" />
+    </data>
+
+    <!-- A call, or the newest of a day's calls with the same number, as iOS's History row (WI 36610):
+         the avatar, the name with the count of a group, the number and route, then the location,
+         faded under it, and the time and direction on the right. A long press shows the text in full,
+         as each line can be cut short. -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="?attr/selectableItemBackground"
+        android:contentDescription="@{item.description}"
+        android:gravity="center_vertical"
+        android:minHeight="60dp"
+        android:onClick="@{clickListener}"
+        android:orientation="horizontal"
+        android:paddingStart="14dp"
+        android:paddingTop="10dp"
+        android:paddingEnd="16dp"
+        android:paddingBottom="10dp"
+        app:tooltip="@{item.fullText}">
+
+        <ImageView
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:background="@drawable/generated_avatar_bg"
+            android:contentDescription="@null"
+            android:src="@drawable/icon_single_contact_avatar"
+            app:avatarConference="@{item.isConference}"
+            app:avatarName="@{item.avatarName}"
+            app:avatarUrl="@{item.avatarUrl}" />
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="12dp"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <!-- The name gives way to the count rather than pushing it over the time -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginEnd="6dp"
+                    android:layout_weight="1"
+                    android:ellipsize="end"
+                    android:singleLine="true"
+                    android:text="@{item.name, default=`El Cabasa Grande`}"
+                    android:textColor="?attr/primaryTextColor"
+                    android:textSize="16sp" />
+
+                <!-- How many calls are grouped in the row: opens to show each one -->
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="20dp"
+                    android:background="@drawable/history_count_chip_background"
+                    android:contentDescription="@{item.expanded ? @string/history_hide_calls(item.count) : @string/history_show_calls(item.count)}"
+                    android:gravity="center_vertical"
+                    android:onClick="@{countClickListener}"
+                    android:orientation="horizontal"
+                    android:paddingStart="7dp"
+                    android:paddingEnd="3dp"
+                    android:visibility="@{item.hasCount ? View.VISIBLE : View.GONE, default=gone}">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@{String.valueOf(item.count), default=`3`}"
+                        android:textColor="?attr/primaryTextColor"
+                        android:textSize="12sp"
+                        android:textStyle="bold" />
+
+                    <ImageView
+                        android:layout_width="16dp"
+                        android:layout_height="16dp"
+                        android:contentDescription="@null"
+                        android:src="@{item.expanded ? @drawable/ic_voicemail_expand_less : @drawable/ic_voicemail_expand_more}" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:alpha="0.6"
+                android:ellipsize="end"
+                android:singleLine="true"
+                android:text="@{item.subtitle, default=`07921 910119 via Sales`}"
+                android:textColor="?attr/primaryTextColor"
+                android:textSize="13sp"
+                android:visibility="@{item.hasSubtitle ? View.VISIBLE : View.GONE}" />
+
+            <!-- Where the number is: a place, Mobile or Non-geographic, with the country when abroad -->
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:visibility="@{item.hasLocation ? View.VISIBLE : View.GONE, default=gone}">
+
+                <ImageView
+                    android:layout_width="13dp"
+                    android:layout_height="13dp"
+                    android:alpha="0.6"
+                    android:contentDescription="@null"
+                    android:src="@drawable/ic_history_location" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="4dp"
+                    android:background="@drawable/history_country_chip_background"
+                    android:letterSpacing="0.05"
+                    android:paddingStart="4dp"
+                    android:paddingEnd="4dp"
+                    android:text="@{item.countryCode}"
+                    android:textColor="?attr/primaryTextColor"
+                    android:textSize="11sp"
+                    android:textStyle="bold"
+                    android:visibility="@{item.hasCountryCode ? View.VISIBLE : View.GONE, default=gone}" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="4dp"
+                    android:alpha="0.6"
+                    android:ellipsize="end"
+                    android:singleLine="true"
+                    android:text="@{item.location, default=`Mobile`}"
+                    android:textColor="?attr/primaryTextColor"
+                    android:textSize="13sp" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="12dp"
+            android:text="@{item.time, default=`10:37`}"
+            android:textColor="?attr/primaryTextColor"
+            android:textSize="14sp" />
+
+        <ImageView
+            android:layout_width="20dp"
+            android:layout_height="20dp"
+            android:layout_marginStart="12dp"
+            android:contentDescription="@null"
+            app:historyDirection="@{item.direction}"
+            app:historyDirectionColors="@{directionColors}" />
+    </LinearLayout>
+</layout>

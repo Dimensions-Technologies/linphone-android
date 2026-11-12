@@ -6,10 +6,13 @@ import androidx.lifecycle.viewModelScope
 import io.reactivex.rxjava3.core.Observable
 import io.reactivex.rxjava3.disposables.Disposable
 import java.util.Locale
+import java.util.concurrent.atomic.AtomicBoolean
 import kotlinx.coroutines.launch
 import org.linphone.LinphoneApplication.Companion.coreContext
 import org.linphone.R
+import org.linphone.models.contact.CallAvatarRules
 import org.linphone.models.contact.ContactDirectoryRules
+import org.linphone.models.voicemail.VoicemailBox
 import org.linphone.models.voicemail.VoicemailBoxWithMessages
 import org.linphone.models.voicemail.VoicemailMessage
 import org.linphone.models.voicemail.VoicemailRow
@@ -31,6 +34,20 @@ class VoicemailListViewModel : ViewModel() {
     val items = MutableLiveData<List<VoicemailListItem>>(emptyList())
     val isEmpty = MutableLiveData(false)
 
+    // The mailbox bar (WI 36610, as on iOS): the mailbox shown, which opens a picker of the others
+    // when there's more than one, with the Call voicemail button beside it
+    val hasBoxes = MutableLiveData(false)
+    val hasManyBoxes = MutableLiveData(false)
+    val boxTitle = MutableLiveData("")
+    val boxBadge = MutableLiveData("")
+    val boxDescription = MutableLiveData("")
+
+    /** Opens the mailbox picker: the boxes, and the index of the one shown. */
+    val openPickerEvent = MutableLiveData<Event<Pair<List<VoicemailBoxOption>, Int>>>()
+
+    // The mailbox chosen in the picker; the first is shown until one is
+    @Volatile private var chosenBoxId: String? = null
+
     /** The message in the player, and its state, set by the fragment that owns the player. */
     var currentMediaId: String? = null
         private set
@@ -42,6 +59,7 @@ class VoicemailListViewModel : ViewModel() {
     private data class Snapshot(
         val boxes: List<VoicemailBoxWithMessages>,
         val names: Map<String, String>,
+        val avatars: Map<String, String>,
         val matchedCalls: Map<String, String>,
         val today: LocalDateTime
     )
@@ -56,8 +74,16 @@ class VoicemailListViewModel : ViewModel() {
     private val loadingTranscriptions = mutableSetOf<String>()
     private val busy = mutableSetOf<String>()
 
+    // Transcriptions are fetched for the rows' previews once each, one at a time, as on iOS.
+    // (Declared before the subscription, which emits while the view model is being built.)
+    private val transcriptionsAsked = mutableSetOf<String>()
+    private val fetchingTranscriptions = AtomicBoolean(false)
+
     private var boxes: List<VoicemailBoxWithMessages> = emptyList()
     private var names: Map<String, String> = emptyMap()
+
+    // Media id to the matched contact's picture
+    private var avatars: Map<String, String> = emptyMap()
 
     // Media id to the document id of the call that went to it
     private var matchedCalls: Map<String, String> = emptyMap()
@@ -72,6 +98,7 @@ class VoicemailListViewModel : ViewModel() {
         // Callers named after the directory contact with their number, as on the web client
         val countryCode = PhoneFormatterService.getInstance(context).getPbxCountryCode()
         val names = mutableMapOf<String, String>()
+        val avatars = mutableMapOf<String, String>()
         for (box in boxes) {
             for (message in box.messages) {
                 val number = VoicemailRules.callerNumber(message) ?: continue
@@ -82,6 +109,7 @@ class VoicemailListViewModel : ViewModel() {
                         countryCode
                     )
                         ?.let { (directory, contact) ->
+                            CallAvatarRules.contactAvatarUrl(contact)?.let { avatars[message.mediaId] = it }
                             ContactDirectoryRules.toContactMatch(
                                 directory,
                                 contact
@@ -100,17 +128,42 @@ class VoicemailListViewModel : ViewModel() {
                 VoicemailRules.matchCall(message, history, countryCode)?.let { matches[message.mediaId] = it }
             }
         }
-        Snapshot(boxes, names.toMap(), matches.toMap(), date)
+        Snapshot(boxes, names.toMap(), avatars.toMap(), matches.toMap(), date)
     }.subscribe(
         { snapshot ->
             this.boxes = snapshot.boxes
             this.names = snapshot.names
+            this.avatars = snapshot.avatars
             this.matchedCalls = snapshot.matchedCalls
             this.today = snapshot.today
             update()
+            fetchTranscriptions()
         },
         { e -> Log.e(e, "[Voicemail] Voicemail list failed") }
     )
+
+    /**
+     * Fetches the shown box's transcriptions, newest first; each arrives through the boxes. Another
+     * box's are fetched when it's picked.
+     */
+    private fun fetchTranscriptions() {
+        if (!fetchingTranscriptions.compareAndSet(false, true)) return
+        viewModelScope.launch {
+            try {
+                while (true) {
+                    val shown = listOfNotNull(VoicemailRules.selectedBox(boxes, chosenBoxId))
+                    val (boxId, message) =
+                        VoicemailRules.nextTranscriptionToFetch(shown, transcriptionsAsked) ?: break
+                    transcriptionsAsked.add(message.mediaId)
+                    VoicemailBoxService.getOrFetchTranscription(boxId, message.mediaId)
+                }
+            } catch (e: Exception) {
+                Log.e(e, "[Voicemail] Failed to fetch transcriptions")
+            } finally {
+                fetchingTranscriptions.set(false)
+            }
+        }
+    }
 
     override fun onCleared() {
         subscription.dispose()
@@ -120,20 +173,24 @@ class VoicemailListViewModel : ViewModel() {
     @Synchronized
     private fun update() {
         val formatter = PhoneFormatterService.getInstance(context)
-        val list = VoicemailRules.rows(boxes).map { row ->
+        val box = VoicemailRules.selectedBox(boxes, chosenBoxId)
+        val title = box?.let { VoicemailRules.boxTitle(it.box) }.orEmpty()
+        val badge = box?.let { badge(it.box) }.orEmpty()
+        hasBoxes.postValue(box != null)
+        hasManyBoxes.postValue(boxes.size > 1)
+        boxTitle.postValue(title)
+        boxBadge.postValue(badge)
+        boxDescription.postValue(
+            listOf(title, badge).filter { it.isNotEmpty() }.joinToString(", ") +
+                if (boxes.size > 1) ". " + context.getString(R.string.voicemail_choose_box) else ""
+        )
+
+        val list = VoicemailRules.rows(box).map { row ->
             when (row) {
-                is VoicemailRow.BoxHeader -> VoicemailListItem(
-                    "box:${row.box.box.id}",
-                    row,
-                    title = row.box.box.name.orEmpty(),
-                    subtitle = row.box.box.number.orEmpty(),
-                    expanded = row.expanded,
-                    showName = row.showName
-                )
                 is VoicemailRow.FolderHeader -> VoicemailListItem(
                     "folder:${row.boxId}:${row.folder}",
                     row,
-                    title = folderLabel(row.folder),
+                    title = VoicemailRules.folderHeading(folderLabel(row.folder), row.count),
                     expanded = row.expanded
                 )
                 is VoicemailRow.EmptyFolder -> VoicemailListItem(
@@ -147,7 +204,13 @@ class VoicemailListViewModel : ViewModel() {
                     val formatted = number?.let { formatter.formatDisplayNumber(it) }.orEmpty()
                     val name = names[message.mediaId]
                     val timestamp = message.timestamp?.withZoneSameInstant(ZoneId.systemDefault())
-                    val friendlyDate = DateUtils.formatFriendlyDate(timestamp, today)
+                    val friendlyDate = VoicemailRules.formatDay(
+                        timestamp,
+                        today.toLocalDate(),
+                        context.getString(R.string.today),
+                        context.getString(R.string.yesterday),
+                        Locale.getDefault()
+                    )
                     VoicemailListItem(
                         "message:${message.mediaId}",
                         row,
@@ -156,17 +219,20 @@ class VoicemailListViewModel : ViewModel() {
                                 R.string.unknown_formatted_number
                             )
                         },
-                        subtitle = if (name != null) formatted else "",
+                        subtitle = VoicemailRules.messageSubtitle(formatted, message.length),
+                        // As iOS: the contact's picture, else initials from their name or the
+                        // caller ID name (a number gets the generic icon)
+                        avatarUrl = avatars[message.mediaId],
+                        avatarName = name ?: message.callerIdName?.takeIf { it.isNotBlank() },
                         date = friendlyDate,
-                        time = DateUtils.toLocaleHMString(timestamp),
-                        length = VoicemailRules.formatLength(message.length),
                         expanded = message.mediaId in expanded,
                         canSave = !VoicemailRules.isSaved(message),
                         canCall = number != null,
                         hasCallDetails = message.mediaId in matchedCalls,
                         busy = message.mediaId in busy,
                         loadingTranscription = message.mediaId in loadingTranscriptions,
-                        transcription = message.transcription?.text?.takeIf { it.isNotBlank() },
+                        transcription = message.transcription?.text?.trim()?.takeIf { it.isNotEmpty() },
+                        transcriptionFetched = message.transcription != null,
                         playState = if (message.mediaId == currentMediaId) playState else VoicemailPlayState.NONE
                     )
                 }
@@ -189,9 +255,29 @@ class VoicemailListViewModel : ViewModel() {
         else -> context.getString(R.string.voicemail_no_folder_messages, folderLabel(folder))
     }
 
-    fun onBoxClicked(item: VoicemailListItem) {
-        val row = item.row as? VoicemailRow.BoxHeader ?: return
-        if (row.showName) VoicemailBoxService.toggleBox(item.boxId)
+    private fun badge(box: VoicemailBox): String = VoicemailRules.boxBadge(
+        box,
+        { context.getString(R.string.voicemail_box_new, it) },
+        { context.resources.getQuantityString(R.plurals.voicemail_box_messages, it, it) }
+    )
+
+    /** The mailbox bar: opens the picker of the boxes, with more than one. */
+    fun onBoxBarClicked() {
+        if (boxes.size < 2) return
+        val shown = VoicemailRules.selectedBox(boxes, chosenBoxId)
+        val options = boxes.map {
+            VoicemailBoxOption(it.box.id, VoicemailRules.boxTitle(it.box), badge(it.box))
+        }
+        openPickerEvent.value = Event(options to boxes.indexOf(shown))
+    }
+
+    /** Shows the mailbox picked. */
+    fun onBoxPicked(boxId: String) {
+        if (boxId == VoicemailRules.selectedBox(boxes, chosenBoxId)?.box?.id) return
+        chosenBoxId = boxId
+        expanded.clear()
+        update()
+        fetchTranscriptions()
     }
 
     fun onFolderClicked(item: VoicemailListItem) {
@@ -305,18 +391,19 @@ class VoicemailListViewModel : ViewModel() {
 
 enum class VoicemailPlayState { NONE, LOADING, PLAYING, PAUSED }
 
+/** A mailbox in the picker: its name and number, and its new or message count. */
+data class VoicemailBoxOption(val id: String, val title: String, val badge: String)
+
 /** A row of the Voicemail list, ready to show. */
 data class VoicemailListItem(
     val key: String,
     val row: VoicemailRow,
     val title: String = "",
     val subtitle: String = "",
+    val avatarUrl: String? = null,
+    val avatarName: String? = null,
     val date: String = "",
-    val time: String = "",
-    val length: String = "",
     val expanded: Boolean = false,
-    // Box headers: the name shows only with more than one box
-    val showName: Boolean = false,
     val canSave: Boolean = false,
     val canCall: Boolean = false,
     // Matched to the call that went to it, whose details it can open
@@ -324,10 +411,16 @@ data class VoicemailListItem(
     val busy: Boolean = false,
     val loadingTranscription: Boolean = false,
     val transcription: String? = null,
+    // Fetched, so a missing transcription means there isn't one rather than not known yet
+    val transcriptionFetched: Boolean = false,
     val playState: VoicemailPlayState = VoicemailPlayState.NONE
 ) {
+    // The row's preview line, as on iOS: the transcription, or that there isn't one once that's
+    // known. Not while expanded, where the transcription shows in full.
+    val showTranscriptionPreview: Boolean get() = !expanded && transcription != null
+    val showNoTranscription: Boolean get() = !expanded && transcriptionFetched && transcription == null
+
     val boxId: String get() = when (row) {
-        is VoicemailRow.BoxHeader -> row.box.box.id
         is VoicemailRow.FolderHeader -> row.boxId
         is VoicemailRow.EmptyFolder -> row.boxId
         is VoicemailRow.Message -> row.boxId
@@ -335,4 +428,13 @@ data class VoicemailListItem(
     val message: VoicemailMessage? get() = (row as? VoicemailRow.Message)?.message
     val isPlaying: Boolean get() = playState == VoicemailPlayState.PLAYING
     val isLoadingAudio: Boolean get() = playState == VoicemailPlayState.LOADING
+
+    // The message in the player, playing, paused or loading, highlighted as on iOS
+    val isCurrent: Boolean get() = playState != VoicemailPlayState.NONE
+
+    // The row's text in full, for its long-press tooltip, since each line can be cut short
+    val fullText: String get() =
+        listOfNotNull(title, transcription.takeIf { showTranscriptionPreview }, subtitle)
+            .filter { it.isNotEmpty() }
+            .joinToString("\n")
 }

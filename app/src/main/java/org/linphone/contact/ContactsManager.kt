@@ -402,12 +402,14 @@ fun Friend.getThumbnailUri(): Uri? {
 }
 
 fun Friend.getPictureUri(thumbnailPreferred: Boolean = false): Uri? {
-    val refKey = refKey
-    if (refKey != null) {
+    // An Android contact's id. Gateway users' and directory contacts' keys are GUIDs, so their
+    // picture is their photo URL (it was never shown when a GUID refKey failed to parse).
+    val androidContactId = refKey?.toLongOrNull()
+    if (androidContactId != null) {
         try {
             val lookupUri = ContentUris.withAppendedId(
                 ContactsContract.Contacts.CONTENT_URI,
-                refKey.toLong()
+                androidContactId
             )
 
             if (!thumbnailPreferred) {

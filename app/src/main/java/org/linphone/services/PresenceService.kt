@@ -57,7 +57,7 @@ class PresenceService(val context: Context) : DefaultLifecycleObserver {
         }
     }
 
-    private val presenceObservables = mutableMapOf<String, PresenceObservable>()
+    private val presenceStreams = PresenceRouter()
 
     val currentUserPresence: Observable<Optional<PresenceEventData>> = authStateManager.user
         .filter { u -> u.id != null && u.id != AuthenticatedUser.UNINTIALIZED_AUTHENTICATEDUSER }
@@ -80,16 +80,19 @@ class PresenceService(val context: Context) : DefaultLifecycleObserver {
 
     init {
 
-        realtimeUserService.presenceEvent.observeForever { event: RealtimeEventPresence ->
-            try {
-                Log.d(RealtimeEventType.PresenceEvent.eventName, event)
-
-                val observable = presenceObservables[event.userId]
-                observable?.subject?.onNext(event.data)
-            } catch (e: Exception) {
-                Log.e(RealtimeEventType.PresenceEvent.eventName, e)
-            }
-        }
+        // Every event, on the realtime connection's thread; the streams' subscribers post to
+        // LiveData, so they don't mind the thread
+        realtimeUserService.presenceEvent.subscribe(
+            { event: RealtimeEventPresence ->
+                try {
+                    Log.d(RealtimeEventType.PresenceEvent.eventName, event)
+                    presenceStreams.deliver(event.userId, event.data)
+                } catch (e: Exception) {
+                    Log.e(RealtimeEventType.PresenceEvent.eventName, e)
+                }
+            },
+            { e -> Log.e(e, "Presence events failed") }
+        )
     }
 
     fun setPresenceState(userId: String, presence: SetPresenceModel) {
@@ -122,26 +125,17 @@ class PresenceService(val context: Context) : DefaultLifecycleObserver {
     }
 
     fun getUserPresenceStream(userId: String): Observable<PresenceEventData> {
-        val existingObservable = presenceObservables[userId]
-        return if (existingObservable != null) {
-            existingObservable.data
-        } else {
-            val newObservable = PresenceObservable(
+        return presenceStreams.stream(userId) {
+            PresenceObservable(
                 { realtimeUserService.addSubscription(RealtimeEventType.PresenceEvent, userId) },
                 { onObservableRemoved(userId) }
             )
-            presenceObservables[userId] = newObservable
-            newObservable.data
-        }
+        }.data
     }
 
     // FIXME: think of a better way of getting the current users PresenceEventData
     fun getCurrent(userId: String): PresenceEventData? {
-        val existingObservable = presenceObservables[userId]
-        if (existingObservable != null) {
-            return existingObservable.subject.value
-        }
-        return null
+        return presenceStreams.current(userId)
     }
 
     private fun onObservableRemoved(userId: String) {

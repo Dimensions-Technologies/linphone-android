@@ -71,5 +71,9 @@ data class CallHistoryItem(
 
     // The external party's number on an external call
     @SerializedName("cli")
-    val cli: String? = null
+    val cli: String? = null,
+
+    // Seconds the call was talked on, shown when a group of calls is opened ("4m 12s")
+    @SerializedName("talkTime")
+    val talkTime: Double? = null
 )

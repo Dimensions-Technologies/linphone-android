@@ -73,7 +73,7 @@
                             android:layout_width="match_parent"
                             android:layout_height="5dp"
                             android:layout_alignParentBottom="true"
-                            android:background="?attr/accentColor" />
+                            android:background="@{viewModel.highlightColor}" />
 
                     </RelativeLayout>
 
@@ -99,7 +99,7 @@
                             android:layout_width="match_parent"
                             android:layout_height="5dp"
                             android:layout_alignParentBottom="true"
-                            android:background="?attr/accentColor" />
+                            android:background="@{viewModel.highlightColor}" />
 
                     </RelativeLayout>
 
@@ -149,7 +149,7 @@
                             android:layout_width="match_parent"
                             android:layout_height="5dp"
                             android:layout_alignParentBottom="true"
-                            android:background="?attr/accentColor" />
+                            android:background="@{viewModel.highlightColor}" />
 
                     </RelativeLayout>
 
@@ -175,7 +175,7 @@
                             android:layout_width="match_parent"
                             android:layout_height="5dp"
                             android:layout_alignParentBottom="true"
-                            android:background="?attr/accentColor" />
+                            android:background="@{viewModel.highlightColor}" />
 
                     </RelativeLayout>
 
@@ -214,6 +214,88 @@
                     android:layout_below="@id/top_bar"
                     android:orientation="vertical"
                     android:visibility="@{viewModel.filter == CallLogsFilter.VOICEMAIL ? View.VISIBLE : View.GONE, default=gone}">
+
+                    <!-- WI 36610: the mailbox shown (a picker of the others when there's more than one), and the
+                         Call voicemail button beside it, as iOS's mailbox bar -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal"
+                        android:paddingStart="12dp"
+                        android:paddingTop="8dp"
+                        android:paddingEnd="8dp"
+                        android:paddingBottom="8dp"
+                        android:visibility="@{voicemailViewModel.hasBoxes ? View.VISIBLE : View.GONE, default=gone}">
+
+                        <FrameLayout
+                            android:layout_width="0dp"
+                            android:layout_height="52dp"
+                            android:layout_weight="1"
+                            android:background="@drawable/voicemail_box_selector_background"
+                            android:contentDescription="@{voicemailViewModel.boxDescription}"
+                            android:onClick="@{() -> voicemailViewModel.onBoxBarClicked()}"
+                            android:paddingHorizontal="12dp"
+                            app:tooltip="@{voicemailViewModel.boxTitle}">
+
+                            <!-- Clear of the arrow, which shows with more than one mailbox -->
+                            <LinearLayout
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:layout_gravity="center_vertical"
+                                android:orientation="vertical"
+                                android:paddingEnd="@{voicemailViewModel.hasManyBoxes ? @dimen/voicemail_box_arrow_space : @dimen/margin_0dp}">
+
+                                <TextView
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:ellipsize="end"
+                                    android:singleLine="true"
+                                    android:text="@{voicemailViewModel.boxTitle}"
+                                    android:textColor="?attr/primaryTextColor"
+                                    android:textSize="15sp"
+                                    android:textStyle="bold" />
+
+                                <TextView
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:singleLine="true"
+                                    android:alpha="0.6"
+                                    android:text="@{voicemailViewModel.boxBadge}"
+                                    android:textColor="?attr/primaryTextColor"
+                                    android:textSize="12sp" />
+                            </LinearLayout>
+
+                            <ImageView
+                                android:layout_width="20dp"
+                                android:layout_height="20dp"
+                                android:layout_gravity="end|center_vertical"
+                                android:contentDescription="@null"
+                                android:src="@drawable/ic_voicemail_expand_more"
+                                android:visibility="@{voicemailViewModel.hasManyBoxes ? View.VISIBLE : View.GONE, default=gone}" />
+                        </FrameLayout>
+
+                        <!-- Calls voicemail -->
+                        <ImageView
+                            android:layout_width="48dp"
+                            android:layout_height="48dp"
+                            android:layout_marginStart="8dp"
+                            android:background="@drawable/voicemail_fab_background"
+                            android:contentDescription="@string/voicemail_call_voicemail"
+                            android:onClick="@{() -> voicemailViewModel.dialVoicemail()}"
+                            android:padding="12dp"
+                            android:src="@drawable/ic_voicemail_dial"
+                            app:tint="@android:color/white"
+                            app:highlightFill="@{viewModel.voicemailButtonColor}"
+                            app:highlightIcon="@{viewModel.voicemailButtonIconColor}"
+                            app:tooltip="@{@string/voicemail_call_voicemail}" />
+                    </LinearLayout>
+
+                    <View
+                        android:layout_width="match_parent"
+                        android:layout_height="1dp"
+                        android:background="?attr/dividerColor"
+                        android:visibility="@{voicemailViewModel.hasBoxes ? View.VISIBLE : View.GONE, default=gone}" />
 
                     <androidx.media3.ui.PlayerView
                         android:id="@+id/voicemail_player"

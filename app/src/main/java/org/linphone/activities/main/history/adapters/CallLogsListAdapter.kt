@@ -28,168 +28,140 @@ import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.MutableLiveData
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.RecyclerView
+import java.util.Locale
 import org.linphone.R
 import org.linphone.activities.main.adapters.SelectionListAdapter
-import org.linphone.activities.main.history.data.GroupedCallLogData
+import org.linphone.activities.main.history.data.HistoryListItem
 import org.linphone.activities.main.viewmodels.ListTopBarViewModel
-import org.linphone.databinding.GenericListHeaderBinding
-import org.linphone.databinding.HistoryListCellBinding
-import org.linphone.models.callhistory.CallHistoryItemViewModel
-import org.linphone.models.callhistory.PbxType
+import org.linphone.databinding.HistoryDayHeaderBinding
+import org.linphone.databinding.HistoryRowCellBinding
+import org.linphone.databinding.HistorySubRowCellBinding
+import org.linphone.utils.BrandColors
 import org.linphone.utils.Event
 import org.linphone.utils.HeaderAdapter
-import org.linphone.utils.Log
 import org.linphone.utils.TimestampUtils
 
+/**
+ * The History and Missed lists, as iOS's (WI 36610): a heading for each day, a row for each call or
+ * group of a day's calls with the same number, and an open group's calls under it.
+ */
 class CallLogsListAdapter(
     selectionVM: ListTopBarViewModel,
-    private val viewLifecycleOwner: LifecycleOwner,
-    private val context: Context?
-) : SelectionListAdapter<GroupedCallLogData, RecyclerView.ViewHolder>(
+    private val viewLifecycleOwner: LifecycleOwner
+) : SelectionListAdapter<HistoryListItem, RecyclerView.ViewHolder>(
     selectionVM,
-    CallLogDiffCallback()
+    HistoryRowDiffCallback()
 ),
     HeaderAdapter {
-    val selectedCallLogEvent: MutableLiveData<Event<GroupedCallLogData>> by lazy {
-        MutableLiveData<Event<GroupedCallLogData>>()
+    // A row to offer the call's actions for (a group's count opens or closes it instead)
+    val rowClickedEvent: MutableLiveData<Event<HistoryListItem>> by lazy {
+        MutableLiveData<Event<HistoryListItem>>()
     }
 
-    val showCallLogContextMenuEvent: MutableLiveData<Event<CallHistoryItemViewModel>> by lazy {
-        MutableLiveData<Event<CallHistoryItemViewModel>>()
+    // A group to open or close
+    val groupToggledEvent: MutableLiveData<Event<HistoryListItem>> by lazy {
+        MutableLiveData<Event<HistoryListItem>>()
     }
+
+    // The brand's direction colours, as on iOS
+    var directionColors: BrandColors.DirectionColors = BrandColors.DEFAULT_DIRECTION_COLORS
+        set(value) {
+            if (field == value) return
+            field = value
+            notifyItemRangeChanged(0, itemCount)
+        }
+
+    override fun getItemViewType(position: Int): Int =
+        if (getItem(position).isSubRow) SUB_ROW else ROW
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
-        val binding: HistoryListCellBinding = DataBindingUtil.inflate(
-            LayoutInflater.from(parent.context),
-            R.layout.history_list_cell,
-            parent,
-            false
-        )
-        return ViewHolder(binding)
+        val inflater = LayoutInflater.from(parent.context)
+        return if (viewType == SUB_ROW) {
+            SubRowHolder(DataBindingUtil.inflate(inflater, R.layout.history_sub_row_cell, parent, false))
+        } else {
+            RowHolder(DataBindingUtil.inflate(inflater, R.layout.history_row_cell, parent, false))
+        }
     }
 
     override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
-        (holder as ViewHolder).bind(getItem(position))
+        val item = getItem(position)
+        when (holder) {
+            is RowHolder -> holder.bind(item)
+            is SubRowHolder -> holder.bind(item)
+        }
     }
 
-    inner class ViewHolder(
-        val binding: HistoryListCellBinding
-    ) : RecyclerView.ViewHolder(binding.root) {
-        fun bind(callLogGroup: GroupedCallLogData) {
+    inner class RowHolder(val binding: HistoryRowCellBinding) : RecyclerView.ViewHolder(binding.root) {
+        fun bind(item: HistoryListItem) {
             with(binding) {
-                val callLogViewModel = callLogGroup.lastCallLogViewModel
-                viewModel = callLogViewModel
-
+                this.item = item
+                directionColors = this@CallLogsListAdapter.directionColors
                 lifecycleOwner = viewLifecycleOwner
-
-                // This is for item selection through ListTopBarFragment
-                selectionListViewModel = selectionViewModel
-                selectionViewModel.isEditionEnabled.observe(
-                    viewLifecycleOwner
-                ) {
-                    position = bindingAdapterPosition
-                }
-
-                setClickListener {
-                    try {
-                        if (selectionViewModel.isEditionEnabled.value == true) {
-                            selectionViewModel.onToggleSelect(bindingAdapterPosition)
-                        } else {
-                            val lastCallLog = callLogGroup.lastCallLog
-                            if (lastCallLog is CallHistoryItemViewModel) {
-                                if (lastCallLog.call.pbxType != PbxType.Teams) {
-                                    showContextMenu(callLogGroup)
-                                }
-                            }
-                        }
-                    } catch (e: Exception) {
-                        Log.e("setClickListener", e)
+                // As iOS: a grouped row opens or closes; any other offers what can be done with its call
+                clickListener = View.OnClickListener {
+                    if (item.hasCount) {
+                        groupToggledEvent.value = Event(item)
+                    } else {
+                        rowClickedEvent.value = Event(item)
                     }
                 }
-
-                setLongClickListener {
-                    // SD 20250415 - Removed long click behaviour
-//                    if (selectionViewModel.isEditionEnabled.value == false) {
-//                        selectionViewModel.isEditionEnabled.value = true
-//                        // Selection will be handled by click listener
-//                        true
-//                    }
-                    false
-                }
-
-                // This listener is disabled when in edition mode
-                setDetailsClickListener {
-                    selectedCallLogEvent.value = Event(callLogGroup)
-                }
-
-                groupCount = callLogGroup.callLogs.size
-
+                countClickListener = View.OnClickListener { groupToggledEvent.value = Event(item) }
                 executePendingBindings()
             }
         }
     }
 
-    private fun showContextMenu(callLogGroup: GroupedCallLogData) {
-        val callHistoryItemViewModel = callLogGroup.lastCallLog
-        if (callHistoryItemViewModel is CallHistoryItemViewModel) {
-            showCallLogContextMenuEvent.value = Event(callHistoryItemViewModel)
+    inner class SubRowHolder(val binding: HistorySubRowCellBinding) : RecyclerView.ViewHolder(binding.root) {
+        fun bind(item: HistoryListItem) {
+            with(binding) {
+                this.item = item
+                directionColors = this@CallLogsListAdapter.directionColors
+                lifecycleOwner = viewLifecycleOwner
+                clickListener = View.OnClickListener { rowClickedEvent.value = Event(item) }
+                executePendingBindings()
+            }
         }
     }
 
     override fun displayHeaderForPosition(position: Int): Boolean {
         if (position >= itemCount) return false
-        val callLogGroup = getItem(position)
-        val date = callLogGroup.lastCallLogStartTimestamp
         val previousPosition = position - 1
         return if (previousPosition >= 0) {
-            val previousItemDate = getItem(previousPosition).lastCallLogStartTimestamp
-            !TimestampUtils.isSameDay(date, previousItemDate)
+            !TimestampUtils.isSameDay(getItem(position).startSecs, getItem(previousPosition).startSecs)
         } else {
             true
         }
     }
 
     override fun getHeaderViewForPosition(context: Context, position: Int): View {
-        val callLog = getItem(position)
-        val date = formatDate(context, callLog.lastCallLogStartTimestamp)
-        val binding: GenericListHeaderBinding = DataBindingUtil.inflate(
+        val binding: HistoryDayHeaderBinding = DataBindingUtil.inflate(
             LayoutInflater.from(context),
-            R.layout.generic_list_header,
+            R.layout.history_day_header,
             null,
             false
         )
-        binding.title = date
+        binding.title = historyDayLabel(
+            timestampSecs = getItem(position).startSecs,
+            nowMillis = System.currentTimeMillis(),
+            todayText = context.getString(R.string.today),
+            yesterdayText = context.getString(R.string.yesterday),
+            locale = Locale.getDefault()
+        )
         binding.executePendingBindings()
         return binding.root
     }
 
-    private fun formatDate(context: Context, date: Long): String {
-        if (TimestampUtils.isToday(date)) {
-            return context.getString(R.string.today)
-        } else if (TimestampUtils.isYesterday(date)) {
-            return context.getString(R.string.yesterday)
-        }
-        return TimestampUtils.toString(date, onlyDate = true, shortDate = false, hideYear = false)
+    companion object {
+        private const val ROW = 0
+        private const val SUB_ROW = 1
     }
 }
 
-// Rows are the same call by its id, and unchanged only if the call's data and the date shown are.
-// (Comparing just the number of call logs, as upstream did, left rows stale when e.g. a contact
-// name was filled in; reporting every row as changed instead redrew the whole list on each update.)
-private class CallLogDiffCallback : DiffUtil.ItemCallback<GroupedCallLogData>() {
-    override fun areItemsTheSame(
-        oldItem: GroupedCallLogData,
-        newItem: GroupedCallLogData
-    ): Boolean {
-        return oldItem.lastCallLogId != null && oldItem.lastCallLogId == newItem.lastCallLogId
-    }
+// Rows are the same by their id (a group's key, or a call within it), and unchanged if all they show is
+private class HistoryRowDiffCallback : DiffUtil.ItemCallback<HistoryListItem>() {
+    override fun areItemsTheSame(oldItem: HistoryListItem, newItem: HistoryListItem): Boolean =
+        oldItem.id == newItem.id
 
-    override fun areContentsTheSame(
-        oldItem: GroupedCallLogData,
-        newItem: GroupedCallLogData
-    ): Boolean {
-        val old = oldItem.lastCallLog as? CallHistoryItemViewModel ?: return false
-        val new = newItem.lastCallLog as? CallHistoryItemViewModel ?: return false
-        return old.call == new.call && old.date == new.date && old.time == new.time
-    }
+    override fun areContentsTheSame(oldItem: HistoryListItem, newItem: HistoryListItem): Boolean =
+        oldItem == newItem
 }

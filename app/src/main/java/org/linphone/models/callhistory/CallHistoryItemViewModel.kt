@@ -167,13 +167,8 @@ class CallHistoryItemViewModel(
         return null
     }
 
-    private fun getOtherPartyNumber(): String {
-        return if (CallDirections.fromValue(call.callDirection) == CallDirections.Outgoing) {
-            call.calledUserNumber ?: ""
-        } else {
-            call.callingUserNumber ?: ""
-        }
-    }
+    // As the web client and iOS: an external call's cli, else the called or calling number
+    private fun getOtherPartyNumber(): String = CallHistoryContactMatcher.otherPartyNumber(call).orEmpty()
 
     private fun getOtherPartyName(): String {
         return if (CallDirections.fromValue(call.callDirection) == CallDirections.Outgoing) {

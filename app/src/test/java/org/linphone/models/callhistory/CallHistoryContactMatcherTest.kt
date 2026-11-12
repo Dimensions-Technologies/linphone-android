@@ -116,4 +116,42 @@ class CallHistoryContactMatcherTest {
         assertEquals("d1", enriched.documentId)
         assertTrue(enriched.answered)
     }
+
+    @Test
+    fun `an outgoing leg with only a cli is still the caller's, as on iOS and the web client`() {
+        // The gateway's outgoing leg of a forwarded external call: no called number, just the cli
+        val json = """{"documentId":"d2","connectionId":"c2","callType":2,"callDirection":3,
+            "cli":"+447921910119","ddi":"+443301274140","answered":1,"contactName":""}"""
+        val item = org.linphone.utils.GsonUtils.create().fromJson(json, CallHistoryItem::class.java)
+
+        assertEquals("+447921910119", CallHistoryContactMatcher.otherPartyNumber(item))
+        assertEquals("El Cabasa Grande", CallHistoryContactMatcher.enrich(listOf(item), directories, "GB").single().contactName)
+    }
+
+    @Test
+    fun `external calls are the cli, internal calls the extension, each falling back to the other`() {
+        val gson = org.linphone.utils.GsonUtils.create()
+        fun item(json: String) = gson.fromJson(json, CallHistoryItem::class.java)
+
+        // As the web client: an external call's number is its cli
+        assertEquals(
+            "+447921910119",
+            CallHistoryContactMatcher.otherPartyNumber(
+                item("""{"callType":2,"callDirection":2,"callingUserNumber":"07921910119","cli":"+447921910119"}""")
+            )
+        )
+        assertEquals(
+            "07921910119",
+            CallHistoryContactMatcher.otherPartyNumber(item("""{"callType":2,"callDirection":2,"callingUserNumber":"07921910119","cli":""}"""))
+        )
+        assertEquals(
+            "1041",
+            CallHistoryContactMatcher.otherPartyNumber(item("""{"callType":1,"callDirection":3,"calledUserNumber":"1041","cli":"+441111"}"""))
+        )
+        assertEquals(
+            "1041",
+            CallHistoryContactMatcher.otherPartyNumber(item("""{"callType":1,"callDirection":2,"callingUserNumber":"","cli":"1041"}"""))
+        )
+        assertEquals(null, CallHistoryContactMatcher.otherPartyNumber(item("""{"callType":1,"callDirection":2}""")))
+    }
 }

@@ -22,6 +22,7 @@ package org.linphone.utils
 import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.Context
+import android.content.res.ColorStateList
 import android.text.Editable
 import android.text.TextWatcher
 import android.util.Patterns
@@ -37,6 +38,7 @@ import androidx.constraintlayout.widget.Guideline
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.doOnLayout
+import androidx.core.widget.ImageViewCompat
 import androidx.databinding.*
 import androidx.emoji2.emojipicker.EmojiPickerView
 import androidx.emoji2.emojipicker.EmojiViewItem
@@ -61,6 +63,8 @@ import org.linphone.contact.ContactDataInterface
 import org.linphone.contact.getPictureUri
 import org.linphone.core.ConsolidatedPresence
 import org.linphone.core.Friend
+import org.linphone.models.callhistory.HistoryDirection
+import org.linphone.services.BrandHighlight
 import org.linphone.views.VoiceRecordProgressBar
 
 /**
@@ -116,6 +120,46 @@ fun ImageView.setContentDescription(resource: Int) {
 @BindingAdapter("tooltip")
 fun View.setTooltip(text: String?) {
     TooltipCompat.setTooltipText(this, text)
+}
+
+/**
+ * A bottom-bar icon's tint, as on iOS: selected in the brand's highlight colour and otherwise in its
+ * navbar colour, with the pressed and disabled states as the brand's tab_icon_color.
+ */
+@BindingAdapter(value = ["selectedTint", "unselectedTint"], requireAll = false)
+fun ImageView.setSelectedTint(selected: Int?, unselected: Int?) {
+    val base = AppCompatResources.getColorStateList(context, R.color.tab_icon_color)
+    if (selected == null) {
+        ImageViewCompat.setImageTintList(this, base)
+        return
+    }
+    val pressed = intArrayOf(android.R.attr.state_pressed)
+    val disabled = intArrayOf(-android.R.attr.state_enabled)
+    val selectedState = intArrayOf(android.R.attr.state_selected)
+    val states = arrayOf(pressed, disabled, selectedState, intArrayOf())
+    val colors = intArrayOf(
+        base.getColorForState(pressed, base.defaultColor),
+        // No states at all reads as not enabled
+        base.getColorForState(intArrayOf(), base.defaultColor),
+        selected,
+        unselected ?: base.defaultColor
+    )
+    ImageViewCompat.setImageTintList(this, ColorStateList(states, colors))
+}
+
+/** An icon tinted with a colour from the brand, e.g. the top bar's menu icon. */
+@BindingAdapter("iconColor")
+fun ImageView.setIconColor(color: Int?) {
+    if (color == null) return
+    ImageViewCompat.setImageTintList(this, ColorStateList.valueOf(color))
+}
+
+/** A round button filled with the brand's highlight colour, its icon in the colour that reads on it. */
+@BindingAdapter("highlightFill", "highlightIcon")
+fun ImageView.setHighlightFill(color: Int?, iconColor: Int?) {
+    if (color == null || iconColor == null) return
+    ViewCompat.setBackgroundTintList(this, ColorStateList.valueOf(color))
+    ImageViewCompat.setImageTintList(this, ColorStateList.valueOf(iconColor))
 }
 
 @BindingAdapter("android:textStyle")
@@ -547,6 +591,106 @@ fun loadVoipCallAvatar(
     name: String?
 ) {
     loadVoipContactPictureWithCoilAlt(imageView, call)
+}
+
+/**
+ * A caller's avatar from what's known of them, as iOS's CallAvatar: the matched contact's picture,
+ * else initials from their name, else the generic person icon for a caller named only by number.
+ */
+@BindingAdapter(value = ["avatarUrl", "avatarName", "avatarConference"], requireAll = false)
+fun ImageView.loadCallerAvatar(url: String?, name: String?, conference: Boolean?) {
+    val (background, foreground) = BrandHighlight.avatarColors(context)
+    val key = "$url|$name|$conference|$background|$foreground"
+    if (tag == key) return
+    tag = key
+    dispose()
+    // The fallback draws its own circle, in the brand's colours
+    this.background = null
+    ImageViewCompat.setImageTintList(this, null)
+    coreContext.coroutineScope.launch(Dispatchers.Main) {
+        val size = AppUtils.getDimension(R.dimen.contact_avatar_size).toInt().coerceAtLeast(width)
+        val fallback = withContext(Dispatchers.IO) {
+            when {
+                // A group, for a conference, as iOS's CallAvatar
+                conference == true -> brandIconAvatar(context, R.drawable.voip_multiple_contacts_avatar, size, background, foreground)
+                AvatarLabel.usesPlaceholder(name) ->
+                    brandIconAvatar(context, R.drawable.voip_single_contact_avatar, size, background, foreground)
+                else -> ContactAvatarGenerator(context)
+                    .setAvatarSize(size)
+                    .setBackgroundColor(background)
+                    .setTextColor(foreground)
+                    .setLabel(name!!.trim())
+                    .build()
+            }
+        }
+        // Recycled for another caller while the fallback was drawn
+        if (tag != key) return@launch
+        if (url.isNullOrBlank()) {
+            setImageDrawable(fallback)
+        } else {
+            load(url) {
+                transformations(CircleCropTransformation())
+                placeholder(fallback)
+                error(fallback)
+            }
+        }
+    }
+}
+
+/** A person or group icon in [foreground] on a [background] circle, as iOS's CallAvatar. */
+private fun brandIconAvatar(context: Context, icon: Int, size: Int, background: Int, foreground: Int): android.graphics.drawable.Drawable {
+    val bitmap = android.graphics.Bitmap.createBitmap(size, size, android.graphics.Bitmap.Config.ARGB_8888)
+    val canvas = android.graphics.Canvas(bitmap)
+    val paint = android.graphics.Paint().apply {
+        isAntiAlias = true
+        color = background
+    }
+    canvas.drawCircle(size / 2f, size / 2f, size / 2f, paint)
+    AppCompatResources.getDrawable(context, icon)?.mutate()?.let { drawable ->
+        drawable.setTint(foreground)
+        drawable.setBounds(0, 0, size, size)
+        drawable.draw(canvas)
+    }
+    return android.graphics.drawable.BitmapDrawable(context.resources, bitmap)
+}
+
+/**
+ * A History row's direction icon, in its colour as iOS's and the web client's: outgoing green,
+ * incoming info, missed red (the brand's), the rest in the text colour, unanswered faded.
+ */
+@BindingAdapter(value = ["historyDirection", "historyDirectionColors"], requireAll = false)
+fun ImageView.setHistoryDirection(
+    direction: HistoryDirection?,
+    colors: BrandColors.DirectionColors?
+) {
+    val dir = direction ?: return
+    val palette = colors ?: BrandColors.DEFAULT_DIRECTION_COLORS
+    setImageResource(
+        when (dir) {
+            HistoryDirection.OUTGOING -> R.drawable.icon_call_made
+            HistoryDirection.INCOMING -> R.drawable.icon_call_received
+            HistoryDirection.MISSED -> R.drawable.icon_call_missed
+            HistoryDirection.UNANSWERED -> R.drawable.icon_call_notanswered
+            HistoryDirection.VOICEMAIL, HistoryDirection.MISSED_VOICEMAIL -> R.drawable.ic_voicemail_dial
+            HistoryDirection.CONFERENCE -> R.drawable.icon_conference
+        }
+    )
+    val color = when (dir) {
+        HistoryDirection.OUTGOING -> palette.outgoing
+        HistoryDirection.INCOMING -> palette.incoming
+        HistoryDirection.MISSED, HistoryDirection.MISSED_VOICEMAIL -> palette.missed
+        else -> {
+            // The theme's text colour, which may be a colour resource rather than a value
+            val attrs = context.obtainStyledAttributes(intArrayOf(R.attr.primaryTextColor))
+            try {
+                attrs.getColor(0, android.graphics.Color.GRAY)
+            } finally {
+                attrs.recycle()
+            }
+        }
+    }
+    ImageViewCompat.setImageTintList(this, ColorStateList.valueOf(color))
+    alpha = if (dir == HistoryDirection.UNANSWERED) 0.55f else 1f
 }
 
 @BindingAdapter("coilVoipContact")

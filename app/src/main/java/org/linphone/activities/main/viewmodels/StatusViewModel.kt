@@ -29,12 +29,16 @@ import org.linphone.LinphoneApplication.Companion.coreContext
 import org.linphone.R
 import org.linphone.core.*
 import org.linphone.models.realtime.PresenceIconState
+import org.linphone.services.BrandHighlight
 import org.linphone.services.PresenceService
 import org.linphone.services.UserService
 import org.linphone.utils.Log
 import org.linphone.utils.Optional
 
 open class StatusViewModel : ViewModel() {
+    // The menu icon in the brand's navbar colour, as on iOS
+    val menuIconColor = BrandHighlight.navbarColor(coreContext.context)
+
     val registrationStatusText = MutableLiveData<Int>()
 
     val registrationStatusDrawable = MutableLiveData<Int>()

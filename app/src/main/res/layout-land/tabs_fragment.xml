@@ -73,6 +73,8 @@
             android:background="@drawable/footer_button"
             android:src="@drawable/icon_star_filled"
             app:tint="@color/tab_icon_color"
+            selectedTint="@{viewModel.highlightColor}"
+            unselectedTint="@{viewModel.unselectedColor}"
             app:layout_constraintTop_toTopOf="parent"
             app:layout_constraintBottom_toTopOf="@id/guideline1" />
 
@@ -86,6 +88,8 @@
             android:background="@drawable/footer_button"
             android:src="@drawable/icon_users"
             app:tint="@color/tab_icon_color"
+            selectedTint="@{viewModel.highlightColor}"
+            unselectedTint="@{viewModel.unselectedColor}"
             app:layout_constraintTop_toTopOf="@id/guideline1"
             app:layout_constraintBottom_toTopOf="@id/guideline2" />
 
@@ -99,6 +103,8 @@
             android:background="@drawable/footer_button"
             android:src="@drawable/icon_history"
             app:tint="@color/tab_icon_color"
+            selectedTint="@{viewModel.highlightColor}"
+            unselectedTint="@{viewModel.unselectedColor}"
             app:layout_constraintTop_toTopOf="@id/guideline2"
             app:layout_constraintBottom_toTopOf="@id/guideline3" />
 
@@ -126,6 +132,8 @@
             android:background="@drawable/footer_button"
             android:src="@drawable/icon_dialpad"
             app:tint="@color/tab_icon_color"
+            selectedTint="@{viewModel.highlightColor}"
+            unselectedTint="@{viewModel.unselectedColor}"
             app:layout_constraintTop_toTopOf="@id/guideline3"
             app:layout_constraintBottom_toTopOf="@id/guideline4" />
 
@@ -139,6 +147,8 @@
             android:background="@drawable/footer_button"
             android:src="@drawable/icon_parking"
             app:tint="@color/tab_icon_color"
+            selectedTint="@{viewModel.highlightColor}"
+            unselectedTint="@{viewModel.unselectedColor}"
             app:layout_constraintTop_toTopOf="@id/guideline4"
             app:layout_constraintBottom_toBottomOf="parent" />
 

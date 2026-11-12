@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <layout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools">
 
     <data>
@@ -21,30 +22,38 @@
         android:background="?attr/backgroundColor"
         android:orientation="vertical">
 
-        <!-- Tapping the row expands it to show the transcription and actions -->
+        <!-- Tapping anywhere on the row expands it to show the transcription and actions, Play
+             among them; a long press shows the row's text in full, as each line can be cut short.
+             The message in the player is tinted, as on iOS. -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:gravity="center_vertical"
+            android:activated="@{item.isCurrent}"
+            android:background="@drawable/voicemail_row_background"
+            android:contentDescription="@{(item.expanded ? @string/voicemail_collapse : @string/voicemail_expand) + `: ` + item.title + `, ` + item.date}"
+            android:gravity="top"
             android:minHeight="56dp"
             android:onClick="@{() -> viewModel.onMessageClicked(item)}"
             android:orientation="horizontal"
-            android:paddingStart="5dp"
-            android:paddingEnd="10dp">
+            android:paddingStart="10dp"
+            android:paddingTop="8dp"
+            android:paddingEnd="5dp"
+            android:paddingBottom="8dp"
+            app:tooltip="@{item.fullText}">
 
+            <!-- The caller's avatar, with a spinner over it while the message loads -->
             <FrameLayout
-                android:layout_width="44dp"
-                android:layout_height="44dp">
+                android:layout_width="@dimen/contact_avatar_size"
+                android:layout_height="@dimen/contact_avatar_size">
 
                 <ImageView
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
-                    android:background="?attr/selectableItemBackgroundBorderless"
-                    android:contentDescription="@{item.isPlaying ? @string/voicemail_pause : @string/voicemail_play}"
-                    android:onClick="@{() -> viewModel.onPlayClicked(item)}"
-                    android:padding="10dp"
-                    android:src="@{item.isPlaying ? @drawable/ic_voicemail_pause : @drawable/ic_voicemail_play}"
-                    android:visibility="@{item.isLoadingAudio ? View.INVISIBLE : View.VISIBLE}" />
+                    android:background="@drawable/generated_avatar_bg"
+                    android:contentDescription="@null"
+                    android:src="@drawable/icon_single_contact_avatar"
+                    app:avatarName="@{item.avatarName}"
+                    app:avatarUrl="@{item.avatarUrl}" />
 
                 <ProgressBar
                     android:layout_width="24dp"
@@ -57,7 +66,7 @@
             <LinearLayout
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="5dp"
+                android:layout_marginStart="10dp"
                 android:layout_weight="1"
                 android:orientation="vertical">
 
@@ -67,7 +76,27 @@
                     android:layout_height="wrap_content"
                     android:ellipsize="end"
                     android:singleLine="true"
-                    android:text="@{item.title, default=`Jebediah Springfield`}" />
+                    android:text="@{item.title, default=`Jebediah Springfield`}"
+                    android:textStyle="bold" />
+
+                <!-- As on iOS: the transcription's start, or that there isn't one -->
+                <TextView
+                    style="@style/contact_number_list_cell_font"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:ellipsize="end"
+                    android:maxLines="2"
+                    android:text="@{item.transcription}"
+                    android:textColor="?attr/primaryTextColor"
+                    android:visibility="@{item.showTranscriptionPreview ? View.VISIBLE : View.GONE, default=gone}" />
+
+                <TextView
+                    style="@style/contact_number_list_cell_font"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/voicemail_no_transcription"
+                    android:textStyle="italic"
+                    android:visibility="@{item.showNoTranscription ? View.VISIBLE : View.GONE, default=gone}" />
 
                 <TextView
                     style="@style/contact_number_list_cell_font"
@@ -75,35 +104,25 @@
                     android:layout_height="wrap_content"
                     android:ellipsize="end"
                     android:singleLine="true"
-                    android:text="@{item.subtitle}"
+                    android:text="@{item.subtitle, default=`07921 910119 - 00:12`}"
                     android:visibility="@{item.subtitle.empty ? View.GONE : View.VISIBLE}" />
             </LinearLayout>
 
-            <LinearLayout
+            <!-- Level with the name, as on iOS, with the arrow that expands the row beside it -->
+            <TextView
+                style="@style/contact_number_list_cell_font"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="5dp"
-                android:gravity="end"
-                android:orientation="vertical">
-
-                <TextView
-                    style="@style/contact_number_list_cell_font"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="@{item.date.empty ? item.time : item.date + ` ` + item.time, default=`Yesterday 09:37`}" />
-
-                <TextView
-                    style="@style/contact_number_list_cell_font"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="@{item.length, default=`00:12`}" />
-            </LinearLayout>
+                android:layout_marginTop="2dp"
+                android:text="@{item.date, default=`Yesterday`}" />
 
             <ImageView
-                android:layout_width="24dp"
-                android:layout_height="24dp"
-                android:layout_marginStart="5dp"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:layout_marginTop="-4dp"
                 android:contentDescription="@null"
+                android:padding="4dp"
                 android:src="@{item.expanded ? @drawable/ic_voicemail_expand_less : @drawable/ic_voicemail_expand_more}" />
         </LinearLayout>
 
@@ -149,6 +168,17 @@
                 android:gravity="end"
                 android:orientation="horizontal">
 
+                <!-- Plays the message, or pauses or resumes it if it's the one in the player -->
+                <ImageView
+                    android:layout_width="44dp"
+                    android:layout_height="44dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="@{item.isPlaying ? @string/voicemail_pause : @string/voicemail_play}"
+                    android:onClick="@{() -> viewModel.onPlayClicked(item)}"
+                    android:padding="10dp"
+                    android:src="@{item.isPlaying ? @drawable/ic_voicemail_pause : @drawable/ic_voicemail_play}"
+                    android:visibility="@{item.isLoadingAudio ? View.INVISIBLE : View.VISIBLE}" />
+
                 <ImageView
                     android:layout_width="44dp"
                     android:layout_height="44dp"
@@ -170,7 +200,8 @@
                     android:alpha="@{item.busy ? 0.4f : 1f}"
                     android:onClick="@{() -> viewModel.onDeleteClicked(item)}"
                     android:padding="10dp"
-                    android:src="@drawable/ic_voicemail_delete" />
+                    android:src="@drawable/ic_voicemail_delete"
+                    app:tint="@color/red_color" />
 
                 <ImageView
                     android:layout_width="44dp"
