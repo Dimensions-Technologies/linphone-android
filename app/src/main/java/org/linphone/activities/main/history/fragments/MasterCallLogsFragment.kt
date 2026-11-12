@@ -20,7 +20,12 @@
 package org.linphone.activities.main.history.fragments
 
 import android.content.res.Configuration
+import android.graphics.Typeface
 import android.os.Bundle
+import android.text.SpannableStringBuilder
+import android.text.Spanned
+import android.text.style.RelativeSizeSpan
+import android.text.style.StyleSpan
 import android.view.View
 import android.widget.Toast
 import androidx.annotation.OptIn
@@ -49,9 +54,10 @@ import org.linphone.activities.main.MainActivity
 import org.linphone.activities.main.fragments.MasterFragment
 import org.linphone.activities.main.history.adapters.CallLogsListAdapter
 import org.linphone.activities.main.history.adapters.VoicemailListAdapter
-import org.linphone.activities.main.history.data.GroupedCallLogData
+import org.linphone.activities.main.history.data.HistoryListItem
 import org.linphone.activities.main.history.viewmodels.CallLogsFilter
 import org.linphone.activities.main.history.viewmodels.CallLogsListViewModel
+import org.linphone.activities.main.history.viewmodels.VoicemailBoxOption
 import org.linphone.activities.main.history.viewmodels.VoicemailListViewModel
 import org.linphone.activities.main.history.viewmodels.VoicemailPlayState
 import org.linphone.activities.main.viewmodels.TabsViewModel
@@ -59,6 +65,7 @@ import org.linphone.core.ConferenceInfo
 import org.linphone.databinding.HistoryMasterFragmentBinding
 import org.linphone.models.callhistory.PbxType
 import org.linphone.models.voicemail.VoicemailMessage
+import org.linphone.services.BrandHighlight
 import org.linphone.services.CallHistoryService
 import org.linphone.services.DirectoriesService
 import org.linphone.services.UserService
@@ -155,7 +162,7 @@ class MasterCallLogsFragment : MasterFragment<HistoryMasterFragmentBinding, Call
 
         /* End of shared view model & sliding pane related */
 
-        _adapter = CallLogsListAdapter(listSelectionViewModel, viewLifecycleOwner, context)
+        _adapter = CallLogsListAdapter(listSelectionViewModel, viewLifecycleOwner)
         // SubmitList is done on a background thread
         // We need this adapter data observer to know when to scroll
         adapter.registerAdapterDataObserver(observer)
@@ -236,9 +243,9 @@ class MasterCallLogsFragment : MasterFragment<HistoryMasterFragmentBinding, Call
 //            AppUtils.getDividerDecoration(requireContext(), layoutManager)
 //        )
 
-        // Displays formatted date header
-//        val headerItemDecoration = RecyclerViewHeaderDecoration(requireContext(), adapter)
-//        binding.callLogsList.addItemDecoration(headerItemDecoration)
+        // A header for each day: Today, Yesterday, then the full date, as on iOS (WI 36939)
+        val headerItemDecoration = RecyclerViewHeaderDecoration(requireContext(), adapter)
+        binding.callLogsList.addItemDecoration(headerItemDecoration)
 
         listViewModel.callLogs.observe(
             viewLifecycleOwner
@@ -260,11 +267,35 @@ class MasterCallLogsFragment : MasterFragment<HistoryMasterFragmentBinding, Call
             }
         }
 
-        adapter.showCallLogContextMenuEvent.observe(viewLifecycleOwner) {
-            it.consume { call ->
-                binding.contextItemViewModel = call
-                sharedViewModel.selectedHistoryItem.postValue(call)
-                listViewModel.showContextMenu(call)
+        adapter.rowClickedEvent.observe(viewLifecycleOwner) {
+            it.consume { row ->
+                // A voicemail with no call has no call to show
+                binding.contextItemViewModel = row.entry.call
+                row.entry.call?.let { call -> sharedViewModel.selectedHistoryItem.postValue(call) }
+                listViewModel.showContextMenu(row.entry)
+            }
+        }
+
+        adapter.groupToggledEvent.observe(viewLifecycleOwner) {
+            it.consume { row -> listViewModel.toggleGroup(row) }
+        }
+
+        // The direction icons in the brand's colours, as on iOS
+        BrandHighlight.directionColors(requireContext()).observe(viewLifecycleOwner) { colors ->
+            adapter.directionColors = colors
+        }
+
+        listViewModel.callNumberEvent.observe(viewLifecycleOwner) {
+            it.consume { number -> coreContext.startCall(number) }
+        }
+
+        // The voicemail a call left, played in the Voicemail tab, as on iOS
+        listViewModel.playVoicemailEvent.observe(viewLifecycleOwner) {
+            it.consume { (boxId, message) ->
+                listViewModel.showVoicemail()
+                // Shows the message's mailbox, as iOS's PlayMessage
+                voicemailViewModel.onBoxPicked(boxId)
+                playVoicemail(boxId, message)
             }
         }
 
@@ -372,13 +403,13 @@ class MasterCallLogsFragment : MasterFragment<HistoryMasterFragmentBinding, Call
     }
 
     override fun deleteItems(indexesOfItemToDelete: ArrayList<Int>) {
-        val list = ArrayList<GroupedCallLogData>()
+        val list = ArrayList<HistoryListItem>()
         var closeSlidingPane = false
         for (index in indexesOfItemToDelete) {
-            val callLogGroup = adapter.currentList[index]
-            list.add(callLogGroup)
+            val row = adapter.currentList[index]
+            list.add(row)
 
-            if (callLogGroup.lastCallLogId == sharedViewModel.selectedHistoryItem.value?.callId) {
+            if (row.entry.call?.callId == sharedViewModel.selectedHistoryItem.value?.callId) {
                 closeSlidingPane = true
             }
         }
@@ -461,6 +492,34 @@ class MasterCallLogsFragment : MasterFragment<HistoryMasterFragmentBinding, Call
         voicemailViewModel.messageEvent.observe(viewLifecycleOwner) {
             it.consume { message -> Toast.makeText(requireContext(), message, Toast.LENGTH_LONG).show() }
         }
+
+        voicemailViewModel.openPickerEvent.observe(viewLifecycleOwner) {
+            it.consume { (options, shown) -> showVoicemailBoxPicker(options, shown) }
+        }
+    }
+
+    /** The mailbox picker (WI 36610): each box's name and number over its new or message count. */
+    private fun showVoicemailBoxPicker(options: List<VoicemailBoxOption>, shown: Int) {
+        val labels = options.map { option ->
+            SpannableStringBuilder().apply {
+                append(option.title, StyleSpan(Typeface.BOLD), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+                append("\n")
+                append(option.badge, RelativeSizeSpan(0.85f), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+            }
+        }.toTypedArray<CharSequence>()
+
+        AlertDialog.Builder(requireContext())
+            .setTitle(R.string.voicemail_boxes)
+            .setSingleChoiceItems(labels, shown) { dialog, which ->
+                dialog.dismiss()
+                options.getOrNull(which)?.let { option ->
+                    // The player's message is in the box being left
+                    if (which != shown) stopVoicemail()
+                    voicemailViewModel.onBoxPicked(option.id)
+                }
+            }
+            .setNegativeButton(R.string.dialog_cancel, null)
+            .show()
     }
 
     @OptIn(UnstableApi::class)

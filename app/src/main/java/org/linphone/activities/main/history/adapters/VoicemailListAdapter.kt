@@ -20,7 +20,6 @@ class VoicemailListAdapter(
 ) : ListAdapter<VoicemailListItem, VoicemailListAdapter.ViewHolder>(DiffCallback()) {
 
     override fun getItemViewType(position: Int): Int = when (getItem(position).row) {
-        is VoicemailRow.BoxHeader -> R.layout.voicemail_box_header_cell
         is VoicemailRow.FolderHeader -> R.layout.voicemail_folder_header_cell
         is VoicemailRow.EmptyFolder -> R.layout.voicemail_empty_cell
         is VoicemailRow.Message -> R.layout.voicemail_message_cell

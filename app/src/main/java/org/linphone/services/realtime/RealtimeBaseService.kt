@@ -123,7 +123,10 @@ open class RealtimeBaseService(private val context: Context, private val hubSuff
 
     // Events
     val callHistoryEvent: MutableLiveData<Any> by lazy { MutableLiveData<Any>() }
-    val presenceEvent: MutableLiveData<RealtimeEventPresence> by lazy { MutableLiveData<RealtimeEventPresence>() }
+    // A subject, not LiveData: postValue keeps only the last of the values posted before the main
+    // thread takes them, so a burst of presence events (one per user as a contacts list subscribes)
+    // lost all but the last, and most users showed no presence
+    val presenceEvent: PublishSubject<RealtimeEventPresence> = PublishSubject.create()
 
     // Not LiveData: every event matters, and postValue would drop all but the last of a burst
     val callMatchEvent: PublishSubject<RealtimeEventCallMatch> = PublishSubject.create()
@@ -225,7 +228,7 @@ open class RealtimeBaseService(private val context: Context, private val hubSuff
                 Log.d(
                     "RealtimeBaseService.presenceEvent: ${data.data.stateName} ${data.data.availability}"
                 )
-                presenceEvent.postValue(data)
+                presenceEvent.onNext(data)
             },
             RealtimeEventPresence::class.java
         )

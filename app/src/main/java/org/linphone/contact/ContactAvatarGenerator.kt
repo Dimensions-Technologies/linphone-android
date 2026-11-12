@@ -59,6 +59,14 @@ class ContactAvatarGenerator(private val context: Context) {
         textColor = ContextCompat.getColor(context, resource)
     }
 
+    fun setTextColor(color: Int) = apply {
+        textColor = color
+    }
+
+    fun setBackgroundColor(color: Int) = apply {
+        backgroundColor = color
+    }
+
     fun setAvatarSize(size: Int) = apply {
         avatarSize = size
     }

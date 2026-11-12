@@ -29,6 +29,7 @@ import org.linphone.LinphoneApplication.Companion.coreContext
 import org.linphone.LinphoneApplication.Companion.corePreferences
 import org.linphone.R
 import org.linphone.core.*
+import org.linphone.services.BrandHighlight
 import org.linphone.services.CallHistoryService
 import org.linphone.services.ContactsAccessService
 import org.linphone.services.ParkingSlotService
@@ -38,6 +39,12 @@ import org.linphone.utils.Log
 
 class TabsViewModel : ViewModel() {
     private val callHistoryService = CallHistoryService.getInstance(coreContext.context)
+
+    // The selected item's colour: the brand's highlight, as on iOS
+    val highlightColor = BrandHighlight.color(coreContext.context)
+
+    // The other items' colour: the brand's navbar colour, as on iOS
+    val unselectedColor = BrandHighlight.navbarColor(coreContext.context)
 
     val unreadMessagesCount = MutableLiveData<Int>()
 

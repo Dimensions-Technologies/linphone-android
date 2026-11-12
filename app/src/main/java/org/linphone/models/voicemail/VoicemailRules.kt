@@ -1,9 +1,13 @@
 package org.linphone.models.voicemail
 
+import java.util.Locale
 import org.linphone.models.callhistory.CallDirections
 import org.linphone.models.callhistory.CallHistoryItem
 import org.linphone.models.callhistory.CallTypes
 import org.linphone.models.callsession.PhoneFormat
+import org.threeten.bp.LocalDate
+import org.threeten.bp.ZonedDateTime
+import org.threeten.bp.format.DateTimeFormatter
 
 /**
  * Visual voicemail rules, ported from the web client (voicemail-box.service.ts and
@@ -19,8 +23,9 @@ object VoicemailRules {
     // Folders are shown in this order; any other folder comes after them
     private val FOLDER_ORDER = listOf(FOLDER_NEW, FOLDER_SAVED, FOLDER_DELETED)
 
-    // Shown even when empty, so an empty mailbox still gives the user somewhere to look
-    private val ALWAYS_SHOWN_FOLDERS = listOf(FOLDER_NEW, FOLDER_SAVED)
+    // Shown even when empty, so an empty mailbox still gives the user somewhere to look. Saved, like
+    // any other folder, shows only with messages in it (WI 36939).
+    private val ALWAYS_SHOWN_FOLDERS = listOf(FOLDER_NEW)
 
     fun folderOf(message: VoicemailMessage): String =
         message.folder?.takeIf { it.isNotBlank() } ?: FOLDER_NEW
@@ -67,24 +72,34 @@ object VoicemailRules {
     private fun folderOrderIndex(folder: String): Int =
         FOLDER_ORDER.indexOf(folder).let { if (it == -1) FOLDER_ORDER.size else it }
 
-    /** Every row of the list: box headers, folder headers, messages, and empty-folder notes. */
-    fun rows(boxes: List<VoicemailBoxWithMessages>): List<VoicemailRow> {
-        val rows = mutableListOf<VoicemailRow>()
-        val single = boxes.size == 1
-        for (box in boxes) {
-            rows.add(
-                VoicemailRow.BoxHeader(box, showName = !single, expanded = single || !box.collapsed)
-            )
-            // With one mailbox there's nothing to collapse it against, so it's always expanded
-            if (!single && box.collapsed) continue
+    /**
+     * The box the Voicemail tab shows, as on iOS (WI 36610): the one chosen in the mailbox picker
+     * while it's still there, else the first.
+     */
+    fun selectedBox(boxes: List<VoicemailBoxWithMessages>, chosenId: String?): VoicemailBoxWithMessages? =
+        boxes.firstOrNull { it.box.id == chosenId } ?: boxes.firstOrNull()
 
-            for ((folder, messages) in groupByFolder(box.messages)) {
-                val expanded = folder !in box.collapsedFolders
-                rows.add(VoicemailRow.FolderHeader(box.box.id, folder, expanded))
-                if (!expanded) continue
-                if (messages.isEmpty()) rows.add(VoicemailRow.EmptyFolder(box.box.id, folder))
-                for (message in messages) rows.add(VoicemailRow.Message(box.box.id, message))
-            }
+    /** The mailbox's name and number, as the mailbox bar and picker show it: "Sales · 2001". */
+    fun boxTitle(box: VoicemailBox): String =
+        listOfNotNull(box.name, box.number).filter { it.isNotBlank() }.joinToString(" · ")
+
+    /** The mailbox bar's second line, as on iOS: "2 new", else how many messages it holds. */
+    fun boxBadge(box: VoicemailBox, newText: (Int) -> String, messagesText: (Int) -> String): String =
+        if (box.new > 0) newText(box.new) else messagesText(box.totalMessages.coerceAtLeast(0))
+
+    /**
+     * The rows of the box shown: folder headers, messages, and empty-folder notes. The mailbox
+     * itself is named in the bar above the list, with a picker of the others.
+     */
+    fun rows(box: VoicemailBoxWithMessages?): List<VoicemailRow> {
+        if (box == null) return emptyList()
+        val rows = mutableListOf<VoicemailRow>()
+        for ((folder, messages) in groupByFolder(box.messages)) {
+            val expanded = folder !in box.collapsedFolders
+            rows.add(VoicemailRow.FolderHeader(box.box.id, folder, expanded, messages.size))
+            if (!expanded) continue
+            if (messages.isEmpty()) rows.add(VoicemailRow.EmptyFolder(box.box.id, folder))
+            for (message in messages) rows.add(VoicemailRow.Message(box.box.id, message))
         }
         return rows
     }
@@ -148,9 +163,6 @@ object VoicemailRules {
         }
     }
 
-    fun toggledBox(boxes: List<VoicemailBoxWithMessages>, boxId: String) =
-        boxes.map { if (it.box.id == boxId) it.copy(collapsed = !it.collapsed) else it }
-
     fun toggledFolder(boxes: List<VoicemailBoxWithMessages>, boxId: String, folder: String) = boxes.map {
         if (it.box.id != boxId) {
             it
@@ -161,7 +173,29 @@ object VoicemailRules {
         }
     }
 
-    /** The message length (milliseconds) as m:ss, or h:mm:ss. */
+    /** A folder's heading with its message count, as on iOS and the web client: "New · 2". */
+    fun folderHeading(label: String, count: Int): String = "$label · $count"
+
+    /**
+     * The row's last line, as on iOS (VoicemailViewModel.ToItem Details): the caller's number then
+     * the length ("07921 910119 · 00:10"), or just the length when there's no number.
+     */
+    fun messageSubtitle(number: String, lengthMs: Long): String =
+        listOf(number, formatLength(lengthMs)).filter { it.isNotEmpty() }.joinToString(" · ")
+
+    /**
+     * The next message whose transcription to fetch for the rows' previews, as on iOS: the newest
+     * not yet fetched or asked for, so they're fetched one at a time, each once. Box id and message.
+     */
+    fun nextTranscriptionToFetch(
+        boxes: List<VoicemailBoxWithMessages>,
+        asked: Set<String>
+    ): Pair<String, VoicemailMessage>? =
+        boxes.flatMap { box -> box.messages.map { box.box.id to it } }
+            .filter { (_, message) -> message.transcription == null && message.mediaId !in asked }
+            .maxByOrNull { (_, message) -> message.timestamp?.toInstant()?.toEpochMilli() ?: Long.MIN_VALUE }
+
+    /** The message length (milliseconds) as mm:ss, or h:mm:ss. */
     fun formatLength(lengthMs: Long): String {
         var seconds = Math.round(lengthMs.coerceAtLeast(0) / 1000.0).toInt()
         val hours = seconds / 3600
@@ -169,14 +203,28 @@ object VoicemailRules {
         val minutes = seconds / 60
         seconds %= 60
         val pad = { v: Int -> v.toString().padStart(2, '0') }
-        return if (hours > 0) {
-            "$hours:${pad(minutes)}:${pad(seconds)}"
-        } else {
-            "${pad(minutes)}:${pad(
-                seconds
-            )}"
+        return if (hours > 0) "$hours:${pad(minutes)}:${pad(seconds)}" else "${pad(minutes)}:${pad(seconds)}"
+    }
+
+    /**
+     * The day a message was left, with no time: Today, Yesterday, then the short date ("5 Nov"),
+     * as the web client's voicemailDayOf.
+     */
+    fun formatDay(
+        timestamp: ZonedDateTime?,
+        today: LocalDate,
+        todayText: String,
+        yesterdayText: String,
+        locale: Locale
+    ): String {
+        val day = timestamp?.toLocalDate() ?: return ""
+        return when (day) {
+            today -> todayText
+            today.minusDays(1) -> yesterdayText
+            else -> day.format(DateTimeFormatter.ofPattern("d MMM", locale))
         }
     }
+
 
     // A voicemail is matched to a call that started up to this long before it
     const val CALL_MATCH_WINDOW_MS = 90_000L
@@ -224,12 +272,13 @@ object VoicemailRules {
 }
 
 sealed class VoicemailRow {
-    data class BoxHeader(
-        val box: VoicemailBoxWithMessages,
-        val showName: Boolean,
-        val expanded: Boolean
+    // [count] is the folder's messages, shown in its heading even while it's collapsed
+    data class FolderHeader(
+        val boxId: String,
+        val folder: String,
+        val expanded: Boolean,
+        val count: Int = 0
     ) : VoicemailRow()
-    data class FolderHeader(val boxId: String, val folder: String, val expanded: Boolean) : VoicemailRow()
     data class EmptyFolder(val boxId: String, val folder: String) : VoicemailRow()
     data class Message(val boxId: String, val message: VoicemailMessage) : VoicemailRow()
 }

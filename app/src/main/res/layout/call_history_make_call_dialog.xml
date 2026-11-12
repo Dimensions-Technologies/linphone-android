@@ -23,13 +23,13 @@
             android:layout_height="wrap_content"
             android:textColor="?attr/primaryTextColor"
             android:textSize="18sp"
-            android:text="@{callViewModel.contactName, default=`Rick Sanchez`}"
+            android:text="@{historyViewModel.menuTitle, default=`Rick Sanchez`}"
             android:gravity="center"
             android:paddingBottom="20dp" />
 
         <TextView
             android:id="@+id/callHistoryDialog_MakeCallButton"
-            android:onClick="@{() -> historyViewModel.makeCall(callViewModel)}"
+            android:onClick="@{() -> historyViewModel.callBack()}"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="@{historyViewModel.transferState == org.linphone.activities.voip.TransferState.PENDING_BLIND ? `Transfer` : `Call back`, default=`Call back`}"
@@ -37,7 +37,20 @@
             android:textSize="22sp"
             android:gravity="center"
             android:padding="10dp"
-            android:visibility="@{callViewModel.canCallBack ? View.VISIBLE : View.GONE}" />
+            android:visibility="@{historyViewModel.menuCanCallBack ? View.VISIBLE : View.GONE}" />
+
+        <!-- The voicemail the call left (or this voicemail), played in the Voicemail tab, as on iOS -->
+        <TextView
+            android:id="@+id/callHistoryDialog_PlayVoicemailButton"
+            android:onClick="@{() -> historyViewModel.playVoicemail()}"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/history_play_voicemail"
+            android:textColor="@color/primary_color"
+            android:textSize="22sp"
+            android:padding="10dp"
+            android:gravity="center"
+            android:visibility="@{historyViewModel.menuHasVoicemail ? View.VISIBLE : View.GONE, default=gone}" />
 
         <TextView
             android:id="@+id/callHistoryDialog_PlayRecordingButton"
@@ -49,7 +62,7 @@
             android:textSize="22sp"
             android:padding="10dp"
             android:gravity="center"
-            android:visibility="@{callViewModel.call.hasRecording &amp;&amp; historyViewModel.hasPlaybackPermission ? View.VISIBLE : View.GONE, default=visible }"
+            android:visibility="@{callViewModel != null &amp;&amp; callViewModel.call.hasRecording &amp;&amp; historyViewModel.hasPlaybackPermission ? View.VISIBLE : View.GONE, default=visible }"
             />
 
         <TextView
@@ -62,7 +75,7 @@
             android:textSize="22sp"
             android:padding="10dp"
             android:gravity="center"
-            android:visibility="@{callViewModel.call.documentId.empty ? View.GONE : View.VISIBLE, default=visible}"
+            android:visibility="@{callViewModel == null || callViewModel.call.documentId.empty ? View.GONE : View.VISIBLE, default=visible}"
             />
 
         <TextView

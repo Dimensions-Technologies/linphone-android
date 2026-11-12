@@ -54,12 +54,21 @@ object CallHistoryContactMatcher {
 
     private val gson by lazy { GsonUtils.create() }
 
-    fun otherPartyNumber(item: CallHistoryItem): String? =
-        if (CallDirections.fromValue(item.callDirection) == CallDirections.Outgoing) {
+    /**
+     * The other party's number, as the web client's call-history-item-view: an external call's is its
+     * cli, an internal call's the called (outgoing) or calling number. Each falls back to the other,
+     * as iOS's GetOtherPartyNumber, since a leg can carry only one (e.g. an outgoing leg of an
+     * external call has cli but no called number).
+     */
+    fun otherPartyNumber(item: CallHistoryItem): String? {
+        val party = if (CallDirections.fromValue(item.callDirection) == CallDirections.Outgoing) {
             item.calledUserNumber
         } else {
             item.callingUserNumber
-        }
+        }.takeUnless { it.isNullOrBlank() }
+        val cli = item.cli.takeUnless { it.isNullOrBlank() }
+        return if (item.callType == CallTypes.External) cli ?: party else party ?: cli
+    }
 
     private fun contactName(directory: ContactDirectoryModel, contact: ContactItemModel): String? {
         val values = contact.fields.associate { it.id to it.value }

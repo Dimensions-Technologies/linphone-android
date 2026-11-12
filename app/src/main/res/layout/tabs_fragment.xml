@@ -78,7 +78,9 @@
             android:padding="15dp"
             android:contentDescription="@string/content_description_menu_favourites"
             android:src="@drawable/icon_star_filled"
-            app:tint="@color/tab_icon_color" />
+            app:tint="@color/tab_icon_color"
+            selectedTint="@{viewModel.highlightColor}"
+            unselectedTint="@{viewModel.unselectedColor}" />
 
         <ImageView
             android:id="@+id/contacts"
@@ -90,7 +92,9 @@
             android:padding="15dp"
             android:contentDescription="@string/content_description_menu_contacts"
             android:src="@drawable/icon_users"
-            app:tint="@color/tab_icon_color">
+            app:tint="@color/tab_icon_color"
+            selectedTint="@{viewModel.highlightColor}"
+            unselectedTint="@{viewModel.unselectedColor}">
         </ImageView>
 
 
@@ -103,6 +107,8 @@
             android:contentDescription="@string/content_description_menu_history"
             android:src="@drawable/icon_history"
             app:tint="@color/tab_icon_color"
+            selectedTint="@{viewModel.highlightColor}"
+            unselectedTint="@{viewModel.unselectedColor}"
             app:layout_constraintStart_toStartOf="@id/guideline2"
             app:layout_constraintEnd_toEndOf="@id/guideline3" />
 
@@ -132,7 +138,9 @@
                 android:padding="15dp"
                 android:contentDescription="@string/content_description_menu_dialer"
                 android:src="@drawable/icon_dialpad"
-                app:tint="@color/tab_icon_color" >
+                app:tint="@color/tab_icon_color"
+            selectedTint="@{viewModel.highlightColor}"
+            unselectedTint="@{viewModel.unselectedColor}" >
 
         </ImageView>
 
@@ -149,6 +157,8 @@
             android:contentDescription="@string/content_description_menu_chat"
             android:padding="15dp"
             app:tint="@color/tab_icon_color"
+            selectedTint="@{viewModel.highlightColor}"
+            unselectedTint="@{viewModel.unselectedColor}"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="@id/guideline4" />
 
@@ -176,6 +186,8 @@
             android:contentDescription="@string/content_description_menu_parking"
             android:src="@drawable/icon_parking"
             app:tint="@color/tab_icon_color"
+            selectedTint="@{viewModel.highlightColor}"
+            unselectedTint="@{viewModel.unselectedColor}"
             app:layout_constraintStart_toStartOf="@id/guideline4"
             app:layout_constraintEnd_toEndOf="parent" />
 

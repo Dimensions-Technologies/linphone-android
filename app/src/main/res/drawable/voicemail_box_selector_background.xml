@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The mailbox selector in the Voicemail tab's mailbox bar (WI 36610), as on iOS: the page's background
+     (white in the light theme), outlined, 12dp corners -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="?attr/backgroundColor" />
+    <stroke
+        android:width="1dp"
+        android:color="?attr/dividerColor" />
+    <corners android:radius="12dp" />
+</shape>

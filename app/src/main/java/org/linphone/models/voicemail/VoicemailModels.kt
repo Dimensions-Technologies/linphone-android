@@ -46,12 +46,11 @@ data class VoicemailTranscription(
     val text: String? = null
 )
 
-/** A box with its first page of messages, and its collapsed state in the list, as held by the app. */
+/** A box with its first page of messages, and its collapsed folders in the list, as held by the app. */
 @Keep
 data class VoicemailBoxWithMessages(
     val box: VoicemailBox,
     val messages: List<VoicemailMessage> = emptyList(),
     val nextStartKey: String? = null,
-    val collapsed: Boolean = false,
     val collapsedFolders: List<String> = emptyList()
 )
