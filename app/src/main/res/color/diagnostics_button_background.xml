@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- About's Diagnostics buttons, matching iOS: flat light grey, faded while disabled -->
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:alpha="0.5" android:color="@color/diagnostics_button_color" android:state_enabled="false" />
+    <item android:color="@color/diagnostics_button_color" />
+</selector>
