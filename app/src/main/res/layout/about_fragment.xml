@@ -172,20 +172,25 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginHorizontal="10dp"
+                        android:textAllCaps="false"
+                        android:textColor="@color/primary_dark_color"
+                        android:textSize="18sp"
                         android:text="@string/about_diagnostics_title" />
 
                     <LinearLayout
                         android:layout_width="match_parent"
-                        android:layout_height="match_parent"
+                        android:layout_height="wrap_content"
                         android:layout_gravity="center"
                         android:layout_marginHorizontal="10dp"
                         android:layout_marginTop="5dp"
+                        android:baselineAligned="false"
                         android:gravity="center_horizontal">
 
-                        <Button
+                        <com.google.android.material.button.MaterialButton
                             android:id="@+id/send_to_support_btn"
+                            style="@style/diagnostics_button"
                             android:layout_width="fill_parent"
-                            android:layout_height="wrap_content"
+                            android:layout_height="match_parent"
                             android:layout_weight="1"
                             android:enabled="@{viewModel.sendToSupportEnabled}"
                             android:onClick="@{sendToSupportClickListener}"
@@ -195,10 +200,11 @@
                             android:layout_width="10dp"
                             android:layout_height="match_parent"/>
 
-                        <Button
+                        <com.google.android.material.button.MaterialButton
                             android:id="@+id/clear_logs_btn"
+                            style="@style/diagnostics_button"
                             android:layout_width="fill_parent"
-                            android:layout_height="wrap_content"
+                            android:layout_height="match_parent"
                             android:layout_weight="1"
                             android:onClick="@{clearLogsClickListener}"
                             android:text="@{@string/about_logging_clear}" />

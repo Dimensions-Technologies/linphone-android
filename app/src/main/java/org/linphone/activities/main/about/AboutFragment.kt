@@ -20,12 +20,17 @@
 package org.linphone.activities.main.about
 
 import android.content.*
+import android.content.res.ColorStateList
 import android.net.Uri
 import android.os.Bundle
 import android.view.View
+import androidx.annotation.StringRes
+import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.doOnLayout
 import androidx.lifecycle.ViewModelProvider
+import com.google.android.material.button.MaterialButton
 import io.reactivex.rxjava3.disposables.Disposable
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -97,6 +102,30 @@ class AboutFragment : SecureFragment<AboutFragmentBinding>() {
         }
 
         DiagnosticsService.clearSendToSupportResult()
+        binding.sendToSupportBtn?.let { button ->
+            // Grey (diagnostics_button style) until an upload succeeds, then green with white text
+            // and a tick, as on iOS. The tick is left off when it would wrap the label, so the
+            // button never changes size.
+            val defaultTint = button.backgroundTintList
+            val defaultTextColors = button.textColors
+            val sentTint = ColorStateList.valueOf(
+                ContextCompat.getColor(requireContext(), R.color.green_color)
+            )
+            val sentTextColor = ContextCompat.getColor(requireContext(), R.color.white_color)
+            viewModel.sendToSupportButton.observe(viewLifecycleOwner) { state ->
+                button.backgroundTintList = if (state.sent) sentTint else defaultTint
+                if (state.sent) button.setTextColor(sentTextColor) else button.setTextColor(defaultTextColors)
+                button.icon = null
+                if (state.sent) {
+                    button.doOnLayout {
+                        val stillSent = viewModel.sendToSupportButton.value?.sent == true
+                        if (stillSent && tickFits(button, state.label)) {
+                            button.setIconResource(R.drawable.icon_check)
+                        }
+                    }
+                }
+            }
+        }
         binding.setSendToSupportClickListener {
             val context = requireContext().applicationContext
             // Not tied to the fragment, so leaving About doesn't cancel the upload
@@ -135,5 +164,18 @@ class AboutFragment : SecureFragment<AboutFragmentBinding>() {
         super.onDestroyView()
 
         userSubscription?.dispose()
+    }
+
+    // Whether the label still fits on one line with the tick beside it, measured as the button
+    // draws it (text transformation, letter spacing)
+    private fun tickFits(button: MaterialButton, @StringRes label: Int): Boolean {
+        val text = getString(label)
+        val shown = button.transformationMethod?.getTransformation(text, button) ?: text
+        return SendToSupportButtonState.tickFits(
+            labelWidth = button.paint.measureText(shown, 0, shown.length),
+            buttonWidth = button.width,
+            horizontalPadding = button.paddingStart + button.paddingEnd,
+            tickSpace = button.iconSize + button.iconPadding
+        )
     }
 }

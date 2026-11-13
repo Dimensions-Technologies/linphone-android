@@ -25,11 +25,9 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.map
 import org.linphone.LinphoneApplication.Companion.coreContext
 import org.linphone.LinphoneApplication.Companion.corePreferences
-import org.linphone.R
 import org.linphone.activities.main.settings.SettingListenerStub
 import org.linphone.models.UserInfo
 import org.linphone.services.DiagnosticsService
-import org.linphone.services.SendToSupportState
 
 class AboutViewModel : ViewModel() {
     private val prefs = corePreferences
@@ -51,18 +49,10 @@ class AboutViewModel : ViewModel() {
         sipLogMode.value = prefs.debugLogs
     }
 
-    // The Diagnostics heading gives the button context, so its labels are short
-    val sendToSupportLabel: LiveData<Int> = DiagnosticsService.sendToSupportState.map {
-        when (it) {
-            SendToSupportState.SENDING -> R.string.about_send_to_support_sending
-            SendToSupportState.SENT -> R.string.about_send_to_support_sent
-            SendToSupportState.FAILED -> R.string.about_send_to_support_failed
-            else -> R.string.about_send_to_support
-        }
-    }
-    val sendToSupportEnabled: LiveData<Boolean> = DiagnosticsService.sendToSupportState.map {
-        it != SendToSupportState.SENDING
-    }
+    val sendToSupportButton: LiveData<SendToSupportButtonState> =
+        DiagnosticsService.sendToSupportState.map { SendToSupportButtonState.of(it) }
+    val sendToSupportLabel: LiveData<Int> = sendToSupportButton.map { it.label }
+    val sendToSupportEnabled: LiveData<Boolean> = sendToSupportButton.map { it.enabled }
 
     var user: UserInfo = UserInfo()
     var region: String? = null

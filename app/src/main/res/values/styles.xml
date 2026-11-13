@@ -582,4 +582,17 @@
         <item name="android:textSize">15sp</item>
         <item name="android:textStyle">bold</item>
     </style>
+    <!-- About's Diagnostics buttons, matching iOS: flat light grey, dark mixed-case text,
+         rounded corners. Send to support turns green with a white tick once sent (AboutFragment). -->
+    <style name="diagnostics_button" parent="Widget.MaterialComponents.Button.UnelevatedButton">
+        <item name="backgroundTint">@color/diagnostics_button_background</item>
+        <item name="android:textColor">@color/diagnostics_button_text</item>
+        <item name="android:textAllCaps">false</item>
+        <item name="android:letterSpacing">0</item>
+        <item name="cornerRadius">8dp</item>
+        <item name="iconGravity">textStart</item>
+        <item name="iconSize">18dp</item>
+        <item name="iconPadding">6dp</item>
+        <item name="iconTint">@android:color/white</item>
+    </style>
 </resources>
