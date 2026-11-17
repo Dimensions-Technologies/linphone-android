@@ -32,7 +32,10 @@ data class HistoryEntry(
     val call: CallHistoryItemViewModel? = null,
     // The voicemail the call left, or this voicemail
     val voicemailBoxId: String? = null,
-    val voicemail: VoicemailMessage? = null
+    val voicemail: VoicemailMessage? = null,
+    // The call whose details the row opens: the call's, or for a voicemail with no listed call the
+    // call remembered for it (WI 37000). None if it isn't known.
+    val callDocumentId: String? = null
 )
 
 /**

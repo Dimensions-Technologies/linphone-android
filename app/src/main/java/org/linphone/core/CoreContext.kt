@@ -75,6 +75,7 @@ import org.linphone.services.CallRouteService
 import org.linphone.services.CallWaitingService
 import org.linphone.services.CallerIdService
 import org.linphone.services.ParkingSlotService
+import org.linphone.services.VoicemailCallLinkService
 import org.linphone.services.PullCallService
 import org.linphone.services.PushTokenService
 import org.linphone.services.TransferService
@@ -471,6 +472,9 @@ class CoreContext(
 
         // Keeps the user's voicemail boxes up to date
         VoicemailBoxService.start()
+
+        // Remembers the call each voicemail was left on, for after it ages out of the history
+        VoicemailCallLinkService.start()
 
         _lifecycleRegistry.currentState = Lifecycle.State.STARTED
 

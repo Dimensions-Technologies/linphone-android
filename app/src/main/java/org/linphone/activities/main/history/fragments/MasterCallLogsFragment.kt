@@ -68,6 +68,7 @@ import org.linphone.models.voicemail.VoicemailMessage
 import org.linphone.services.BrandHighlight
 import org.linphone.services.CallHistoryService
 import org.linphone.services.DirectoriesService
+import org.linphone.services.HistoryDebugFilter
 import org.linphone.services.UserService
 import org.linphone.services.VoicemailAudioException
 import org.linphone.services.VoicemailBoxService
@@ -276,6 +277,21 @@ class MasterCallLogsFragment : MasterFragment<HistoryMasterFragmentBinding, Call
             }
         }
 
+        // Debug builds: a long press on the History tab hides the calls voicemails were left on, as
+        // if they'd aged out, to try the voicemails' remembered calls (WI 37000). The tab is
+        // disabled while it's selected, so it's long pressed from another tab.
+        if (HistoryDebugFilter.isAvailable) {
+            binding.historyTab.setOnLongClickListener {
+                val on = HistoryDebugFilter.toggle()
+                Toast.makeText(
+                    requireContext(),
+                    if (on) "Debug: calls with a voicemail hidden" else "Debug: calls with a voicemail shown",
+                    Toast.LENGTH_SHORT
+                ).show()
+                true
+            }
+        }
+
         adapter.groupToggledEvent.observe(viewLifecycleOwner) {
             it.consume { row -> listViewModel.toggleGroup(row) }
         }
@@ -369,7 +385,7 @@ class MasterCallLogsFragment : MasterFragment<HistoryMasterFragmentBinding, Call
         listViewModel.viewDetailsEvent.observe(
             viewLifecycleOwner
         ) {
-            it.consume { call -> navigateToCallDetail(binding.slidingPane, call.call.documentId) }
+            it.consume { documentId -> navigateToCallDetail(binding.slidingPane, documentId) }
         }
 
         listViewModel.addContactEvent.observe(
