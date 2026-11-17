@@ -58,7 +58,9 @@ class NativeCallWrapper(var callId: String) : Connection() {
 
     override fun onAnswer(videoState: Int) {
         Log.i("[Connection] Answering telecom call with id: $callId")
-        getCall()?.accept() ?: selfDestroy()
+        // Same answer as in the app (call params, including the Bluetooth audio devices), so
+        // answering on a headset or watch behaves like answering on the phone
+        getCall()?.let { coreContext.answerCall(it) } ?: selfDestroy()
     }
 
     override fun onHold() {
