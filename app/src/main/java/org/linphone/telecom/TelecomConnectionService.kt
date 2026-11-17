@@ -91,12 +91,22 @@ class TelecomConnectionService : ConnectionService() {
     }
 
     override fun onUnbind(intent: Intent?): Boolean {
+        // Telecom can unbind while a call is still up (seen after answering on a Bluetooth
+        // headset) and bind again for the next call without re-creating the service, so
+        // onCreate() doesn't run again. The Core listener must stay registered until the
+        // service is destroyed, or later connections never leave RINGING/ACTIVE and Telecom
+        // refuses every new incoming call as busy.
+        Log.i("[Telecom Connection Service] onUnbind()")
+        return super.onUnbind(intent)
+    }
+
+    override fun onDestroy() {
         if (LinphoneApplication.contextExists()) {
-            Log.i("[Telecom Connection Service] onUnbind()")
+            Log.i("[Telecom Connection Service] onDestroy()")
             coreContext.core.removeListener(listener)
         }
 
-        return super.onUnbind(intent)
+        super.onDestroy()
     }
 
     override fun onCreateOutgoingConnection(
