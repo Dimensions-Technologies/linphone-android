@@ -56,20 +56,16 @@ class AudioRouteUtils {
                 "[Audio Route Helper] Looking for an ${if (output) "output" else "input"} audio device with capability [$capability], driver name [$preferredDriver] and type [$types] in extended audio devices list (size ${extendedAudioDevices.size})"
             )
 
-            val foundAudioDevice = extendedAudioDevices.find {
-                it.driverName == preferredDriver && types.contains(it.type) && it.hasCapability(
-                    capability
-                )
-            }
-            val audioDevice = if (foundAudioDevice == null) {
+            val audioDevice = AudioDeviceSelection.find(
+                extendedAudioDevices.toList(),
+                types,
+                capability,
+                preferredDriver
+            )
+            if (audioDevice != null && audioDevice.driverName != preferredDriver) {
                 Log.i(
                     "[Audio Route Helper] Failed to find an audio device with capability [$capability], driver name [$preferredDriver] and type [$types]"
                 )
-                extendedAudioDevices.find {
-                    types.contains(it.type) && it.hasCapability(capability)
-                }
-            } else {
-                foundAudioDevice
             }
 
             if (audioDevice == null) {

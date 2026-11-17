@@ -1205,6 +1205,23 @@ class CoreContext(
 
         params.recordFile = LinphoneUtils.getRecordingFilePathForAddress(call.remoteAddress)
 
+        // Start the call's audio on the Bluetooth headset rather than switching to it once the
+        // call is up (WI 37097)
+        AudioDeviceSelection.forAnswer(
+            core.callsNb,
+            corePreferences.routeAudioToBluetoothIfAvailable,
+            AudioRouteUtils.isHeadsetAudioRouteAvailable(),
+            core.extendedAudioDevices.toList(),
+            core.defaultOutputAudioDevice?.driverName,
+            core.defaultInputAudioDevice?.driverName
+        )?.let { devices ->
+            Log.i(
+                "[Context] Answering on Bluetooth: playback [${devices.output.deviceName} (${devices.output.driverName})], recorder [${devices.input?.deviceName} (${devices.input?.driverName})]"
+            )
+            params.outputAudioDevice = devices.output
+            devices.input?.let { params.inputAudioDevice = it }
+        }
+
         if (LinphoneUtils.checkIfNetworkHasLowBandwidth(context)) {
             Log.w("[Context] Enabling low bandwidth mode!")
             params.isLowBandwidthEnabled = true

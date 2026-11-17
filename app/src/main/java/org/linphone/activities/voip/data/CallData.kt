@@ -290,7 +290,7 @@ open class CallData(val call: Call) : GenericContactData(call.remoteAddress) {
     }
 
     fun accept() {
-        call.accept()
+        coreContext.answerCall(call)
     }
 
     fun terminate() {
