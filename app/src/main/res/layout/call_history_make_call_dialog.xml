@@ -67,7 +67,7 @@
 
         <TextView
             android:id="@+id/callHistoryDialog_ViewDetailsButton"
-            android:onClick="@{() -> historyViewModel.viewDetails(callViewModel)}"
+            android:onClick="@{() -> historyViewModel.viewDetails()}"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="@string/call_detail_view"
@@ -75,7 +75,7 @@
             android:textSize="22sp"
             android:padding="10dp"
             android:gravity="center"
-            android:visibility="@{callViewModel == null || callViewModel.call.documentId.empty ? View.GONE : View.VISIBLE, default=visible}"
+            android:visibility="@{historyViewModel.menuCallDocumentId != null ? View.VISIBLE : View.GONE, default=gone}"
             />
 
         <TextView

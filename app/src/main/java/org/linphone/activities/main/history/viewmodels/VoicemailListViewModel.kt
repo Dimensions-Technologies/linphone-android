@@ -14,13 +14,16 @@ import org.linphone.models.contact.CallAvatarRules
 import org.linphone.models.contact.ContactDirectoryRules
 import org.linphone.models.voicemail.VoicemailBox
 import org.linphone.models.voicemail.VoicemailBoxWithMessages
+import org.linphone.models.voicemail.VoicemailCallLinks
 import org.linphone.models.voicemail.VoicemailMessage
 import org.linphone.models.voicemail.VoicemailRow
 import org.linphone.models.voicemail.VoicemailRules
 import org.linphone.services.CallHistoryService
+import org.linphone.services.HistoryDebugFilter
 import org.linphone.services.PhoneFormatterService
 import org.linphone.services.UserGroupService
 import org.linphone.services.VoicemailBoxService
+import org.linphone.services.VoicemailCallLinkService
 import org.linphone.utils.DateUtils
 import org.linphone.utils.Event
 import org.linphone.utils.Log
@@ -93,8 +96,10 @@ class VoicemailListViewModel : ViewModel() {
         VoicemailBoxService.boxes,
         UserGroupService.getInstance(context).directoryContacts.startWithItem(emptyList()),
         CallHistoryService.getInstance(context).history,
-        DateUtils.todaysDate
-    ) { boxes, directories, history, date ->
+        DateUtils.todaysDate,
+        VoicemailCallLinkService.links,
+        HistoryDebugFilter.hideCallsWithVoicemail
+    ) { boxes, directories, history, date, storedLinks, hideCalls ->
         // Callers named after the directory contact with their number, as on the web client
         val countryCode = PhoneFormatterService.getInstance(context).getPbxCountryCode()
         val names = mutableMapOf<String, String>()
@@ -121,14 +126,12 @@ class VoicemailListViewModel : ViewModel() {
                 }
             }
         }
-        // Each matched to the call that preceded it, so it can link to the call's details
-        val matches = mutableMapOf<String, String>()
-        for (box in boxes) {
-            for (message in box.messages) {
-                VoicemailRules.matchCall(message, history, countryCode)?.let { matches[message.mediaId] = it }
-            }
-        }
-        Snapshot(boxes, names.toMap(), avatars.toMap(), matches.toMap(), date)
+        // Each matched to the call that preceded it, so it can link to the call's details, else to
+        // the call remembered for it once that call has aged out of the history (WI 37000). The
+        // debug filter hides the matched calls, so only the remembered ones are left.
+        val matches = if (hideCalls) emptyMap() else VoicemailCallLinks.match(boxes, history, countryCode)
+        val links = VoicemailCallLinks.withLinks(boxes, matches, storedLinks)
+        Snapshot(boxes, names.toMap(), avatars.toMap(), links, date)
     }.subscribe(
         { snapshot ->
             this.boxes = snapshot.boxes

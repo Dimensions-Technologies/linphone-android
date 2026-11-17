@@ -44,12 +44,15 @@ import org.linphone.models.contact.ContactDirectoryModel
 import org.linphone.models.contact.ContactDirectoryRules
 import org.linphone.models.contact.ContactItemModel
 import org.linphone.models.voicemail.VoicemailBoxWithMessages
+import org.linphone.models.voicemail.VoicemailCallLinks
 import org.linphone.models.voicemail.VoicemailMessage
 import org.linphone.models.voicemail.VoicemailRules
 import org.linphone.services.BrandHighlight
 import org.linphone.services.CallHistoryService
 import org.linphone.services.ContactsAccessService
 import org.linphone.services.DirectoriesService
+import org.linphone.services.HistoryDebugFilter
+import org.linphone.services.VoicemailCallLinkService
 import org.linphone.services.PhoneFormatterService
 import org.linphone.services.TransferService
 import org.linphone.services.UserGroupService
@@ -95,8 +98,9 @@ class CallLogsListViewModel : ViewModel() {
         MutableLiveData<Event<CallHistoryItemViewModel>>()
     }
 
-    val viewDetailsEvent: MutableLiveData<Event<CallHistoryItemViewModel>> by lazy {
-        MutableLiveData<Event<CallHistoryItemViewModel>>()
+    // The document id of the call whose details to open
+    val viewDetailsEvent: MutableLiveData<Event<String>> by lazy {
+        MutableLiveData<Event<String>>()
     }
 
     val addContactEvent: MutableLiveData<Event<CallHistoryItemViewModel>> by lazy {
@@ -111,6 +115,9 @@ class CallLogsListViewModel : ViewModel() {
     val menuTitle = MutableLiveData("")
     val menuCanCallBack = MutableLiveData(false)
     val menuHasVoicemail = MutableLiveData(false)
+
+    // The call whose details the menu's View call details opens; none hides it
+    val menuCallDocumentId = MutableLiveData<String?>(null)
     private var menuEntry: HistoryEntry? = null
 
     // A number to call, for a voicemail with no call
@@ -186,8 +193,12 @@ class CallLogsListViewModel : ViewModel() {
         Observable.combineLatest(
             callHistoryService.formattedHistory,
             voicemailBoxes,
-            UserGroupService.getInstance(coreContext.context).directoryContacts.startWithItem(emptyList())
-        ) { history, boxes, directories -> buildEntries(history, boxes, directories) }
+            UserGroupService.getInstance(coreContext.context).directoryContacts.startWithItem(emptyList()),
+            VoicemailCallLinkService.links,
+            HistoryDebugFilter.hideCallsWithVoicemail
+        ) { history, boxes, directories, storedLinks, hideCalls ->
+            buildEntries(history, boxes, directories, storedLinks, hideCalls)
+        }
             .takeUntil(destroy)
             .subscribe(
                 { built ->
@@ -319,7 +330,9 @@ class CallLogsListViewModel : ViewModel() {
     private fun buildEntries(
         history: List<CallHistoryItemViewModel>,
         boxes: List<VoicemailBoxWithMessages>,
-        directories: List<Pair<ContactDirectoryModel, List<ContactItemModel>>>
+        directories: List<Pair<ContactDirectoryModel, List<ContactItemModel>>>,
+        storedLinks: Map<String, String>,
+        hideCalls: Boolean
     ): List<HistoryEntry> {
         val context = coreContext.context
         val formatter = PhoneFormatterService.getInstance(context)
@@ -344,27 +357,21 @@ class CallLogsListViewModel : ViewModel() {
             }
         }
 
-        // Each voicemail matched to the call that went to it
-        val calls = history.map { it.call }
-        val byCall = HashMap<String, Pair<String, VoicemailMessage>>()
-        val unlinked = mutableListOf<Pair<String, VoicemailMessage>>()
-        for (box in boxes) {
-            for (message in box.messages) {
-                val documentId = try {
-                    VoicemailRules.matchCall(message, calls, countryCode)
-                } catch (e: Exception) {
-                    null
-                }
-                if (documentId != null) {
-                    if (documentId !in byCall) byCall[documentId] = box.box.id to message
-                } else {
-                    unlinked.add(box.box.id to message)
-                }
-            }
+        // Each voicemail matched to the call that went to it, else to the call remembered for it
+        // (WI 37000). The debug filter hides the matched calls, as if they'd aged out.
+        val matched = VoicemailCallLinks.match(boxes, history.map { it.call }, countryCode)
+        val listed = if (hideCalls) {
+            val hidden = matched.values.toSet()
+            history.filter { it.call.documentId !in hidden }
+        } else {
+            history
         }
+        val links = VoicemailCallLinks.withLinks(boxes, if (hideCalls) emptyMap() else matched, storedLinks)
+        val voicemails = VoicemailCallLinks.forHistory(boxes, links, listed.map { it.call.documentId }.toSet())
+        val byCall = voicemails.byCall
 
         val zone = ZoneId.systemDefault()
-        val list = history.mapNotNull { item ->
+        val list = listed.mapNotNull { item ->
             val time = item.call.startTime?.withZoneSameInstant(zone) ?: return@mapNotNull null
             val voicemail = byCall[item.call.documentId]
             val direction = HistoryTimelineRules.direction(item.call, voicemail != null)
@@ -386,12 +393,13 @@ class CallLogsListViewModel : ViewModel() {
                 nameIsCaller = name != unknown && name != voicemailName,
                 call = item,
                 voicemailBoxId = voicemail?.first,
-                voicemail = voicemail?.second
+                voicemail = voicemail?.second,
+                callDocumentId = item.call.documentId.ifEmpty { null }
             )
         }.toMutableList()
 
         val oldest = list.minOfOrNull { it.time.toEpochSecond() } ?: Long.MIN_VALUE
-        for ((boxId, message) in unlinked) {
+        for ((boxId, message, callDocumentId) in voicemails.unlisted) {
             val time = message.timestamp?.withZoneSameInstant(zone) ?: continue
             if (time.toEpochSecond() < oldest) continue
             val number = VoicemailRules.callerNumber(message)
@@ -410,7 +418,8 @@ class CallLogsListViewModel : ViewModel() {
                     avatarUrl = avatarOf(number),
                     nameIsCaller = name != null,
                     voicemailBoxId = boxId,
-                    voicemail = message
+                    voicemail = message,
+                    callDocumentId = callDocumentId
                 )
             )
         }
@@ -467,9 +476,11 @@ class CallLogsListViewModel : ViewModel() {
             call?.call?.pbxType != PbxType.Teams
         menuHasVoicemail.value = entry.voicemail != null && entry.voicemailBoxId != null
         canAddContact.value = call != null && canAddContact(call)
-        // Every call has its details, as on the web client
+        // Every call has its details, as on the web client, and so does a voicemail with no listed
+        // call when its call is remembered (WI 37000)
+        menuCallDocumentId.value = entry.callDocumentId
         if (menuCanCallBack.value == true || menuHasVoicemail.value == true || canAddContact.value == true ||
-            call?.call?.documentId?.isNotEmpty() == true
+            entry.callDocumentId != null
         ) {
             contextMenuAnimator.start()
             isContextMenuOpen.value = true
@@ -524,9 +535,10 @@ class CallLogsListViewModel : ViewModel() {
         playRecordingEvent.value = Event(call)
     }
 
-    fun viewDetails(call: CallHistoryItemViewModel) {
+    fun viewDetails() {
+        val documentId = menuCallDocumentId.value ?: return
         hideContextMenu(false)
-        viewDetailsEvent.value = Event(call)
+        viewDetailsEvent.value = Event(documentId)
     }
 
     fun addContact(call: CallHistoryItemViewModel) {

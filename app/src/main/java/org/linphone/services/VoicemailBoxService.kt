@@ -284,6 +284,7 @@ object VoicemailBoxService {
         return try {
             val response = api().deleteVoicemailMessage(boxId, mediaId)
             if (!response.isSuccessful) throw Exception("HTTP ${response.code()}")
+            VoicemailCallLinkService.forget(mediaId)
             refresh()
             true
         } catch (e: Exception) {
