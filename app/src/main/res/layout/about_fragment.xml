@@ -173,7 +173,7 @@
                         android:layout_height="wrap_content"
                         android:layout_marginHorizontal="10dp"
                         android:textAllCaps="false"
-                        android:textColor="@color/primary_dark_color"
+                        android:textColor="@color/diagnostics_title_color"
                         android:textSize="18sp"
                         android:text="@string/about_diagnostics_title" />
 

@@ -376,7 +376,7 @@
     </style>
 
     <style name="contact_number_list_cell_font" parent="@android:style/TextAppearance.Small">
-        <item name="android:textColor">@color/light_grey_color</item>
+        <item name="android:textColor">@color/subtle_text_color</item>
     </style>
 
     <style name="contact_number_list_cell_font_missed_call" parent="@android:style/TextAppearance.Small">
@@ -389,7 +389,7 @@
     </style>
 
     <style name="contact_edit_form_label_font" parent="@android:style/TextAppearance.Medium">
-        <item name="android:textColor">@color/light_grey_color</item>
+        <item name="android:textColor">@color/subtle_text_color</item>
         <item name="android:textSize">13sp</item>
     </style>
 
@@ -494,7 +494,7 @@
     </style>
 
     <style name="settings_item_subtitle_font" parent="@android:style/TextAppearance.Medium">
-        <item name="android:textColor">?attr/primarySubtextLightColor</item>
+        <item name="android:textColor">@color/subtle_text_color</item>
         <item name="android:textSize">12sp</item>
     </style>
 
