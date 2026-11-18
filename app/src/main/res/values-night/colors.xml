@@ -5,4 +5,9 @@
 
     <color name="media_player_track_color">#475663</color>
     <color name="media_player_buffered_color">#FFFFFF</color>
+
+    <!-- The brand's dark colour is unreadable on the dark background, so the heading uses the dark theme's text colour -->
+    <color name="diagnostics_title_color">@color/white_color</color>
+    <!-- Light grey reads well on the dark background but almost vanishes on white, so it's dark theme only -->
+    <color name="subtle_text_color">@color/light_grey_color</color>
 </resources>

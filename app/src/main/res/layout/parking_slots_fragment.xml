@@ -30,7 +30,7 @@
             android:layout_below="@id/top_bar"
             android:padding="20dp"
             android:text="@string/parking_slots_hint"
-            android:textColor="?attr/secondaryTextColor"
+            android:textColor="?attr/primaryTextColor"
             android:textSize="14sp"
             android:visibility="@{viewModel.slots.empty ? View.GONE : View.VISIBLE}" />
 
