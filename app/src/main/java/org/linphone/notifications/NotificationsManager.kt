@@ -849,16 +849,20 @@ class NotificationsManager(private val context: Context) {
                 "[Notifications Manager] Failed to get android.provider.Settings.Secure.getInt(lock_screen_show_notifications): $e"
             )
         }
+        Log.i(
+            "[Notifications Manager] Can use full-screen intent? ${Compatibility.hasFullScreenIntentPermission(context)}"
+        )
 
         val incomingCallNotificationIntent = Intent(context, CallActivity::class.java)
         incomingCallNotificationIntent.addFlags(
             Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_NO_USER_ACTION or Intent.FLAG_FROM_BACKGROUND
         )
+        // Posting again must not cancel the full-screen intent Android already holds (WI #37127)
         val pendingIntent = PendingIntent.getActivity(
             context,
             0,
             incomingCallNotificationIntent,
-            PendingIntent.FLAG_CANCEL_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            IncomingCallNotificationRules.PENDING_INTENT_FLAGS
         )
 
         val notification = Compatibility.createIncomingCallNotification(
@@ -868,8 +872,9 @@ class NotificationsManager(private val context: Context) {
             pendingIntent,
             this
         )
+        notification.flags = IncomingCallNotificationRules.withOnlyAlertOnce(notification.flags)
         Log.i(
-            "[Notifications Manager] Notifying incoming call notification [${notifiable.notificationId}]"
+            "[Notifications Manager] Notifying incoming call notification [${notifiable.notificationId}]${if (refresh) " (refresh)" else ""}"
         )
         notify(notifiable.notificationId, notification)
 
