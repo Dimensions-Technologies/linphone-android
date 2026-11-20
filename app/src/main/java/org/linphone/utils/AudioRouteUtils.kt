@@ -31,7 +31,8 @@ class AudioRouteUtils {
         private fun applyAudioRouteChange(
             call: Call?,
             types: List<AudioDevice.Type>,
-            output: Boolean = true
+            output: Boolean = true,
+            waitedForSco: Boolean = false
         ) {
             val currentCall = if (coreContext.core.callsNb > 0) {
                 call ?: coreContext.core.currentCall ?: coreContext.core.calls[0]
@@ -81,6 +82,26 @@ class AudioRouteUtils {
                 }
                 return
             }
+
+            if (output) {
+                if (!waitedForSco && AudioDeviceSelection.deferUntilScoOn(
+                        TelecomHelper.exists(),
+                        audioDevice.type,
+                        BluetoothScoWait.isScoOn(coreContext.context)
+                    )
+                ) {
+                    Log.i(
+                        "[Audio Route Helper] Bluetooth SCO isn't on yet, waiting for Telecom to bring it up before routing audio to [${audioDevice.deviceName} (${audioDevice.driverName})]"
+                    )
+                    BluetoothScoWait.runWhenScoOn(coreContext.context) {
+                        applyAudioRouteChange(call, types, true, waitedForSco = true)
+                    }
+                    return
+                }
+                // This route replaces any move to Bluetooth still waiting for SCO
+                if (!waitedForSco) BluetoothScoWait.cancel()
+            }
+
             if (conference != null && conference.isIn) {
                 Log.i(
                     "[Audio Route Helper] Found [${audioDevice.type}] ${if (output) "playback" else "recorder"} audio device [${audioDevice.deviceName} (${audioDevice.driverName})], routing conference audio to it"

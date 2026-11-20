@@ -1,7 +1,9 @@
 package org.linphone.utils
 
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertSame
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.linphone.core.AudioDevice
 import org.linphone.core.AudioDevice.Capabilities
@@ -12,7 +14,8 @@ import org.linphone.core.AudioDevice.Type
  * connected, the answer's call params name the headset, so the call's audio starts on it instead
  * of being switched to it once the call is up, which left the headset silent until the call was
  * held and resumed. The rules match the routing done when the first call starts: first call only,
- * a wired headset wins, and only when Bluetooth is preferred.
+ * a wired headset wins, and only when Bluetooth is preferred. When Telecom manages the call, the
+ * SDK only gets the headset once Bluetooth SCO is on, so the SDK never starts and stops SCO itself.
  */
 class AudioDeviceSelectionTest {
 
@@ -46,11 +49,13 @@ class AudioDeviceSelectionTest {
         callsNb: Int = 1,
         preferBluetooth: Boolean = true,
         wiredHeadsetAvailable: Boolean = false,
+        telecomManaged: Boolean = false,
         devices: List<AudioDevice> = withBluetooth
     ) = AudioDeviceSelection.forAnswer(
         callsNb,
         preferBluetooth,
         wiredHeadsetAvailable,
+        telecomManaged,
         devices,
         "AAudio",
         "AAudio"
@@ -101,5 +106,24 @@ class AudioDeviceSelectionTest {
     @Test
     fun `nothing changes when Bluetooth isn't preferred in the settings`() {
         assertNull(answer(preferBluetooth = false))
+    }
+
+    @Test
+    fun `a call Telecom manages is answered with the Core's defaults`() {
+        assertNull(answer(telecomManaged = true))
+    }
+
+    @Test
+    fun `under Telecom the move to Bluetooth waits for SCO`() {
+        assertTrue(AudioDeviceSelection.deferUntilScoOn(true, Type.Bluetooth, scoOn = false))
+        assertTrue(AudioDeviceSelection.deferUntilScoOn(true, Type.HearingAid, scoOn = false))
+    }
+
+    @Test
+    fun `the move to Bluetooth goes ahead once SCO is on, without Telecom, or for other devices`() {
+        assertFalse(AudioDeviceSelection.deferUntilScoOn(true, Type.Bluetooth, scoOn = true))
+        assertFalse(AudioDeviceSelection.deferUntilScoOn(false, Type.Bluetooth, scoOn = false))
+        assertFalse(AudioDeviceSelection.deferUntilScoOn(true, Type.Speaker, scoOn = false))
+        assertFalse(AudioDeviceSelection.deferUntilScoOn(true, Type.Earpiece, scoOn = false))
     }
 }

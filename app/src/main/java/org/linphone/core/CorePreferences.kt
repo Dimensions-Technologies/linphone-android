@@ -29,6 +29,7 @@ import java.io.FileOutputStream
 import java.security.KeyStoreException
 import org.linphone.LinphoneApplication.Companion.coreContext
 import org.linphone.compatibility.Compatibility
+import org.linphone.mediastream.MediastreamerAndroidContext
 import org.linphone.utils.LinphoneUtils
 import org.linphone.utils.Log
 
@@ -344,7 +345,17 @@ class CorePreferences constructor(private val context: Context) {
             config.setBool("app", "use_self_managed_telecom_manager", value)
             // We need to disable audio focus requests when enabling telecom manager, otherwise it creates conflicts
             config.setBool("audio", "android_disable_audio_focus_requests", value)
+            applyTelecomAudioRouting(value)
         }
+
+    // With Telecom managing calls, Telecom routes their audio (WI 37097), so the SDK's sound cards
+    // don't pick an Android device themselves: the call's audio plays on whatever Telecom routes
+    // it to, Bluetooth headset included. The SDK reads the setting when the Core is created, so it
+    // is also applied straight away.
+    fun applyTelecomAudioRouting(telecomManaged: Boolean) {
+        config.setBool("sound", "android_disable_audio_route_changes", telecomManaged)
+        MediastreamerAndroidContext.disableAudioRouteChanges(telecomManaged)
+    }
 
     // We will try to auto enable Telecom Manager feature, but in case user disables it don't try again
     var manuallyDisabledTelecomManager: Boolean
