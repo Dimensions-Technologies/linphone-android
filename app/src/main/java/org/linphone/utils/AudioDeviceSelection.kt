@@ -24,20 +24,24 @@ object AudioDeviceSelection {
 
     // The Bluetooth devices to answer an incoming call on, or null to answer with the Core's
     // defaults. Choosing them in the answer's call params means the call's audio starts on the
-    // headset, as it does when a held call is resumed, instead of starting on the phone and being
-    // switched to Bluetooth once the call is up, while Telecom is still bringing up the headset's
-    // call audio (WI 37097: no audio on the headset until the call was held and resumed).
+    // headset instead of being switched to it once the call is up.
     // Same rules as the first StreamsRunning routing in CoreContext: only for the first call, a
     // wired headset wins, and only when the "prefer Bluetooth" setting is on.
+    // Not when Telecom manages the call (WI 37097): it brings the headset's call audio (SCO) up
+    // when the call goes active, after the answer. A Bluetooth device in the SDK before that makes
+    // the SDK start SCO itself, and then stop it whenever the audio stream restarts, such as for the
+    // re-INVITE the PBX sends right after the answer, which left the headset silent until the
+    // call was held and resumed. The route is set once SCO is on instead (see deferUntilScoOn).
     fun forAnswer(
         callsNb: Int,
         preferBluetooth: Boolean,
         wiredHeadsetAvailable: Boolean,
+        telecomManaged: Boolean,
         devices: List<AudioDevice>,
         preferredOutputDriver: String?,
         preferredInputDriver: String?
     ): Devices? {
-        if (callsNb != 1 || !preferBluetooth || wiredHeadsetAvailable) return null
+        if (callsNb != 1 || !preferBluetooth || wiredHeadsetAvailable || telecomManaged) return null
         val output = find(
             devices,
             BLUETOOTH_TYPES,
@@ -52,4 +56,15 @@ object AudioDeviceSelection {
         )
         return Devices(output, input)
     }
+
+    // Whether moving a call's audio to a Bluetooth device in the SDK has to wait until Android
+    // reports Bluetooth SCO on (WI 37097). The SDK starts SCO itself for a Bluetooth device when
+    // it isn't on yet, and stops it again when the audio stream closes or restarts. Under Telecom
+    // that tears down the headset audio Telecom brought up, so the SDK must only see a Bluetooth
+    // device once SCO is already on, when it leaves SCO to Telecom.
+    fun deferUntilScoOn(
+        telecomManaged: Boolean,
+        deviceType: AudioDevice.Type,
+        scoOn: Boolean
+    ): Boolean = telecomManaged && BLUETOOTH_TYPES.contains(deviceType) && !scoOn
 }

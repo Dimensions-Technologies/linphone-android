@@ -70,6 +70,7 @@ import org.linphone.mediastream.Version
 import org.linphone.models.SoftphoneDeviceRules
 import org.linphone.models.UserDevice
 import org.linphone.notifications.NotificationsManager
+import org.linphone.services.CallAudioDiagnostics
 import org.linphone.services.CallContactMatchService
 import org.linphone.services.CallRouteService
 import org.linphone.services.CallWaitingService
@@ -322,6 +323,7 @@ class CoreContext(
 
         override fun onLastCallEnded(core: Core) {
             Log.i("[Context] Last call has ended")
+            BluetoothScoWait.cancel()
             removeCallOverlay()
             if (!core.isMicEnabled) {
                 Log.w("[Context] Mic was muted in Core, enabling it back for next call")
@@ -362,6 +364,8 @@ class CoreContext(
     }
 
     private var deviceSubscription: Disposable? = null
+
+    private var callAudioDiagnostics: CallAudioDiagnostics? = null
 
     init {
         if (context.resources.getBoolean(R.bool.crashlytics_enabled)) {
@@ -420,6 +424,7 @@ class CoreContext(
                     "[Context] Creating Telecom Helper, disabling audio focus requests in AudioHelper"
                 )
                 core.config.setBool("audio", "android_disable_audio_focus_requests", true)
+                corePreferences.applyTelecomAudioRouting(true)
                 val telecomHelper = TelecomHelper.required(context)
                 Log.i(
                     "[Context] Telecom Helper created, account is ${if (telecomHelper.isAccountEnabled()) "enabled" else "disabled"}"
@@ -441,6 +446,9 @@ class CoreContext(
         }
 
         configureCore()
+
+        // Codec, sound device and Bluetooth SCO details for each call (WI 37097)
+        callAudioDiagnostics = CallAudioDiagnostics(context, core).also { it.start() }
 
         core.start()
 
@@ -846,6 +854,9 @@ class CoreContext(
         val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
         audioManager.unregisterAudioDeviceCallback(audioDeviceCallback)
 
+        callAudioDiagnostics?.stop()
+        callAudioDiagnostics = null
+
         core.stop()
         core.removeListener(listener)
         stopped = true
@@ -1210,11 +1221,12 @@ class CoreContext(
         params.recordFile = LinphoneUtils.getRecordingFilePathForAddress(call.remoteAddress)
 
         // Start the call's audio on the Bluetooth headset rather than switching to it once the
-        // call is up (WI 37097)
+        // call is up, unless Telecom manages the call's audio (WI 37097)
         AudioDeviceSelection.forAnswer(
             core.callsNb,
             corePreferences.routeAudioToBluetoothIfAvailable,
             AudioRouteUtils.isHeadsetAudioRouteAvailable(),
+            TelecomHelper.exists(),
             core.extendedAudioDevices.toList(),
             core.defaultOutputAudioDevice?.driverName,
             core.defaultInputAudioDevice?.driverName
