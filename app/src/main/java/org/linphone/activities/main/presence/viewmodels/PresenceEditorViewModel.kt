@@ -24,6 +24,7 @@ import org.linphone.services.CallerIdService
 import org.linphone.services.PresenceProfileService
 import org.linphone.services.PresenceService
 import org.linphone.services.UserService
+import org.linphone.services.realtime.RealtimeUserService
 import org.linphone.utils.Log
 
 class PresenceEditorViewModel : ViewModel() {
@@ -48,6 +49,16 @@ class PresenceEditorViewModel : ViewModel() {
     val callerIdAvailable = MutableLiveData(false)
 
     val callerIdChoice = MutableLiveData<CallerIdChoice>()
+
+    // The caller ID is only changed through the realtime hub, so it can't be changed while that's down
+    val callerIdEnabled = MutableLiveData(false)
+
+    private val callerIdEnabledSubscription = RealtimeUserService.getInstance(coreContext.context).ready
+        .distinctUntilChanged()
+        .subscribe(
+            { ready -> callerIdEnabled.postValue(ready) },
+            { error -> Log.e("callerIdEnabledSubscription", error) }
+        )
 
     private var presenceSubscription: Disposable? = null
 
@@ -160,13 +171,13 @@ class PresenceEditorViewModel : ViewModel() {
         viewModelScope.launch { CallWaitingService.setEnabled(enabled) }
     }
 
-    fun setCallerId(option: CallerIdOption) {
-        CallerIdService.setCurrent(option)
-    }
+    /** Returns false when the choice wasn't taken, so the list should go back to the current one. */
+    fun setCallerId(option: CallerIdOption): Boolean = CallerIdService.setCurrent(option)
 
     override fun onCleared() {
         callWaitingSubscription.dispose()
         callerIdSubscription.dispose()
+        callerIdEnabledSubscription.dispose()
         super.onCleared()
     }
 }

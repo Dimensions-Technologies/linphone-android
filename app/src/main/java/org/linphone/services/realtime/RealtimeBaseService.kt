@@ -342,6 +342,9 @@ open class RealtimeBaseService(private val context: Context, private val hubSuff
         }
     }
 
+    /** Whether the hub can take requests now. invoke fails straight away when it can't. */
+    val isConnected: Boolean get() = hubConnection?.connectionState == HubConnectionState.CONNECTED
+
     /** Changes the user's outgoing caller ID, as the web client does. callerIdEvent then sends the new one. */
     fun setUserCli(request: SetUserCliRequest): Completable = Completable.defer { invoke("setUserCli", request) }
 

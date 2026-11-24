@@ -117,8 +117,13 @@ class PresenceEditorFragment : GenericFragment<FragmentPresenceEditorBinding>() 
 
             override fun onItemSelected(parent: AdapterView<*>, view: View?, position: Int, id: Long) {
                 // Also called when the list is filled; only act on the user picking another one
-                if (position == viewModel.callerIdChoice.value?.selectedIndex) return
-                adapter.getItem(position)?.let { viewModel.setCallerId(it) }
+                val selectedIndex = viewModel.callerIdChoice.value?.selectedIndex ?: return
+                if (position == selectedIndex) return
+                val option = adapter.getItem(position) ?: return
+                // A change that couldn't be sent leaves the caller ID as it was, so the list must too
+                if (!viewModel.setCallerId(option) && selectedIndex >= 0) {
+                    spinner.setSelection(selectedIndex, false)
+                }
             }
         }
     }
