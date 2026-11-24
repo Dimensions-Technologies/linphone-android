@@ -40,6 +40,7 @@
     <color name="diagnostics_button_color">#E4E4E4</color> <!-- About's Diagnostics buttons, as on iOS -->
     <color name="diagnostics_title_color">@color/primary_dark_color</color> <!-- About's Diagnostics heading: the brand's dark colour, white in dark theme (values-night) -->
     <color name="subtle_text_color">#757575</color> <!-- Secondary text (dates, subtitles, form labels) on the page background; light grey in dark theme (values-night) -->
+    <color name="destructive_text_color">@color/red_color</color> <!-- Red text for a destructive action (e.g. clearing a picture) on the page background; lighter red in dark theme (values-night) -->
     <color name="voip_conference_participant_paused_background">#303030</color>
     <color name="voip_dark_color">#252E35</color>  <!-- Background -->
     <color name="voip_dark_color2">#3F464B</color>  <!-- Light gray -->

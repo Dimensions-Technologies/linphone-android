@@ -72,7 +72,6 @@
                         android:layout_height="wrap_content"
                         android:layout_alignParentStart="true"
                         android:gravity="center_horizontal"
-                        android:onClick="@{avatarClickListener}"
                         android:orientation="vertical">
 
                         <ImageView
@@ -80,15 +79,49 @@
                             android:layout_width="@dimen/contact_avatar_medium_size"
                             android:layout_height="@dimen/contact_avatar_medium_size"
                             android:background="@drawable/generated_avatar_bg"
+                            android:onClick="@{avatarClickListener}"
                             android:src="@drawable/voip_single_contact_avatar"
                             android:contentDescription="@string/content_description_change_contact_picture" />
 
-                        <TextView
-                            style="@style/contact_edit_form_label_font"
+                        <!-- Upload · Clear, as on the web client and iOS; Clear only when there's a picture -->
+                        <LinearLayout
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:layout_marginTop="4dp"
-                            android:text="@string/contact_directory_edit_avatar" />
+                            android:orientation="horizontal">
+
+                            <TextView
+                                style="@style/contact_edit_form_label_font"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:onClick="@{avatarClickListener}"
+                                android:paddingTop="4dp"
+                                android:paddingBottom="4dp"
+                                android:text="@string/contact_directory_upload_avatar"
+                                android:textColor="?attr/accentColor" />
+
+                            <TextView
+                                style="@style/contact_edit_form_label_font"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:paddingStart="6dp"
+                                android:paddingEnd="6dp"
+                                android:importantForAccessibility="no"
+                                android:text="@string/contact_directory_avatar_separator"
+                                android:visibility="@{viewModel.hasAvatar ? View.VISIBLE : View.GONE}" />
+
+                            <TextView
+                                style="@style/contact_edit_form_label_font"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:onClick="@{() -> viewModel.removeAvatar()}"
+                                android:paddingTop="4dp"
+                                android:paddingBottom="4dp"
+                                android:text="@string/contact_directory_clear_avatar"
+                                android:textColor="@color/destructive_text_color"
+                                android:visibility="@{viewModel.hasAvatar ? View.VISIBLE : View.GONE}" />
+
+                        </LinearLayout>
 
                     </LinearLayout>
 

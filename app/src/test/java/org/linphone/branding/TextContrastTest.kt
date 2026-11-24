@@ -48,6 +48,7 @@ class TextContrastTest {
         "layout/contact_detail_cell.xml: ?attr/accentColor on ?attr/backgroundColor",
         "layout/contact_detail_fragment.xml: ?attr/accentColor on ?attr/lightToolbarBackgroundColor",
         "layout/contact_list_cell.xml: ?attr/accentColor on ?attr/backgroundColor",
+        "layout/directory_contact_editor_fragment.xml: ?attr/accentColor on ?attr/backgroundColor",
         "layout/fragment_presence_editor.xml: ?attr/accentColor on ?attr/lightToolbarBackgroundColor",
         "layout/fragment_recording_playback.xml: ?attr/accentColor on ?attr/lightToolbarBackgroundColor",
         "layout/generic_list_header.xml: ?attr/accentColor on ?attr/backgroundColor",

@@ -180,9 +180,9 @@
     <string name="contacts_successfullyRemovedUserFromFavorites">Successfully removed user from favourites</string>
     <string name="contact_directory_add_title">Add Contact</string>
     <string name="contact_directory_edit_title">Edit Contact</string>
-    <string name="contact_directory_edit_avatar">Edit</string>
-    <string name="contact_directory_change_avatar">Change picture</string>
-    <string name="contact_directory_remove_avatar">Remove picture</string>
+    <string name="contact_directory_upload_avatar">Upload</string>
+    <string name="contact_directory_clear_avatar">Clear</string>
+    <string name="contact_directory_avatar_separator" translatable="false">·</string>
     <string name="contact_directory_avatar_failed">The picture could not be loaded</string>
     <string name="contact_directory_internal_number">Internal number</string>
     <string name="contact_directory_additional_fields">Additional fields</string>
