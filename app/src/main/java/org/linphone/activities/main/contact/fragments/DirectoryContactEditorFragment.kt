@@ -10,7 +10,6 @@ import android.view.View
 import android.widget.EditText
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.appcompat.app.AlertDialog
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.widget.doAfterTextChanged
@@ -120,7 +119,7 @@ class DirectoryContactEditorFragment : GenericFragment<DirectoryContactEditorFra
         binding.viewModel = viewModel
 
         binding.setBackClickListener { goBack() }
-        binding.setAvatarClickListener { onAvatarClicked() }
+        binding.setAvatarClickListener { launchAvatarPicker() }
         binding.setDeleteClickListener { confirmDelete() }
 
         bindField(binding.nameLayout, binding.name, viewModel.nameField)
@@ -206,24 +205,6 @@ class DirectoryContactEditorFragment : GenericFragment<DirectoryContactEditorFra
             }
             else -> binding.avatar.setImageResource(R.drawable.voip_single_contact_avatar)
         }
-    }
-
-    private fun onAvatarClicked() {
-        if (!viewModel.hasAvatar()) {
-            launchAvatarPicker()
-            return
-        }
-
-        AlertDialog.Builder(requireContext())
-            .setItems(
-                arrayOf(
-                    getString(R.string.contact_directory_change_avatar),
-                    getString(R.string.contact_directory_remove_avatar)
-                )
-            ) { _, which ->
-                if (which == 0) launchAvatarPicker() else viewModel.removeAvatar()
-            }
-            .show()
     }
 
     private fun launchAvatarPicker() {

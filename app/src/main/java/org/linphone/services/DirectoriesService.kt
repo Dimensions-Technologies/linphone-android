@@ -12,6 +12,7 @@ import io.reactivex.rxjava3.schedulers.Schedulers
 import io.reactivex.rxjava3.subjects.BehaviorSubject
 import io.reactivex.rxjava3.subjects.PublishSubject
 import java.io.IOException
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicReference
 import kotlinx.coroutines.Dispatchers
@@ -26,6 +27,7 @@ import org.linphone.LinphoneApplication.Companion.coreContext
 import org.linphone.R
 import org.linphone.activities.main.contact.viewmodels.UserGroupViewModel
 import org.linphone.authentication.AuthStateManager
+import org.linphone.environment.DimensionsEnvironmentService
 import org.linphone.models.AuthenticatedUser
 import org.linphone.models.UserInfo
 import org.linphone.models.contact.ContactDirectoryModel
@@ -47,6 +49,10 @@ class DirectoriesService(val context: Context) : DefaultLifecycleObserver {
     private val apiClient = APIClientService(context)
     private val authStateManager = AuthStateManager.getInstance(context)
     private val destroy = PublishSubject.create<Unit>()
+
+    // Contact id to when its picture was last changed here, added to the picture's address so the
+    // image cache doesn't keep showing the old picture (the address itself doesn't change).
+    private val avatarVersions = ConcurrentHashMap<String, Long>()
 
     private var contactDirectoriesSubscription: Disposable? = null
     val contactDirectoriesSubject = BehaviorSubject.create<List<ContactDirectoryModel>>()
@@ -251,6 +257,11 @@ class DirectoriesService(val context: Context) : DefaultLifecycleObserver {
         removeAvatar: Boolean
     ): ContactItemModel? {
         Log.d("updateContact::${request.id}")
+        if (avatarPng != null) {
+            avatarVersions[request.id] = System.currentTimeMillis()
+        } else if (removeAvatar) {
+            avatarVersions.remove(request.id)
+        }
         return try {
             val response = apiClient.getUCGatewayService().updateDirectoryContact(
                 request.directoryId,
@@ -338,8 +349,15 @@ class DirectoriesService(val context: Context) : DefaultLifecycleObserver {
         return response.body().orEmpty().map { it.withDirectoryId(id) }
     }
 
-    private fun ContactItemModel.withDirectoryId(id: String) =
-        if (directoryId.isEmpty()) copy(directoryId = id) else this
+    // Also gives the avatar field its full address: create and update return only its path.
+    private fun ContactItemModel.withDirectoryId(id: String): ContactItemModel {
+        val contact = if (directoryId.isEmpty()) copy(directoryId = id).also { it.isInFavourites = isInFavourites } else this
+        return ContactDirectoryRules.withAvatarUrl(
+            contact,
+            DimensionsEnvironmentService.getInstance(context).getCurrentEnvironment()?.resourcesBlobUrl,
+            avatarVersions[contact.id]
+        )
+    }
 
     private fun contactItemPart(request: ContactItemRequest) =
         GsonUtils.defaultGsonInstance.toJson(request).toRequestBody()

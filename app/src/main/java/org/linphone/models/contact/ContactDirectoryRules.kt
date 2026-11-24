@@ -362,6 +362,35 @@ object ContactDirectoryRules {
         )
     }
 
+    /**
+     * A contact picture's full address, as iOS's ContactDirectoryRules.AvatarUrl. The list endpoints
+     * give a full URL, but create and update give the path under the environment's resources
+     * ("{tenant}/contact-images/{id}.png"), which is served from "{resources}/images/{path}". Empty
+     * if there's no picture, or no resources URL to build it from. [version] (when the picture last
+     * changed) is added as a query so a changed picture isn't shown from the image cache.
+     */
+    fun avatarUrl(value: String?, resourcesUrl: String?, version: Long? = null): String {
+        val path = value?.trim()
+        if (path.isNullOrEmpty()) return ""
+        val url = when {
+            Regex("^https?://", RegexOption.IGNORE_CASE).containsMatchIn(path) -> path
+            resourcesUrl.isNullOrBlank() -> return ""
+            else -> "${resourcesUrl.trimEnd('/')}/images/${path.trimStart('/')}"
+        }
+        if (version == null) return url
+        return url + (if (url.contains('?')) "&" else "?") + "t=$version"
+    }
+
+    /** The contact with its avatar field turned into a full address (see [avatarUrl]); no other field changes. */
+    fun withAvatarUrl(contact: ContactItemModel, resourcesUrl: String?, version: Long? = null): ContactItemModel {
+        if (contact.fields.none { it.id == ContactItemModel.AVATAR_URL }) return contact
+        return contact.copy(
+            fields = contact.fields.map {
+                if (it.id == ContactItemModel.AVATAR_URL) it.copy(value = avatarUrl(it.value, resourcesUrl, version)) else it
+            }
+        ).also { it.isInFavourites = contact.isInFavourites }
+    }
+
     fun toDialable(number: String): String = number.replace(Regex("[^0-9+#*]"), "")
 
     /**

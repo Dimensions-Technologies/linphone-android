@@ -10,4 +10,6 @@
     <color name="diagnostics_title_color">@color/white_color</color>
     <!-- Light grey reads well on the dark background but almost vanishes on white, so it's dark theme only -->
     <color name="subtle_text_color">@color/light_grey_color</color>
+    <!-- The theme's red is too dark to read on the dark background, so destructive actions use a lighter red -->
+    <color name="destructive_text_color">#FF6B6B</color>
 </resources>

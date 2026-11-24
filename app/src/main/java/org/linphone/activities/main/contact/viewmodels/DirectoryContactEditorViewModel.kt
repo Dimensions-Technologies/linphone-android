@@ -1,5 +1,6 @@
 package org.linphone.activities.main.contact.viewmodels
 
+import androidx.lifecycle.MediatorLiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
@@ -68,6 +69,13 @@ class DirectoryContactEditorViewModel(
     val newAvatar = MutableLiveData<ByteArray?>(null)
     private var avatarChanged = false
 
+    // Whether there's a picture to clear, for showing Clear under it
+    val hasAvatar = MediatorLiveData<Boolean>().apply {
+        val update = { value = newAvatar.value != null || !avatarUrl.value.isNullOrEmpty() }
+        addSource(newAvatar) { update() }
+        addSource(avatarUrl) { update() }
+    }
+
     val saving = MutableLiveData(false)
     val nameError = MutableLiveData(false)
     val phoneError = MutableLiveData(false)
@@ -100,8 +108,6 @@ class DirectoryContactEditorViewModel(
         avatarUrl.value = null
         avatarChanged = true
     }
-
-    fun hasAvatar() = newAvatar.value != null || !avatarUrl.value.isNullOrEmpty()
 
     fun save() {
         if (saving.value == true) return

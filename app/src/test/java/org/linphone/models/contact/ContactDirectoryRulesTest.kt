@@ -561,4 +561,85 @@ class ContactDirectoryRulesTest {
 
         assertEquals(fromServer, ContactDirectoryRules.mergeSearchResults(emptyList(), fromServer))
     }
+
+    // Ported from iOS's ContactDirectoryRulesTests (AvatarUrl_*, WithAvatarUrl_*)
+
+    @Test
+    fun `avatar url gives a full url`() {
+        val resources = "https://resource.xarios.dev/"
+
+        assertEquals(
+            "https://resource.xarios.dev/images/tenant-1/contact-images/c1.png",
+            ContactDirectoryRules.avatarUrl(" /tenant-1/contact-images/c1.png ", resources)
+        )
+        assertEquals(
+            "HTTPS://cdn.example.com/c1.png",
+            ContactDirectoryRules.avatarUrl("HTTPS://cdn.example.com/c1.png", resources)
+        )
+        assertEquals(
+            "http://cdn.example.com/c1.png",
+            ContactDirectoryRules.avatarUrl("http://cdn.example.com/c1.png", null)
+        )
+        assertEquals("", ContactDirectoryRules.avatarUrl("tenant-1/contact-images/c1.png", " "))
+        assertEquals("", ContactDirectoryRules.avatarUrl("tenant-1/contact-images/c1.png", null))
+        assertEquals("", ContactDirectoryRules.avatarUrl("  ", resources))
+        assertEquals("", ContactDirectoryRules.avatarUrl(null, resources))
+    }
+
+    @Test
+    fun `avatar url adds the version`() {
+        val resources = "https://resource.xarios.dev"
+
+        assertEquals(
+            "https://resource.xarios.dev/images/tenant-1/contact-images/c1.png?t=1700000000000",
+            ContactDirectoryRules.avatarUrl("tenant-1/contact-images/c1.png", resources, 1700000000000)
+        )
+        assertEquals(
+            "https://cdn.example.com/c1.png?sig=abc&t=42",
+            ContactDirectoryRules.avatarUrl("https://cdn.example.com/c1.png?sig=abc", resources, 42)
+        )
+        assertEquals("", ContactDirectoryRules.avatarUrl("", resources, 42))
+    }
+
+    @Test
+    fun `with avatar url sets only the avatar field`() {
+        val contact = ContactItemModel(
+            id = "c1",
+            directoryId = "dir-Personal",
+            fields = listOf(
+                FieldItemModel("fullName", "Ada"),
+                FieldItemModel("phone1", "+441234567890"),
+                FieldItemModel("avatar", "tenant-1/contact-images/c1.png")
+            )
+        ).also { it.isInFavourites = true }
+
+        val result = ContactDirectoryRules.withAvatarUrl(contact, "https://resource.xarios.dev", 7)
+
+        assertEquals(
+            listOf(
+                FieldItemModel("fullName", "Ada"),
+                FieldItemModel("phone1", "+441234567890"),
+                FieldItemModel("avatar", "https://resource.xarios.dev/images/tenant-1/contact-images/c1.png?t=7")
+            ),
+            result.fields
+        )
+        assertEquals("c1", result.id)
+        assertEquals("dir-Personal", result.directoryId)
+        assertTrue(result.isInFavourites)
+    }
+
+    @Test
+    fun `with avatar url leaves no picture empty`() {
+        val empty = ContactItemModel(
+            id = "c1",
+            fields = listOf(FieldItemModel("fullName", "Ada"), FieldItemModel("avatar", ""))
+        )
+        val none = ContactItemModel(id = "c2", fields = listOf(FieldItemModel("fullName", "Bob")))
+
+        assertEquals(
+            listOf(FieldItemModel("fullName", "Ada"), FieldItemModel("avatar", "")),
+            ContactDirectoryRules.withAvatarUrl(empty, "https://resource.xarios.dev", 7).fields
+        )
+        assertEquals(none, ContactDirectoryRules.withAvatarUrl(none, "https://resource.xarios.dev", 7))
+    }
 }
