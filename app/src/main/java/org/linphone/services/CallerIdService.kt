@@ -1,10 +1,14 @@
 package org.linphone.services
 
 import android.content.Context
+import android.os.Handler
+import android.os.Looper
+import android.widget.Toast
 import io.reactivex.rxjava3.core.Observable
 import io.reactivex.rxjava3.disposables.Disposable
 import io.reactivex.rxjava3.subjects.BehaviorSubject
 import org.linphone.LinphoneApplication.Companion.coreContext
+import org.linphone.R
 import org.linphone.authentication.AuthStateManager
 import org.linphone.models.realtime.CallerId
 import org.linphone.models.realtime.RealtimeEventType
@@ -22,6 +26,7 @@ object CallerIdService {
     private val defaultCallerId = CallerId("Default", "")
 
     private val context: Context get() = coreContext.context
+    private val mainHandler = Handler(Looper.getMainLooper())
     private var started = false
 
     private val subscriptions = mutableListOf<Disposable>()
@@ -76,20 +81,43 @@ object CallerIdService {
         )
     }
 
-    /** Makes [option] the outgoing caller ID. Shown straight away, as on the web client. */
-    fun setCurrent(option: CallerIdOption) {
-        if (option.disabled) return
-        if (option.callerNumber == currentSubject.value?.callerNumber.orEmpty()) return
+    /**
+     * Makes [option] the outgoing caller ID. Shown straight away, as on the web client. Returns false
+     * when it can't be sent because the realtime connection is down (the list is disabled then).
+     */
+    fun setCurrent(option: CallerIdOption): Boolean {
+        if (option.disabled) return false
+        val previous = currentSubject.value ?: defaultCallerId
+        if (option.callerNumber == previous.callerNumber.orEmpty()) return true
 
-        currentSubject.onNext(CallerId(option.callerName, option.callerNumber))
+        val realtime = RealtimeUserService.getInstance(context)
+        // The change only goes through the hub, so don't show a caller ID the server never got.
+        // The web client only logs this failure, leaving its list on a caller ID that isn't in use.
+        if (!realtime.isConnected) {
+            Log.w("[Caller ID] Not setting to ${option.callerNumber.ifEmpty { "default" }}, realtime isn't connected")
+            return false
+        }
+
+        val attempted = CallerId(option.callerName, option.callerNumber)
+        currentSubject.onNext(attempted)
 
         Log.i("[Caller ID] Setting to ${option.callerNumber.ifEmpty { "default" }}")
         subscriptions.add(
-            RealtimeUserService.getInstance(context).setUserCli(SetUserCliRequest(option.callerNumber))
+            realtime.setUserCli(SetUserCliRequest(option.callerNumber))
                 .subscribe(
                     { Log.i("[Caller ID] setUserCliRequest succeeded") },
-                    { e -> Log.e(e, "[Caller ID] setUserCliRequest failed") }
+                    { e ->
+                        // The connection can still drop between the check and the request. The list
+                        // goes back to what the server has, and is disabled until it reconnects. It
+                        // may reconnect at once, so say the change failed.
+                        Log.e(e, "[Caller ID] setUserCliRequest failed")
+                        currentSubject.onNext(CallerIdRules.afterFailedSet(currentSubject.value, attempted, previous))
+                        mainHandler.post {
+                            Toast.makeText(context, R.string.presence_editor_caller_id_failed, Toast.LENGTH_LONG).show()
+                        }
+                    }
                 )
         )
+        return true
     }
 }

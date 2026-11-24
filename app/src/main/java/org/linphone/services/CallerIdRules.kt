@@ -48,4 +48,11 @@ object CallerIdRules {
         val options = byNumber.values.toList()
         return CallerIdChoice(options, options.indexOfFirst { it.callerNumber == currentNumber })
     }
+
+    /**
+     * The caller ID to show after the server didn't take [attempted]: back to [previous], unless
+     * callerIdEvent has sent another one since, which is then the server's real value.
+     */
+    fun afterFailedSet(shown: CallerId?, attempted: CallerId, previous: CallerId): CallerId =
+        if (shown == null || shown.callerNumber.orEmpty() == attempted.callerNumber.orEmpty()) previous else shown
 }

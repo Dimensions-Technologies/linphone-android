@@ -100,4 +100,29 @@ class CallerIdRulesTest {
         assertEquals(CallerId("Sales", "441111"), event.data!!.callerId)
         assertEquals(listOf(CallerId("Sales", "441111")), event.data!!.callerIds)
     }
+
+    private val previous = CallerId("Default", "")
+    private val attempted = CallerId("Sales", "441111")
+
+    @Test
+    fun `a failed change goes back to the caller ID shown before it`() {
+        assertEquals(previous, CallerIdRules.afterFailedSet(attempted, attempted, previous))
+    }
+
+    @Test
+    fun `a failed change goes back when nothing is shown`() {
+        assertEquals(previous, CallerIdRules.afterFailedSet(null, attempted, previous))
+    }
+
+    @Test
+    fun `a failed change keeps a caller ID the server sent after it`() {
+        val fromServer = CallerId("Support", "442222")
+        assertEquals(fromServer, CallerIdRules.afterFailedSet(fromServer, attempted, previous))
+    }
+
+    @Test
+    fun `a failed change back to the account default restores the previous number`() {
+        val default = CallerId("Default", null)
+        assertEquals(attempted, CallerIdRules.afterFailedSet(default, CallerId("Default", ""), attempted))
+    }
 }
