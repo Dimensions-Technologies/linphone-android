@@ -16,6 +16,12 @@ object ContactDirectoryRules {
     const val PERSONAL_DIRECTORY_NAME = "Personal"
     const val CONTRIBUTOR_ROLE = "customer.directories.contributor"
 
+    // How many contacts are fetched per directory, as on the web client (maxrecords=100)
+    const val FETCHED_CONTACTS_LIMIT = 100
+
+    // Numbers shorter than this (e.g. extensions) are never searched for, as toE164 leaves them as is
+    private const val MIN_SEARCHED_DIGITS = 5
+
     private const val ALL_USERS = "*"
     private const val BLF_ENABLED = "true"
 
@@ -188,6 +194,38 @@ object ContactDirectoryRules {
             if (match != null) return directory to match
         }
         return null
+    }
+
+    /**
+     * The directories whose fetched contacts may be incomplete: the fetch stops at
+     * FETCHED_CONTACTS_LIMIT, so a directory that returned that many may hold more. A directory that
+     * returned fewer was fetched in full, so a number missing from it isn't in it. Excluded types
+     * (e.g. HubSpot) are left out, as they're never matched.
+     */
+    fun partlyFetchedDirectories(
+        directories: List<Pair<ContactDirectoryModel, List<ContactItemModel>>>
+    ): List<ContactDirectoryModel> = directories
+        .filter { (directory, contacts) ->
+            directory.type !in excludedDirectoryTypes && contacts.size >= FETCHED_CONTACTS_LIMIT
+        }
+        .map { it.first }
+
+    /**
+     * The text to search a directory for to find a contact by the number, or null if it can't be
+     * searched for: the number's national significant number, without a country code or trunk
+     * prefix, so a contact stored either way contains it (01617864367 and +441617864367 are both
+     * 1617864367). Names, feature codes (*…) and short numbers such as extensions aren't searched.
+     */
+    fun numberSearchText(number: String, countryCode: String): String? {
+        val matchable = toMatchable(number) ?: return null
+        if (matchable.startsWith("*") || matchable.count { it.isDigit() } < MIN_SEARCHED_DIGITS) return null
+        return try {
+            val util = PhoneNumberUtil.getInstance()
+            util.getNationalSignificantNumber(util.parse(matchable, countryCode))
+                .takeIf { it.length >= MIN_SEARCHED_DIGITS }
+        } catch (e: Exception) {
+            null
+        }
     }
 
     /**

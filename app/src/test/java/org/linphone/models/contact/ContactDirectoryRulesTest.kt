@@ -431,6 +431,48 @@ class ContactDirectoryRulesTest {
             .assertResult(emptyList())
     }
 
+    private fun contacts(count: Int) = (1..count).map { searchContact("c$it", "fullName" to "Contact $it") }
+
+    @Test
+    fun `only directories fetched up to the limit may hold more contacts`() {
+        val full = directory("Over100")
+        val short = directory("Under100")
+        val empty = directory("Empty")
+        val hubspot = directory("HubSpot").copy(type = "HubspotContactDirectory")
+
+        assertEquals(
+            listOf(full),
+            ContactDirectoryRules.partlyFetchedDirectories(
+                listOf(
+                    full to contacts(ContactDirectoryRules.FETCHED_CONTACTS_LIMIT),
+                    short to contacts(99),
+                    empty to emptyList(),
+                    hubspot to contacts(ContactDirectoryRules.FETCHED_CONTACTS_LIMIT)
+                )
+            )
+        )
+    }
+
+    @Test
+    fun `a number is searched for without its country code or trunk prefix`() {
+        // Bug 37258: a contact stored either way contains the national significant number
+        assertEquals("1617864367", ContactDirectoryRules.numberSearchText("01617864367", "GB"))
+        assertEquals("1617864367", ContactDirectoryRules.numberSearchText("+441617864367", "GB"))
+        assertEquals("1617864367", ContactDirectoryRules.numberSearchText("0161 786 4367", "GB"))
+        assertEquals("1617864367", ContactDirectoryRules.numberSearchText("+44 (0)161 786-4367", "GB"))
+        assertEquals("2025550123", ContactDirectoryRules.numberSearchText("+12025550123", "GB"))
+        assertEquals("2025550123", ContactDirectoryRules.numberSearchText("(202) 555-0123", "US"))
+    }
+
+    @Test
+    fun `extensions, feature codes and names are not searched for`() {
+        assertNull(ContactDirectoryRules.numberSearchText("1040", "GB"))
+        assertNull(ContactDirectoryRules.numberSearchText("*97", "GB"))
+        assertNull(ContactDirectoryRules.numberSearchText("*1234567", "GB"))
+        assertNull(ContactDirectoryRules.numberSearchText("Draper 2", "GB"))
+        assertNull(ContactDirectoryRules.numberSearchText("", "GB"))
+    }
+
     private fun searchContact(id: String, vararg fields: Pair<String, String>) = ContactItemModel(
         id,
         "dir-Personal",

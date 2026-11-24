@@ -12,7 +12,10 @@ import coil.transform.CircleCropTransformation
 import io.reactivex.rxjava3.core.Observable
 import io.reactivex.rxjava3.disposables.Disposable
 import io.reactivex.rxjava3.subjects.BehaviorSubject
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 import org.linphone.LinphoneApplication.Companion.coreContext
 import org.linphone.R
@@ -41,6 +44,10 @@ import org.linphone.utils.SipIdentity
  *   arriving after the INVITE); a hit goes first
  * - contacts the server matches (callMatchEvent, e.g. from a CRM) are added after, unless their
  *   directory is one the user can't see or is excluded
+ * - unlike the web client, a number the fetched contacts don't have is also searched for on the
+ *   gateway (searchServer): only the first 100 contacts of each directory are fetched, and the
+ *   callMatchEvent naming one past them is lost if it's sent before the app subscribes, e.g. when
+ *   it's woken by a push for the call
  * - matches are deduplicated by contact id, and only removed when the call's other party changes
  *   (CallPartyRules, e.g. after an attended transfer): they're for the old party
  * - the call is named after its first match: full name, else company
@@ -64,6 +71,9 @@ object CallContactMatchService {
             emptyList()
         )
         val lookedUpNumbers = mutableSetOf<String>()
+
+        // Numbers searched for on the gateway (searchServer)
+        val serverSearchedNumbers = mutableSetOf<String>()
         var number: String = ""
 
         // The picture for the call's notification, downloaded from avatarUrl
@@ -81,6 +91,10 @@ object CallContactMatchService {
     // By the id the server gives the call in callMatchEvent: the PBX call id, which the callEvent
     // links to the SIP Call-ID (CallRouteService.callForServerId)
     private val pendingServerMatches = mutableMapOf<String, List<ContactMatch>>()
+
+    // Gateway searches for numbers the fetched directory contacts don't have, by number in E.164
+    // form: the contact found, else null. Dropped when the directory contacts reload.
+    private val serverSearches = mutableMapOf<String, Deferred<ContactMatch?>>()
 
     private var subscriptions = mutableListOf<Disposable>()
 
@@ -130,7 +144,13 @@ object CallContactMatchService {
         // look up again any call that hasn't been matched yet
         subscriptions.add(
             UserGroupService.getInstance(this.context).directoryContacts.subscribe(
-                { coreContext.handler.post { retryUnmatchedCalls() } },
+                {
+                    coreContext.handler.post {
+                        serverSearches.clear()
+                        calls.values.forEach { it.serverSearchedNumbers.clear() }
+                        retryUnmatchedCalls()
+                    }
+                },
                 { e -> Log.e("[Contact Match] Directory contacts failed", e) }
             )
         )
@@ -241,6 +261,7 @@ object CallContactMatchService {
     fun otherPartyChanged(call: Call) {
         val entry = entryFor(call) ?: return
         entry.lookedUpNumbers.clear()
+        entry.serverSearchedNumbers.clear()
         update(call, emptyList())
         lookUp(call)
     }
@@ -273,6 +294,7 @@ object CallContactMatchService {
         if (match == null) {
             // Not found yet; the directory contacts may not have loaded
             entry.lookedUpNumbers.remove(number)
+            searchServer(call, entry, number)
             return
         }
 
@@ -282,6 +304,56 @@ object CallContactMatchService {
             update(call, listOf(match) + current)
         }
     }
+
+    /**
+     * Searches the gateway's directories for a number the fetched directory contacts don't have
+     * (DirectoriesService.searchContactByNumber), once per call and number, and adds the contact
+     * found as a directory match if the call still has the number. A search is shared by every call
+     * with the number until the directory contacts reload.
+     */
+    private fun searchServer(call: Call, entry: CallMatches, number: String) {
+        val countryCode = PhoneFormatterService.getInstance(context).getPbxCountryCode()
+        if (ContactDirectoryRules.numberSearchText(number, countryCode) == null) return
+        val key = ContactDirectoryRules.toE164(ContactDirectoryRules.toMatchable(number) ?: return, countryCode)
+        if (!entry.serverSearchedNumbers.add(number)) return
+
+        val callId = call.callLog.callId
+        val search = serverSearches.getOrPut(key) {
+            coreContext.coroutineScope.async {
+                DirectoriesService.getInstance(context).searchContactByNumber(number, countryCode)
+                    ?.let { (directory, contact) -> ContactDirectoryRules.toContactMatch(directory, contact) }
+            }
+        }
+        coreContext.coroutineScope.launch {
+            val match = try {
+                search.await()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Log.e("[Contact Match] Call $callId: searching the directories for its number failed", e)
+                // Tried again when the directory contacts next reload
+                if (serverSearches[key] === search) serverSearches.remove(key)
+                return@launch
+            }
+            if (match == null) return@launch
+            // The call may have ended long ago, or now be with someone else
+            if (calls[callId] !== entry || entry.number != number) return@launch
+
+            val current = entry.matches.value.orEmpty()
+            if (current.any { it.contactId == match.contactId }) return@launch
+            Log.i("[Contact Match] Call $callId matches ${match.displayName} (directory search)")
+            // A directory match goes first, as a local one does
+            val matches = listOf(match) + current
+            if (call.state in endedStates) {
+                // Kept for the missed call notification; the call's own are gone
+                entry.matches.onNext(matches)
+            } else {
+                update(call, matches)
+            }
+        }
+    }
+
+    private val endedStates = setOf(Call.State.End, Call.State.Error, Call.State.Released)
 
     private fun retryUnmatchedCalls() {
         for (call in coreContext.core.calls) {
