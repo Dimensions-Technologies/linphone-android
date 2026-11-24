@@ -11,8 +11,14 @@ import io.reactivex.rxjava3.functions.BiFunction
 import io.reactivex.rxjava3.schedulers.Schedulers
 import io.reactivex.rxjava3.subjects.BehaviorSubject
 import io.reactivex.rxjava3.subjects.PublishSubject
+import java.io.IOException
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicReference
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.toRequestBody
@@ -297,6 +303,39 @@ class DirectoriesService(val context: Context) : DefaultLifecycleObserver {
             Log.e("Failed to fetch contacts for directory ${directory.id}", e)
             null
         }
+    }
+
+    /**
+     * Searches the gateway for the directory contact with the number, as the Contacts search does,
+     * for a number the fetched contacts don't have: only the directories whose fetched contacts may
+     * be incomplete are searched (ContactDirectoryRules.partlyFetchedDirectories). The gateway's
+     * filter is loose, so its results are checked against the number in E.164 form. Null if no
+     * contact has it, or it isn't a number that can be searched for (numberSearchText); throws if a
+     * search failed.
+     */
+    suspend fun searchContactByNumber(
+        number: String,
+        countryCode: String
+    ): Pair<ContactDirectoryModel, ContactItemModel>? {
+        val searchText = ContactDirectoryRules.numberSearchText(number, countryCode) ?: return null
+        val directories = ContactDirectoryRules.partlyFetchedDirectories(
+            UserGroupService.getInstance(context).currentDirectoryContacts()
+        )
+        if (directories.isEmpty()) return null
+        val results = withContext(Dispatchers.IO) {
+            coroutineScope {
+                directories
+                    .map { directory -> async { directory to searchDirectoryOrThrow(directory.id, searchText) } }
+                    .awaitAll()
+            }
+        }
+        return ContactDirectoryRules.findContactAndDirectoryByPhone(results, number, countryCode)
+    }
+
+    private fun searchDirectoryOrThrow(id: String, searchText: String): List<ContactItemModel> {
+        val response = apiClient.getUCGatewayService().searchDirectory(id, searchText).execute()
+        if (!response.isSuccessful) throw IOException("Searching directory $id failed: ${response.code()}")
+        return response.body().orEmpty().map { it.withDirectoryId(id) }
     }
 
     private fun ContactItemModel.withDirectoryId(id: String) =

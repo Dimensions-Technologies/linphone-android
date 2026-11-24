@@ -181,6 +181,16 @@ class CTGatewayServiceContractTest {
         assertEquals("Chris Rawlinson", contact.fields.first { it.id == "fullName" }.value)
     }
 
+    @Test
+    fun `searchDirectory filters the directory's items as the web client does`() {
+        enqueueFixture("contactdirectories-items.json")
+
+        val contacts = gateway.searchDirectory("dir-personal", "1617864367").execute().body()!!
+
+        assertRequest("GET", "/api/v1.0/contactdirectories/dir-personal/items?filter=1617864367&maxItems=100")
+        assertEquals("contact-1", contacts.single().id)
+    }
+
     private val request = ContactItemRequest(
         id = "",
         tenantId = "tenant-1",

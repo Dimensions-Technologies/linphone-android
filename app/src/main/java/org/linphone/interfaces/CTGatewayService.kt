@@ -20,6 +20,7 @@ import org.linphone.models.callsession.ConversationSummary
 import org.linphone.models.callsession.ConversationTranscription
 import org.linphone.models.callsession.InteractionTag
 import org.linphone.models.contact.ContactDirectoryModel
+import org.linphone.models.contact.ContactDirectoryRules
 import org.linphone.models.contact.ContactGroupItem
 import org.linphone.models.contact.ContactItemModel
 import org.linphone.models.realtime.PresenceProfile
@@ -88,7 +89,7 @@ interface CTGatewayService {
     @GET("api/v1.0/contactdirectories/{directoryId}/items")
     suspend fun getDirectoryContacts(
         @Path("directoryId") directoryId: String,
-        @Query("maxrecords") maxRecords: Int = 100
+        @Query("maxrecords") maxRecords: Int = ContactDirectoryRules.FETCHED_CONTACTS_LIMIT
     ): Response<List<ContactItemModel>>
 
     @GET("api/v1.0/contactdirectories/{directoryId}/items/{contactId}")
