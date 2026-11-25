@@ -187,7 +187,7 @@ class CTGatewayServiceContractTest {
 
         val contacts = gateway.searchDirectory("dir-personal", "1617864367").execute().body()!!
 
-        assertRequest("GET", "/api/v1.0/contactdirectories/dir-personal/items?filter=1617864367&maxItems=100")
+        assertRequest("GET", "/api/v1.0/contactdirectories/dir-personal/items?filter=1617864367&maxrecords=100")
         assertEquals("contact-1", contacts.single().id)
     }
 

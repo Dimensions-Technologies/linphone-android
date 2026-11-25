@@ -83,7 +83,8 @@ interface CTGatewayService {
     fun searchDirectory(
         @Path("directoryId") directoryId: String,
         @Query("filter") filter: String,
-        @Query("maxItems") maxItems: Int = 100
+        // maxrecords, not maxItems: the gateway ignores maxItems on a filtered search and returns 10
+        @Query("maxrecords") maxRecords: Int = ContactDirectoryRules.FETCHED_CONTACTS_LIMIT
     ): Call<List<ContactItemModel>>
 
     @GET("api/v1.0/contactdirectories/{directoryId}/items")
