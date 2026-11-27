@@ -48,7 +48,8 @@ class CallHistoryContactMatcherTest {
         direction: CallDirections,
         number: String,
         callType: CallTypes = CallTypes.External,
-        hasContactMatch: Boolean = false
+        hasContactMatch: Boolean = false,
+        isConference: Boolean = false
     ) = CallHistoryItem(
         missedCall = false,
         answered = true,
@@ -68,7 +69,7 @@ class CallHistoryContactMatcherTest {
         groupName = null,
         huntgroupName = null,
         documentId = "doc",
-        isConference = false,
+        isConference = isConference,
         pbxType = PbxType.Kazoo,
         interactionTags = listOf()
     )
@@ -100,6 +101,60 @@ class CallHistoryContactMatcherTest {
 
         val gatewayMatched = call(CallDirections.Incoming, "+447921910119", hasContactMatch = true)
         assertEquals("New Company - 07921 910119", enrich(gatewayMatched).contactName)
+    }
+
+    @Test
+    fun `unmatched external numbers are searched for on the gateway once per number`() {
+        val calls = listOf(
+            call(CallDirections.Incoming, "+441617864367"),
+            call(CallDirections.Outgoing, "0161 786 4367"),
+            call(CallDirections.Incoming, "01617864368")
+        )
+
+        assertEquals(
+            listOf("+441617864367" to "+441617864367", "+441617864368" to "01617864368"),
+            CallHistoryContactMatcher.numbersToSearch(calls, "GB")
+        )
+    }
+
+    @Test
+    fun `matched, internal, feature code, email and conference calls aren't searched for`() {
+        val calls = CallHistoryContactMatcher.enrich(
+            listOf(
+                // Matched to a downloaded contact
+                call(CallDirections.Incoming, "+447921910119"),
+                call(CallDirections.Incoming, "+441617864367", hasContactMatch = true),
+                call(CallDirections.Incoming, "1041", callType = CallTypes.Internal),
+                call(CallDirections.Outgoing, "*97"),
+                call(CallDirections.Incoming, "someone@example.com"),
+                call(CallDirections.Incoming, "+441617864368", isConference = true)
+            ),
+            directories,
+            "GB"
+        )
+
+        assertEquals(emptyList<Pair<String, String>>(), CallHistoryContactMatcher.numbersToSearch(calls, "GB"))
+    }
+
+    @Test
+    fun `a contact found on the gateway names the call`() {
+        val found = ContactItemModel(
+            "c150",
+            "dir-personal",
+            listOf(
+                FieldItemModel("fullName", "ZZ WI36047 C7 Over100"),
+                FieldItemModel("phone1", "+441617864367")
+            )
+        )
+
+        val enriched = CallHistoryContactMatcher.enrich(
+            listOf(call(CallDirections.Incoming, "01617864367")),
+            listOf(personal to listOf(found)),
+            "GB"
+        ).single()
+
+        assertEquals("ZZ WI36047 C7 Over100", enriched.contactName)
+        assertTrue(enriched.hasContactMatch)
     }
 
     @Test

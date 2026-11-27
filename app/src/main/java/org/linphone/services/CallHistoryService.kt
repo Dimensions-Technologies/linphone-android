@@ -19,14 +19,19 @@ import java.util.Date
 import java.util.Locale
 import java.util.TimeZone
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicReference
 import java.util.zip.GZIPInputStream
 import java.util.zip.GZIPOutputStream
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.rx3.rxSingle
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 import org.linphone.authentication.AuthStateManager
 import org.linphone.models.AuthenticatedUser
@@ -36,6 +41,9 @@ import org.linphone.models.callhistory.CallHistoryItem
 import org.linphone.models.callhistory.CallHistoryItemViewModel
 import org.linphone.models.callhistory.ReportRequest
 import org.linphone.models.callhistory.ReportStates
+import org.linphone.models.contact.ContactDirectoryModel
+import org.linphone.models.contact.ContactDirectoryRules
+import org.linphone.models.contact.ContactItemModel
 import org.linphone.models.realtime.RealtimeEventType
 import org.linphone.services.realtime.RealtimeUserService
 import org.linphone.utils.CallHistoryDatabaseHelper
@@ -160,18 +168,46 @@ class CallHistoryService(val context: Context) : DefaultLifecycleObserver {
         }
     )
 
-    // External calls named after the matching directory contact, as on the web client
+    // Contacts found by searching the gateway for numbers the downloaded directory contacts don't
+    // have (only the first 100 of each directory are downloaded), by number in E.164 form. Guarded
+    // by serverSearchLock, as the history, the contacts and the searches each emit on their own thread.
+    private val serverSearchLock = Any()
+    private val serverFoundContacts = mutableMapOf<String, Pair<ContactDirectoryModel, ContactItemModel>>()
+
+    // The directory contacts the numbers were searched against: when they reload, every number is
+    // searched for again. Null after a user change, so a search still running is dropped.
+    private var serverSearchDirectories: List<Pair<ContactDirectoryModel, List<ContactItemModel>>>? = null
+    private val serverSearchedNumbers = mutableSetOf<String>()
+
+    // Bumped when serverFoundContacts changes, so the history is named again
+    private val serverFoundChangedSubject = BehaviorSubject.createDefault(0)
+    private val serverFoundChanged = serverFoundChangedSubject.toSerialized()
+    private val serverSearchCount = AtomicInteger(0)
+    private val serverSearchLimit = Semaphore(MAX_SERVER_SEARCHES)
+    private val serverSearchScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
+    // External calls named after the matching directory contact, as on the web client: one of the
+    // downloaded contacts, else one found by searching the gateway
     private val enrichedHistory: Observable<List<CallHistoryItem>> = Observable.combineLatest(
         history,
-        Observable.defer { UserGroupService.getInstance(context).directoryContacts }
-    ) { items, directories ->
+        Observable.defer { UserGroupService.getInstance(context).directoryContacts },
+        serverFoundChangedSubject
+    ) { items, directories, _ ->
         // Matching must never take the history down with it
         try {
-            CallHistoryContactMatcher.enrich(
-                items,
-                directories,
-                PhoneFormatterService.getInstance(context).getPbxCountryCode()
-            )
+            val countryCode = PhoneFormatterService.getInstance(context).getPbxCountryCode()
+            val result = CallHistoryContactMatcher.enrich(items, directories, countryCode)
+            searchServerForUnmatched(result, directories, countryCode)
+            val found = synchronized(serverSearchLock) { serverFoundContacts.values.toList() }
+            if (found.isEmpty()) {
+                result
+            } else {
+                CallHistoryContactMatcher.enrich(
+                    result,
+                    found.map { (directory, contact) -> directory to listOf(contact) },
+                    countryCode
+                )
+            }
         } catch (e: Exception) {
             Log.e(e, "$TAG: failed to match call history to contacts")
             items
@@ -218,6 +254,9 @@ class CallHistoryService(val context: Context) : DefaultLifecycleObserver {
 
     companion object {
         private const val TAG: String = "CallHistoryService"
+
+        // Gateway searches for unmatched numbers running at once
+        private const val MAX_SERVER_SEARCHES = 4
 
         // 2: items carry cli (voicemails are matched to calls by it)
         private const val CACHE_VERSION = 2
@@ -298,6 +337,7 @@ class CallHistoryService(val context: Context) : DefaultLifecycleObserver {
             .takeUntil(destroy)
             .subscribe { user ->
                 Log.d("User changed ($user.id) - update history from cache.")
+                clearServerSearches()
                 // Replace history list
                 val list = if (user.hasValidId()) listOf() else getCachedCallHistory(user.id)
                 callHistorySubject.onNext(list)
@@ -322,6 +362,71 @@ class CallHistoryService(val context: Context) : DefaultLifecycleObserver {
             } catch (e: Exception) {
                 Log.e(e, RealtimeEventType.CallHistoryEvent.eventName)
             }
+        }
+    }
+
+    /**
+     * Searches the gateway's directories (CallContactMatchService.findDirectoryContactOnServer,
+     * shared with live calls) for the numbers of the external calls the downloaded contacts left
+     * unmatched, as the web client's enrichWithContactNames falls back to
+     * findRemoteContactMatchByPhone. Only while some directory may have more contacts than were
+     * downloaded; each number once until the directory contacts reload.
+     */
+    private fun searchServerForUnmatched(
+        items: List<CallHistoryItem>,
+        directories: List<Pair<ContactDirectoryModel, List<ContactItemModel>>>,
+        countryCode: String
+    ) {
+        if (ContactDirectoryRules.partlyFetchedDirectories(directories).isEmpty()) return
+        val numbers = synchronized(serverSearchLock) {
+            if (serverSearchDirectories !== directories) {
+                // Reloaded: search again. Found contacts are kept until new results replace them.
+                serverSearchedNumbers.clear()
+                serverSearchDirectories = directories
+            }
+            CallHistoryContactMatcher.numbersToSearch(items, countryCode)
+                .filter { (key, _) -> serverSearchedNumbers.add(key) }
+        }
+        if (numbers.isEmpty()) return
+        Log.i("$TAG: searching the directories for ${numbers.size} unmatched number(s)")
+
+        for ((key, number) in numbers) {
+            serverSearchScope.launch {
+                val found = try {
+                    serverSearchLimit.withPermit {
+                        CallContactMatchService.findDirectoryContactOnServer(number, countryCode)
+                    }
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    // Searched for again when the directory contacts next reload
+                    Log.e(e, "$TAG: searching the directories for $number failed")
+                    return@launch
+                }
+
+                val changed = synchronized(serverSearchLock) {
+                    // The contacts reloaded, or the user changed, while searching
+                    if (serverSearchDirectories !== directories) return@launch
+                    if (found != null) {
+                        serverFoundContacts.put(key, found) != found
+                    } else {
+                        serverFoundContacts.remove(key) != null
+                    }
+                }
+                if (found != null) {
+                    Log.i("$TAG: $number is directory contact ${found.second.id}")
+                }
+                if (changed) serverFoundChanged.onNext(serverSearchCount.incrementAndGet())
+            }
+        }
+    }
+
+    // So one user's calls are never named after another user's contacts
+    private fun clearServerSearches() {
+        synchronized(serverSearchLock) {
+            serverFoundContacts.clear()
+            serverSearchedNumbers.clear()
+            serverSearchDirectories = null
         }
     }
 

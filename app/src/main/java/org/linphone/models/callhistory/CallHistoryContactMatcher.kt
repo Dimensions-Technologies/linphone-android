@@ -10,6 +10,9 @@ import org.linphone.utils.Log
  * Names external calls after the directory contact with the other party's number, as the web client
  * does (call-history.service.ts enrichWithContactNames): the contact's name, or else its company.
  * A matched call is marked hasContactMatch, which also stops it offering "Add contact".
+ * Only the first 100 contacts of each directory are downloaded, so CallHistoryService also searches
+ * the gateway for the numbers left unmatched (numbersToSearch) and names the calls after the contacts
+ * it finds, as the web client's findRemoteContactMatchByPhone.
  */
 object CallHistoryContactMatcher {
     fun enrich(
@@ -33,6 +36,24 @@ object CallHistoryContactMatcher {
             val name = contactName(directory, contact) ?: return@map item
             matched(item, name) ?: item
         }
+    }
+
+    /**
+     * The numbers to search the gateway's directories for, as the web client's
+     * findRemoteContactMatchByPhone: the other party's number of each external call left unmatched
+     * (run on enrich's result), when it's a number that can be searched for
+     * (ContactDirectoryRules.numberSearchKey). One per number in E.164 form, as (that key, the
+     * call's number), in call order.
+     */
+    fun numbersToSearch(items: List<CallHistoryItem>, countryCode: String): List<Pair<String, String>> {
+        val numbers = linkedMapOf<String, String>()
+        for (item in items) {
+            if (item.callType != CallTypes.External || item.hasContactMatch || item.isConference) continue
+            val number = otherPartyNumber(item)?.takeIf { it.isNotBlank() } ?: continue
+            val key = ContactDirectoryRules.numberSearchKey(number, countryCode) ?: continue
+            numbers.getOrPut(key) { number }
+        }
+        return numbers.map { (key, number) -> key to number }
     }
 
     /**

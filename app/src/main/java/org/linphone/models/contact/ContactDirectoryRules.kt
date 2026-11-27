@@ -231,6 +231,16 @@ object ContactDirectoryRules {
     }
 
     /**
+     * The key a gateway search for the number is shared under: the number in E.164 form, so
+     * 01617864367 and +441617864367 are one search. Null if the number isn't searched for (see
+     * numberSearchText).
+     */
+    fun numberSearchKey(number: String, countryCode: String): String? {
+        if (numberSearchText(number, countryCode) == null) return null
+        return toE164(toMatchable(number) ?: return null, countryCode)
+    }
+
+    /**
      * A directory contact as a live call match, as the web client builds one from a local lookup
      * (findContactMatchByPhone): its name, company and phone numbers by tag name.
      */
