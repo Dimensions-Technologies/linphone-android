@@ -14,9 +14,11 @@ import io.reactivex.rxjava3.disposables.Disposable
 import io.reactivex.rxjava3.subjects.BehaviorSubject
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.linphone.LinphoneApplication.Companion.coreContext
 import org.linphone.R
 import org.linphone.core.Address
@@ -25,6 +27,7 @@ import org.linphone.core.Core
 import org.linphone.core.CoreListenerStub
 import org.linphone.models.UserInfo
 import org.linphone.models.contact.CallAvatarRules
+import org.linphone.models.contact.ContactDirectoryModel
 import org.linphone.models.contact.ContactDirectoryRules
 import org.linphone.models.contact.ContactItemModel
 import org.linphone.models.contact.VoicemailRules
@@ -45,7 +48,8 @@ import org.linphone.utils.SipIdentity
  * - contacts the server matches (callMatchEvent, e.g. from a CRM) are added after, unless their
  *   directory is one the user can't see or is excluded
  * - unlike the web client, a number the fetched contacts don't have is also searched for on the
- *   gateway (searchServer): only the first 100 contacts of each directory are fetched, and the
+ *   gateway (searchServer, findDirectoryContactOnServer, which call history shares): only the first
+ *   100 contacts of each directory are fetched, and the
  *   callMatchEvent naming one past them is lost if it's sent before the app subscribes, e.g. when
  *   it's woken by a push for the call
  * - matches are deduplicated by contact id, and only removed when the call's other party changes
@@ -93,8 +97,10 @@ object CallContactMatchService {
     private val pendingServerMatches = mutableMapOf<String, List<ContactMatch>>()
 
     // Gateway searches for numbers the fetched directory contacts don't have, by number in E.164
-    // form: the contact found, else null. Dropped when the directory contacts reload.
-    private val serverSearches = mutableMapOf<String, Deferred<ContactMatch?>>()
+    // form (ContactDirectoryRules.numberSearchKey): the contact found, else null. Shared by live calls
+    // and call history; dropped when the directory contacts reload. Main thread only.
+    private val serverSearches =
+        mutableMapOf<String, Deferred<Pair<ContactDirectoryModel, ContactItemModel>?>>()
 
     private var subscriptions = mutableListOf<Disposable>()
 
@@ -313,26 +319,18 @@ object CallContactMatchService {
      */
     private fun searchServer(call: Call, entry: CallMatches, number: String) {
         val countryCode = PhoneFormatterService.getInstance(context).getPbxCountryCode()
-        if (ContactDirectoryRules.numberSearchText(number, countryCode) == null) return
-        val key = ContactDirectoryRules.toE164(ContactDirectoryRules.toMatchable(number) ?: return, countryCode)
+        if (ContactDirectoryRules.numberSearchKey(number, countryCode) == null) return
         if (!entry.serverSearchedNumbers.add(number)) return
 
         val callId = call.callLog.callId
-        val search = serverSearches.getOrPut(key) {
-            coreContext.coroutineScope.async {
-                DirectoriesService.getInstance(context).searchContactByNumber(number, countryCode)
-                    ?.let { (directory, contact) -> ContactDirectoryRules.toContactMatch(directory, contact) }
-            }
-        }
         coreContext.coroutineScope.launch {
             val match = try {
-                search.await()
+                findDirectoryContactOnServer(number, countryCode)
+                    ?.let { (directory, contact) -> ContactDirectoryRules.toContactMatch(directory, contact) }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
                 Log.e("[Contact Match] Call $callId: searching the directories for its number failed", e)
-                // Tried again when the directory contacts next reload
-                if (serverSearches[key] === search) serverSearches.remove(key)
                 return@launch
             }
             if (match == null) return@launch
@@ -350,6 +348,53 @@ object CallContactMatchService {
             } else {
                 update(call, matches)
             }
+        }
+    }
+
+    /**
+     * The directory contact with the number, searched for on the gateway
+     * (DirectoriesService.searchContactByNumber) in the directories whose fetched contacts may be
+     * incomplete. Null at once if the number isn't searched for or every directory was fetched in
+     * full. One search per number (in E.164 form) is shared by live calls and call history until the
+     * directory contacts reload; a failed one throws, and is tried again next time.
+     */
+    suspend fun findDirectoryContactOnServer(
+        number: String,
+        countryCode: String
+    ): Pair<ContactDirectoryModel, ContactItemModel>? {
+        val key = ContactDirectoryRules.numberSearchKey(number, countryCode) ?: return null
+        // Not context: call history can search before this service has started
+        val appContext = coreContext.context
+        if (ContactDirectoryRules.partlyFetchedDirectories(
+                UserGroupService.getInstance(appContext).currentDirectoryContacts()
+            ).isEmpty()
+        ) {
+            return null
+        }
+
+        val search = withContext(Dispatchers.Main) {
+            serverSearches.getOrPut(key) {
+                Log.i("[Contact Match] Searching the directories for $number")
+                coreContext.coroutineScope.async {
+                    DirectoriesService.getInstance(appContext).searchContactByNumber(number, countryCode)
+                        .also { found ->
+                            Log.i(
+                                "[Contact Match] Directory search for $number " +
+                                    if (found != null) "found contact ${found.second.id}" else "found no contact"
+                            )
+                        }
+                }
+            }
+        }
+        return try {
+            search.await()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            withContext(Dispatchers.Main) {
+                if (serverSearches[key] === search) serverSearches.remove(key)
+            }
+            throw e
         }
     }
 
