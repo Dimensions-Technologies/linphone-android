@@ -5,6 +5,7 @@ import io.reactivex.rxjava3.core.Observable
 import io.reactivex.rxjava3.core.Single
 import java.text.Collator
 import org.linphone.models.realtime.ContactMatch
+import org.linphone.utils.SearchText
 
 /**
  * Rules for reading and editing contact directories, ported from the Connect web client
@@ -117,12 +118,13 @@ object ContactDirectoryRules {
     fun isPhoneFieldId(id: String) = id.startsWith("phone")
 
     /**
-     * The cached contacts with any field containing the search text, ignoring case, as the web
-     * client's searchDirectoryLocally. Shown straight away while the gateway search runs.
+     * The cached contacts with any field containing the search text, ignoring case and the form of
+     * Hebrew and Yiddish letters (SearchText), as the web client's searchDirectoryLocally. Shown
+     * straight away while the gateway search runs.
      */
     fun searchCachedContacts(contacts: List<ContactItemModel>, searchText: String): List<ContactItemModel> {
-        val lower = searchText.lowercase()
-        return contacts.filter { contact -> contact.fields.any { it.value.lowercase().contains(lower) } }
+        val text = SearchText.from(searchText)
+        return contacts.filter { contact -> contact.fields.any { SearchText.from(it.value).contains(text) } }
     }
 
     /**

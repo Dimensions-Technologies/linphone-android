@@ -40,6 +40,7 @@ import org.linphone.models.usergroup.GroupUserSummaryModel
 import org.linphone.models.usergroup.UserGroupModel
 import org.linphone.utils.GsonUtils
 import org.linphone.utils.Log
+import org.linphone.utils.SearchText
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
@@ -503,16 +504,14 @@ class DirectoriesService(val context: Context) : DefaultLifecycleObserver {
     private fun searchAllUsers(searchText: String): Observable<List<GroupUserSummaryModel>> {
         Log.i("searchAllUsers::$searchText")
         // return Observable.just(listOf())
-        val lowerSearchText = searchText.lowercase()
+        val text = SearchText.from(searchText)
 
         val currentUserId = AuthStateManager.getInstance(context).getUser().id
 
         return allUsers.map { allUsers ->
             allUsers
                 .filter { user ->
-                    user.id != currentUserId && user.displayName.lowercase().indexOf(
-                        lowerSearchText
-                    ) > -1
+                    user.id != currentUserId && SearchText.from(user.displayName).contains(text)
                 }
                 .map { user -> toGroupUserSummaryModel(user) }
         }
