@@ -493,6 +493,18 @@ class ContactDirectoryRulesTest {
     }
 
     @Test
+    fun `cached search matches each form of a Yiddish name (WI 36515)`() {
+        val ligatures = searchContact("y1", "fullName" to "טעסט װײַס") // טעסט װײַס
+        val letters = searchContact("y2", "fullName" to "טעסט ווייס") // טעסט ווייס
+        val cached = listOf(ligatures, letters)
+
+        // Letter pairs, ligatures, and no points in the search text
+        assertEquals(cached, ContactDirectoryRules.searchCachedContacts(cached, "וויי"))
+        assertEquals(cached, ContactDirectoryRules.searchCachedContacts(cached, "װײ"))
+        assertEquals(cached, ContactDirectoryRules.searchCachedContacts(cached, "ייס"))
+    }
+
+    @Test
     fun `merged search keeps cached matches first and adds only new gateway matches`() {
         val first = searchContact("c1", "fullName" to "Draper One")
         val second = searchContact("c2", "fullName" to "Draper Two")
